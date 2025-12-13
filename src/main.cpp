@@ -1,11 +1,8 @@
 /**
  * Title Switcher Plugin for Wii U (Aroma)
  *
- * Allows switching between games directly from the HOME button menu
- * without returning to the Wii U Menu.
- *
- * Button combo: L + R + MINUS (SELECT) while in HOME menu to activate
- * Then: UP/DOWN to navigate, A to launch, B to cancel
+ * Shows game selection overlay while in a game (not HOME menu).
+ * Press TV button to open, navigate with D-pad, A to launch, B to cancel.
  *
  * Author: Rudger
  * License: GPLv3
@@ -18,81 +15,60 @@
 #include <coreinit/systeminfo.h>
 #include <coreinit/title.h>
 #include <coreinit/mcp.h>
+#include <coreinit/screen.h>
+#include <coreinit/cache.h>
+#include <coreinit/thread.h>
+#include <gx2/display.h>
+#include <gx2/event.h>
+#include <gx2/swap.h>
 #include <nn/acp/title.h>
 #include <sysapp/launch.h>
 #include <cstring>
 #include <cstdio>
 #include <malloc.h>
-#include <vector>
-#include <algorithm>
 
 // Plugin metadata
 WUPS_PLUGIN_NAME("Title Switcher");
-WUPS_PLUGIN_DESCRIPTION("Switch between games from the HOME menu");
-WUPS_PLUGIN_VERSION("0.2.0");
+WUPS_PLUGIN_DESCRIPTION("Switch between games with TV button");
+WUPS_PLUGIN_VERSION("0.5.0");
 WUPS_PLUGIN_AUTHOR("Rudger");
 WUPS_PLUGIN_LICENSE("GPLv3");
 
 WUPS_USE_WUT_DEVOPTAB();
 
-// Button combo to trigger title switcher: L + R + MINUS
-#define TRIGGER_COMBO (VPAD_BUTTON_L | VPAD_BUTTON_R | VPAD_BUTTON_MINUS)
+// Trigger button - TV button for testing
+#define TRIGGER_BUTTON VPAD_BUTTON_TV
 
-// Maximum number of titles
-#define MAX_TITLES 100
+// Maximum titles
+#define MAX_TITLES 64
+#define VISIBLE_TITLES 12
 
-// Track states
-static bool sNotificationsReady = false;
-static bool sMenuActive = false;
-
-// Structure to hold title information
+// Title info
 struct TitleInfo {
     uint64_t titleId;
-    char name[128];
+    char name[64];
 };
 
-// Storage for enumerated titles
-static std::vector<TitleInfo> sTitles;
+static TitleInfo sTitles[MAX_TITLES];
+static int sTitleCount = 0;
+
+// Menu state
+static bool sMenuOpen = false;
 static int sSelectedIndex = 0;
+static int sScrollOffset = 0;
 
-/**
- * Initialize notifications
- */
-static void initNotifications()
-{
-    NotificationModuleStatus status = NotificationModule_InitLibrary();
-    if (status != NOTIFICATION_MODULE_RESULT_SUCCESS) {
-        OSReport("[TitleSwitcher] Failed to init notifications: %d\n", status);
-        sNotificationsReady = false;
-        return;
-    }
-
-    NotificationModule_SetDefaultValue(
-        NOTIFICATION_MODULE_NOTIFICATION_TYPE_INFO,
-        NOTIFICATION_MODULE_DEFAULT_OPTION_DURATION_BEFORE_FADE_OUT,
-        3.0f
-    );
-
-    sNotificationsReady = true;
-}
-
-/**
- * Show notification
- */
-static void showNotification(const char* message)
-{
-    if (sNotificationsReady) {
-        NotificationModule_AddInfoNotification(message);
-    }
-    OSReport("[TitleSwitcher] %s\n", message);
-}
+// Screen buffers
+static void* sScreenBufferTV = nullptr;
+static void* sScreenBufferDRC = nullptr;
+static uint32_t sScreenSizeTV = 0;
+static uint32_t sScreenSizeDRC = 0;
+static bool sScreenInitialized = false;
 
 /**
  * Get title name from metadata
  */
 static void getTitleName(uint64_t titleId, char* outName, size_t maxLen)
 {
-    // Allocate aligned buffer for ACPMetaXml (must be 0x40 aligned)
     ACPMetaXml* metaXml = (ACPMetaXml*)memalign(0x40, sizeof(ACPMetaXml));
     if (!metaXml) {
         snprintf(outName, maxLen, "%016llX", (unsigned long long)titleId);
@@ -100,18 +76,13 @@ static void getTitleName(uint64_t titleId, char* outName, size_t maxLen)
     }
 
     memset(metaXml, 0, sizeof(ACPMetaXml));
-
     ACPResult result = ACPGetTitleMetaXml(titleId, metaXml);
+
     if (result == ACP_RESULT_SUCCESS) {
         const char* name = nullptr;
-
-        if (metaXml->shortname_en[0] != '\0') {
-            name = metaXml->shortname_en;
-        } else if (metaXml->longname_en[0] != '\0') {
-            name = metaXml->longname_en;
-        } else if (metaXml->shortname_ja[0] != '\0') {
-            name = metaXml->shortname_ja;
-        }
+        if (metaXml->shortname_en[0]) name = metaXml->shortname_en;
+        else if (metaXml->longname_en[0]) name = metaXml->longname_en;
+        else if (metaXml->shortname_ja[0]) name = metaXml->shortname_ja;
 
         if (name) {
             snprintf(outName, maxLen, "%s", name);
@@ -126,222 +97,329 @@ static void getTitleName(uint64_t titleId, char* outName, size_t maxLen)
 }
 
 /**
- * Enumerate all installed game titles
+ * Load game list
  */
-static int enumerateTitles()
+static bool loadTitles()
 {
-    sTitles.clear();
+    sTitleCount = 0;
 
     int32_t mcpHandle = MCP_Open();
     if (mcpHandle < 0) {
-        OSReport("[TitleSwitcher] Failed to open MCP: %d\n", mcpHandle);
-        return 0;
+        OSReport("[TitleSwitcher] MCP_Open failed: %d\n", mcpHandle);
+        return false;
     }
 
     MCPTitleListType* titleList = (MCPTitleListType*)malloc(sizeof(MCPTitleListType) * MAX_TITLES);
     if (!titleList) {
-        OSReport("[TitleSwitcher] Failed to allocate title list\n");
         MCP_Close(mcpHandle);
-        return 0;
+        return false;
     }
 
-    uint32_t titleCount = 0;
-    MCPError err = MCP_TitleListByAppType(mcpHandle, MCP_APP_TYPE_GAME, &titleCount,
+    uint32_t count = 0;
+    MCPError err = MCP_TitleListByAppType(mcpHandle, MCP_APP_TYPE_GAME, &count,
                                           titleList, sizeof(MCPTitleListType) * MAX_TITLES);
 
-    if (err >= 0 && titleCount > 0) {
-        OSReport("[TitleSwitcher] Found %u game titles\n", titleCount);
+    if (err >= 0 && count > 0) {
+        uint64_t currentId = OSGetTitleID();
 
-        uint64_t currentTitleId = OSGetTitleID();
+        for (uint32_t i = 0; i < count && sTitleCount < MAX_TITLES; i++) {
+            if (titleList[i].titleId == currentId) continue;
 
-        for (uint32_t i = 0; i < titleCount && sTitles.size() < MAX_TITLES; i++) {
-            // Skip the currently running title
-            if (titleList[i].titleId == currentTitleId) {
-                continue;
-            }
-
-            TitleInfo info;
-            info.titleId = titleList[i].titleId;
-            getTitleName(titleList[i].titleId, info.name, sizeof(info.name));
-
-            sTitles.push_back(info);
+            sTitles[sTitleCount].titleId = titleList[i].titleId;
+            getTitleName(titleList[i].titleId, sTitles[sTitleCount].name,
+                        sizeof(sTitles[sTitleCount].name));
+            sTitleCount++;
         }
 
-        // Sort alphabetically
-        std::sort(sTitles.begin(), sTitles.end(), [](const TitleInfo& a, const TitleInfo& b) {
-            return strcasecmp(a.name, b.name) < 0;
-        });
+        // Sort by name
+        for (int i = 0; i < sTitleCount - 1; i++) {
+            for (int j = 0; j < sTitleCount - i - 1; j++) {
+                if (strcasecmp(sTitles[j].name, sTitles[j+1].name) > 0) {
+                    TitleInfo temp = sTitles[j];
+                    sTitles[j] = sTitles[j+1];
+                    sTitles[j+1] = temp;
+                }
+            }
+        }
     }
 
     free(titleList);
     MCP_Close(mcpHandle);
 
-    OSReport("[TitleSwitcher] Enumerated %zu titles\n", sTitles.size());
-    return (int)sTitles.size();
+    OSReport("[TitleSwitcher] Loaded %d titles\n", sTitleCount);
+    return sTitleCount > 0;
 }
 
 /**
- * Show current selection via notification
+ * Initialize OSScreen
  */
-static void showCurrentSelection()
+static bool initScreen()
 {
-    if (sTitles.empty()) {
-        showNotification("No games found!");
+    if (sScreenInitialized) return true;
+
+    OSScreenInit();
+
+    sScreenSizeTV = OSScreenGetBufferSizeEx(SCREEN_TV);
+    sScreenSizeDRC = OSScreenGetBufferSizeEx(SCREEN_DRC);
+
+    // Use memalign for framebuffer memory - must be 0x100 aligned
+    sScreenBufferTV = memalign(0x100, sScreenSizeTV);
+    sScreenBufferDRC = memalign(0x100, sScreenSizeDRC);
+
+    if (!sScreenBufferTV || !sScreenBufferDRC) {
+        if (sScreenBufferTV) free(sScreenBufferTV);
+        if (sScreenBufferDRC) free(sScreenBufferDRC);
+        sScreenBufferTV = nullptr;
+        sScreenBufferDRC = nullptr;
+        return false;
+    }
+
+    // Zero out the buffers first
+    memset(sScreenBufferTV, 0, sScreenSizeTV);
+    memset(sScreenBufferDRC, 0, sScreenSizeDRC);
+    DCFlushRange(sScreenBufferTV, sScreenSizeTV);
+    DCFlushRange(sScreenBufferDRC, sScreenSizeDRC);
+
+    OSScreenSetBufferEx(SCREEN_TV, sScreenBufferTV);
+    OSScreenSetBufferEx(SCREEN_DRC, sScreenBufferDRC);
+    OSScreenEnableEx(SCREEN_TV, TRUE);
+    OSScreenEnableEx(SCREEN_DRC, TRUE);
+
+    sScreenInitialized = true;
+    return true;
+}
+
+/**
+ * Shutdown OSScreen
+ */
+static void shutdownScreen()
+{
+    if (!sScreenInitialized) return;
+
+    OSScreenShutdown();
+
+    if (sScreenBufferTV) {
+        free(sScreenBufferTV);
+        sScreenBufferTV = nullptr;
+    }
+    if (sScreenBufferDRC) {
+        free(sScreenBufferDRC);
+        sScreenBufferDRC = nullptr;
+    }
+
+    sScreenInitialized = false;
+}
+
+/**
+ * Draw the menu
+ */
+static void drawMenu()
+{
+    // Clear screens (dark blue)
+    OSScreenClearBufferEx(SCREEN_TV, 0x000050FF);
+    OSScreenClearBufferEx(SCREEN_DRC, 0x000050FF);
+
+    // Header
+    OSScreenPutFontEx(SCREEN_TV, 0, 0, "=== Title Switcher ===");
+    OSScreenPutFontEx(SCREEN_DRC, 0, 0, "=== Title Switcher ===");
+
+    OSScreenPutFontEx(SCREEN_TV, 0, 1, "UP/DOWN: Navigate | A: Launch | B: Cancel");
+    OSScreenPutFontEx(SCREEN_DRC, 0, 1, "UP/DOWN: Navigate | A: Launch | B: Cancel");
+
+    if (sTitleCount == 0) {
+        OSScreenPutFontEx(SCREEN_TV, 0, 4, "No other games found!");
+        OSScreenPutFontEx(SCREEN_DRC, 0, 4, "No other games found!");
+    } else {
+        char line[80];
+        snprintf(line, sizeof(line), "Games: %d | Selected: %d", sTitleCount, sSelectedIndex + 1);
+        OSScreenPutFontEx(SCREEN_TV, 0, 2, line);
+        OSScreenPutFontEx(SCREEN_DRC, 0, 2, line);
+
+        // Draw visible titles
+        for (int i = 0; i < VISIBLE_TITLES && (sScrollOffset + i) < sTitleCount; i++) {
+            int idx = sScrollOffset + i;
+
+            // Truncate name for display
+            char displayName[50];
+            strncpy(displayName, sTitles[idx].name, sizeof(displayName) - 1);
+            displayName[sizeof(displayName) - 1] = '\0';
+
+            if (idx == sSelectedIndex) {
+                snprintf(line, sizeof(line), "> %s", displayName);
+            } else {
+                snprintf(line, sizeof(line), "  %s", displayName);
+            }
+
+            OSScreenPutFontEx(SCREEN_TV, 0, 4 + i, line);
+            OSScreenPutFontEx(SCREEN_DRC, 0, 4 + i, line);
+        }
+
+        // Scroll indicators
+        if (sScrollOffset > 0) {
+            OSScreenPutFontEx(SCREEN_TV, 55, 4, "[UP]");
+            OSScreenPutFontEx(SCREEN_DRC, 45, 4, "[UP]");
+        }
+        if (sScrollOffset + VISIBLE_TITLES < sTitleCount) {
+            OSScreenPutFontEx(SCREEN_TV, 55, 4 + VISIBLE_TITLES - 1, "[DOWN]");
+            OSScreenPutFontEx(SCREEN_DRC, 45, 4 + VISIBLE_TITLES - 1, "[DOWN]");
+        }
+    }
+
+    // Flush and flip
+    DCFlushRange(sScreenBufferTV, sScreenSizeTV);
+    DCFlushRange(sScreenBufferDRC, sScreenSizeDRC);
+    OSScreenFlipBuffersEx(SCREEN_TV);
+    OSScreenFlipBuffersEx(SCREEN_DRC);
+}
+
+/**
+ * Open menu
+ */
+static void openMenu()
+{
+    if (sMenuOpen) return;
+
+    OSReport("[TitleSwitcher] Opening menu...\n");
+
+    if (!loadTitles()) {
+        OSReport("[TitleSwitcher] No titles found\n");
         return;
     }
 
-    char msg[192];
-    snprintf(msg, sizeof(msg), "[%d/%zu] %s",
-             sSelectedIndex + 1,
-             sTitles.size(),
-             sTitles[sSelectedIndex].name);
-    showNotification(msg);
-}
-
-/**
- * Launch the selected title
- */
-static void launchSelectedTitle()
-{
-    if (sSelectedIndex >= 0 && sSelectedIndex < (int)sTitles.size()) {
-        uint64_t titleId = sTitles[sSelectedIndex].titleId;
-        const char* name = sTitles[sSelectedIndex].name;
-
-        char msg[192];
-        snprintf(msg, sizeof(msg), "Launching: %s", name);
-        showNotification(msg);
-
-        OSReport("[TitleSwitcher] Launching title %016llX (%s)\n",
-                 (unsigned long long)titleId, name);
-
-        OSEnableHomeButtonMenu(FALSE);
-        SYSLaunchTitle(titleId);
-    }
-}
-
-/**
- * Activate the menu
- */
-static void activateMenu()
-{
-    if (sMenuActive) return;
-
-    OSReport("[TitleSwitcher] Activating menu...\n");
-
-    int count = enumerateTitles();
-    if (count == 0) {
-        showNotification("No games found!");
+    if (!initScreen()) {
+        OSReport("[TitleSwitcher] Screen init failed\n");
         return;
     }
 
     sSelectedIndex = 0;
-    sMenuActive = true;
+    sScrollOffset = 0;
+    sMenuOpen = true;
 
-    char msg[64];
-    snprintf(msg, sizeof(msg), "Title Switcher: %d games", count);
-    showNotification(msg);
-
-    // Show first selection
-    showCurrentSelection();
-
-    showNotification("UP/DOWN: Navigate | A: Launch | B: Cancel");
+    drawMenu();
 }
 
 /**
- * Deactivate the menu
+ * Close menu
  */
-static void deactivateMenu()
+static void closeMenu()
 {
-    if (!sMenuActive) return;
+    if (!sMenuOpen) return;
 
-    OSReport("[TitleSwitcher] Deactivating menu...\n");
-    sMenuActive = false;
-    sTitles.clear();
-    showNotification("Title Switcher closed");
+    OSReport("[TitleSwitcher] Closing menu...\n");
+    shutdownScreen();
+    sMenuOpen = false;
+}
+
+/**
+ * Launch selected game
+ */
+static void launchSelected()
+{
+    if (sSelectedIndex < 0 || sSelectedIndex >= sTitleCount) return;
+
+    uint64_t titleId = sTitles[sSelectedIndex].titleId;
+    OSReport("[TitleSwitcher] Launching %s\n", sTitles[sSelectedIndex].name);
+
+    closeMenu();
+    SYSLaunchTitle(titleId);
 }
 
 INITIALIZE_PLUGIN()
 {
-    OSReport("[TitleSwitcher] Plugin initializing...\n");
-    initNotifications();
-    OSReport("[TitleSwitcher] Plugin initialized!\n");
+    OSReport("[TitleSwitcher] Plugin initialized\n");
 }
 
 DEINITIALIZE_PLUGIN()
 {
-    OSReport("[TitleSwitcher] Plugin deinitializing...\n");
-    sMenuActive = false;
-    sTitles.clear();
-    if (sNotificationsReady) {
-        NotificationModule_DeInitLibrary();
-    }
+    if (sMenuOpen) closeMenu();
+    OSReport("[TitleSwitcher] Plugin deinitialized\n");
 }
 
-DECL_FUNCTION(int32_t, VPADRead, VPADChan chan, VPADStatus *buffer, uint32_t bufferSize, VPADReadError *error)
+/**
+ * Common input handler
+ */
+static void handleInput(VPADStatus *buffer, uint32_t bufferSize)
 {
-    VPADReadError realError = VPAD_READ_UNINITIALIZED;
-    int32_t result = real_VPADRead(chan, buffer, bufferSize, &realError);
+    uint32_t pressed = buffer[0].trigger;
 
-    if (result > 0 && realError == VPAD_READ_SUCCESS) {
-        uint32_t pressed = buffer[0].trigger;
+    if (sMenuOpen) {
+        if (pressed & VPAD_BUTTON_B) {
+            closeMenu();
+        }
+        else if (pressed & VPAD_BUTTON_A) {
+            launchSelected();
+        }
+        else if (pressed & VPAD_BUTTON_UP) {
+            if (sSelectedIndex > 0) {
+                sSelectedIndex--;
+                if (sSelectedIndex < sScrollOffset) {
+                    sScrollOffset = sSelectedIndex;
+                }
+                drawMenu();
+            }
+        }
+        else if (pressed & VPAD_BUTTON_DOWN) {
+            if (sSelectedIndex < sTitleCount - 1) {
+                sSelectedIndex++;
+                if (sSelectedIndex >= sScrollOffset + VISIBLE_TITLES) {
+                    sScrollOffset = sSelectedIndex - VISIBLE_TITLES + 1;
+                }
+                drawMenu();
+            }
+        }
 
-        if (sMenuActive) {
-            // Menu is active - handle navigation
-
-            // Cancel with B
-            if (pressed & VPAD_BUTTON_B) {
-                deactivateMenu();
-            }
-            // Launch with A
-            else if (pressed & VPAD_BUTTON_A) {
-                sMenuActive = false;
-                launchSelectedTitle();
-                sTitles.clear();
-            }
-            // Navigate up
-            else if (pressed & VPAD_BUTTON_UP) {
-                if (!sTitles.empty()) {
-                    sSelectedIndex--;
-                    if (sSelectedIndex < 0) {
-                        sSelectedIndex = (int)sTitles.size() - 1; // Wrap around
-                    }
-                    showCurrentSelection();
-                }
-            }
-            // Navigate down
-            else if (pressed & VPAD_BUTTON_DOWN) {
-                if (!sTitles.empty()) {
-                    sSelectedIndex++;
-                    if (sSelectedIndex >= (int)sTitles.size()) {
-                        sSelectedIndex = 0; // Wrap around
-                    }
-                    showCurrentSelection();
-                }
-            }
-
-            // Block navigation buttons from reaching HOME menu while active
-            if (pressed & (VPAD_BUTTON_UP | VPAD_BUTTON_DOWN | VPAD_BUTTON_A | VPAD_BUTTON_B)) {
-                for (uint32_t i = 0; i < bufferSize; i++) {
-                    buffer[i].trigger &= ~(VPAD_BUTTON_UP | VPAD_BUTTON_DOWN | VPAD_BUTTON_A | VPAD_BUTTON_B);
-                    buffer[i].hold &= ~(VPAD_BUTTON_UP | VPAD_BUTTON_DOWN | VPAD_BUTTON_A | VPAD_BUTTON_B);
-                    buffer[i].release &= ~(VPAD_BUTTON_UP | VPAD_BUTTON_DOWN | VPAD_BUTTON_A | VPAD_BUTTON_B);
-                }
-            }
-        } else {
-            // Menu not active - check for activation combo
-            if ((pressed & TRIGGER_COMBO) == TRIGGER_COMBO) {
-                if (OSIsHomeButtonMenuEnabled()) {
-                    activateMenu();
-                }
+        // Block all input while menu is open
+        for (uint32_t i = 0; i < bufferSize; i++) {
+            buffer[i].trigger = 0;
+            buffer[i].hold = 0;
+            buffer[i].release = 0;
+        }
+    }
+    else {
+        if (pressed & TRIGGER_BUTTON) {
+            openMenu();
+            for (uint32_t i = 0; i < bufferSize; i++) {
+                buffer[i].trigger &= ~TRIGGER_BUTTON;
+                buffer[i].hold &= ~TRIGGER_BUTTON;
             }
         }
     }
+}
 
-    if (error) {
-        *error = realError;
+/**
+ * VPADRead hook for GAME process
+ */
+DECL_FUNCTION(int32_t, VPADRead_Game, VPADChan chan, VPADStatus *buffer, uint32_t bufferSize, VPADReadError *error)
+{
+    VPADReadError realError = VPAD_READ_UNINITIALIZED;
+    int32_t result = real_VPADRead_Game(chan, buffer, bufferSize, &realError);
+
+    if (result > 0 && realError == VPAD_READ_SUCCESS) {
+        handleInput(buffer, bufferSize);
     }
 
+    if (error) *error = realError;
     return result;
 }
 
-WUPS_MUST_REPLACE_FOR_PROCESS(VPADRead, WUPS_LOADER_LIBRARY_VPAD, VPADRead, WUPS_FP_TARGET_PROCESS_HOME_MENU);
+/**
+ * VPADRead hook for Wii U Menu
+ */
+DECL_FUNCTION(int32_t, VPADRead_Menu, VPADChan chan, VPADStatus *buffer, uint32_t bufferSize, VPADReadError *error)
+{
+    VPADReadError realError = VPAD_READ_UNINITIALIZED;
+    int32_t result = real_VPADRead_Menu(chan, buffer, bufferSize, &realError);
+
+    if (result > 0 && realError == VPAD_READ_SUCCESS) {
+        handleInput(buffer, bufferSize);
+    }
+
+    if (error) *error = realError;
+    return result;
+}
+
+// Hook for GAME process
+WUPS_MUST_REPLACE_FOR_PROCESS(VPADRead_Game, WUPS_LOADER_LIBRARY_VPAD, VPADRead, WUPS_FP_TARGET_PROCESS_GAME);
+
+// Hook for Wii U Menu
+WUPS_MUST_REPLACE_FOR_PROCESS(VPADRead_Menu, WUPS_LOADER_LIBRARY_VPAD, VPADRead, WUPS_FP_TARGET_PROCESS_WII_U_MENU);
