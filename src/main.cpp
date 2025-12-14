@@ -1,49 +1,45 @@
 /**
  * Title Switcher Plugin for Wii U (Aroma)
  *
- * Shows game selection overlay while in a game (not HOME menu).
- * Press TV button to open, navigate with D-pad, A to launch, B to cancel.
+ * Adds game switching to Aroma's config menu (L+DOWN+SELECT).
+ * Select a game from the list to launch it.
  *
- * Author: Rudger
+ * Author: R11
  * License: GPLv3
  */
 
 #include <wups.h>
+#include <wups/config_api.h>
 #include <notifications/notifications.h>
-#include <vpad/input.h>
-#include <coreinit/debug.h>
-#include <coreinit/systeminfo.h>
 #include <coreinit/title.h>
 #include <coreinit/mcp.h>
-#include <coreinit/screen.h>
-#include <coreinit/cache.h>
-#include <coreinit/thread.h>
-#include <gx2/display.h>
-#include <gx2/event.h>
-#include <gx2/swap.h>
 #include <nn/acp/title.h>
 #include <sysapp/launch.h>
 #include <cstring>
 #include <cstdio>
+#include <cstdarg>
 #include <malloc.h>
 
 // Plugin metadata
 WUPS_PLUGIN_NAME("Title Switcher");
-WUPS_PLUGIN_DESCRIPTION("Switch between games with TV button");
-WUPS_PLUGIN_VERSION("0.5.0");
-WUPS_PLUGIN_AUTHOR("Rudger");
+WUPS_PLUGIN_DESCRIPTION("Switch games from Aroma config menu");
+WUPS_PLUGIN_VERSION("0.7.0");
+WUPS_PLUGIN_AUTHOR("R11");
 WUPS_PLUGIN_LICENSE("GPLv3");
 
 WUPS_USE_WUT_DEVOPTAB();
+WUPS_USE_STORAGE("TitleSwitcher");
 
-// Trigger button - TV button for testing
-#define TRIGGER_BUTTON VPAD_BUTTON_TV
+// ============================================================================
+// Configuration
+// ============================================================================
 
-// Maximum titles
-#define MAX_TITLES 64
-#define VISIBLE_TITLES 12
+#define MAX_TITLES 256
 
-// Title info
+// ============================================================================
+// Title Data
+// ============================================================================
+
 struct TitleInfo {
     uint64_t titleId;
     char name[64];
@@ -51,22 +47,35 @@ struct TitleInfo {
 
 static TitleInfo sTitles[MAX_TITLES];
 static int sTitleCount = 0;
+static bool sTitlesLoaded = false;
 
-// Menu state
-static bool sMenuOpen = false;
-static int sSelectedIndex = 0;
-static int sScrollOffset = 0;
+// Track which game to launch (set by config item callback)
+static uint64_t sPendingLaunchTitleId = 0;
+static bool sLaunchPending = false;
 
-// Screen buffers
-static void* sScreenBufferTV = nullptr;
-static void* sScreenBufferDRC = nullptr;
-static uint32_t sScreenSizeTV = 0;
-static uint32_t sScreenSizeDRC = 0;
-static bool sScreenInitialized = false;
+// ============================================================================
+// Debug Helpers
+// ============================================================================
 
-/**
- * Get title name from metadata
- */
+static void debugNotify(const char* msg)
+{
+    NotificationModule_AddInfoNotification(msg);
+}
+
+static void debugNotifyF(const char* fmt, ...)
+{
+    char buf[128];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    debugNotify(buf);
+}
+
+// ============================================================================
+// Title Loading
+// ============================================================================
+
 static void getTitleName(uint64_t titleId, char* outName, size_t maxLen)
 {
     ACPMetaXml* metaXml = (ACPMetaXml*)memalign(0x40, sizeof(ACPMetaXml));
@@ -96,16 +105,14 @@ static void getTitleName(uint64_t titleId, char* outName, size_t maxLen)
     free(metaXml);
 }
 
-/**
- * Load game list
- */
-static bool loadTitles()
+static bool loadAllTitles()
 {
+    if (sTitlesLoaded) return sTitleCount > 0;
+
     sTitleCount = 0;
 
     int32_t mcpHandle = MCP_Open();
     if (mcpHandle < 0) {
-        OSReport("[TitleSwitcher] MCP_Open failed: %d\n", mcpHandle);
         return false;
     }
 
@@ -120,11 +127,7 @@ static bool loadTitles()
                                           titleList, sizeof(MCPTitleListType) * MAX_TITLES);
 
     if (err >= 0 && count > 0) {
-        uint64_t currentId = OSGetTitleID();
-
         for (uint32_t i = 0; i < count && sTitleCount < MAX_TITLES; i++) {
-            if (titleList[i].titleId == currentId) continue;
-
             sTitles[sTitleCount].titleId = titleList[i].titleId;
             getTitleName(titleList[i].titleId, sTitles[sTitleCount].name,
                         sizeof(sTitles[sTitleCount].name));
@@ -146,280 +149,164 @@ static bool loadTitles()
     free(titleList);
     MCP_Close(mcpHandle);
 
-    OSReport("[TitleSwitcher] Loaded %d titles\n", sTitleCount);
+    sTitlesLoaded = true;
     return sTitleCount > 0;
 }
 
-/**
- * Initialize OSScreen
- */
-static bool initScreen()
+// ============================================================================
+// Config Item Callbacks for Game Selection
+// ============================================================================
+
+// Get current display text for the item
+static int32_t GameItemGetDisplayValue(void* context, char* buf, int32_t bufSize)
 {
-    if (sScreenInitialized) return true;
-
-    OSScreenInit();
-
-    sScreenSizeTV = OSScreenGetBufferSizeEx(SCREEN_TV);
-    sScreenSizeDRC = OSScreenGetBufferSizeEx(SCREEN_DRC);
-
-    // Use memalign for framebuffer memory - must be 0x100 aligned
-    sScreenBufferTV = memalign(0x100, sScreenSizeTV);
-    sScreenBufferDRC = memalign(0x100, sScreenSizeDRC);
-
-    if (!sScreenBufferTV || !sScreenBufferDRC) {
-        if (sScreenBufferTV) free(sScreenBufferTV);
-        if (sScreenBufferDRC) free(sScreenBufferDRC);
-        sScreenBufferTV = nullptr;
-        sScreenBufferDRC = nullptr;
-        return false;
-    }
-
-    // Zero out the buffers first
-    memset(sScreenBufferTV, 0, sScreenSizeTV);
-    memset(sScreenBufferDRC, 0, sScreenSizeDRC);
-    DCFlushRange(sScreenBufferTV, sScreenSizeTV);
-    DCFlushRange(sScreenBufferDRC, sScreenSizeDRC);
-
-    OSScreenSetBufferEx(SCREEN_TV, sScreenBufferTV);
-    OSScreenSetBufferEx(SCREEN_DRC, sScreenBufferDRC);
-    OSScreenEnableEx(SCREEN_TV, TRUE);
-    OSScreenEnableEx(SCREEN_DRC, TRUE);
-
-    sScreenInitialized = true;
-    return true;
+    snprintf(buf, bufSize, "[Press A to launch]");
+    return 0;
 }
 
-/**
- * Shutdown OSScreen
- */
-static void shutdownScreen()
+// Called when item is selected/deselected (cursor moves to/from it)
+static void GameItemOnSelected(void* context, bool isSelected)
 {
-    if (!sScreenInitialized) return;
-
-    OSScreenShutdown();
-
-    if (sScreenBufferTV) {
-        free(sScreenBufferTV);
-        sScreenBufferTV = nullptr;
-    }
-    if (sScreenBufferDRC) {
-        free(sScreenBufferDRC);
-        sScreenBufferDRC = nullptr;
-    }
-
-    sScreenInitialized = false;
+    // Nothing needed
 }
 
-/**
- * Draw the menu
- */
-static void drawMenu()
+// Called to restore default value
+static void GameItemRestoreDefault(void* context)
 {
-    // Clear screens (dark blue)
-    OSScreenClearBufferEx(SCREEN_TV, 0x000050FF);
-    OSScreenClearBufferEx(SCREEN_DRC, 0x000050FF);
+    // Nothing needed - no value to restore
+}
 
-    // Header
-    OSScreenPutFontEx(SCREEN_TV, 0, 0, "=== Title Switcher ===");
-    OSScreenPutFontEx(SCREEN_DRC, 0, 0, "=== Title Switcher ===");
+// Is navigation away from this item allowed
+static bool GameItemIsMovementAllowed(void* context)
+{
+    return true;  // Always allow movement
+}
 
-    OSScreenPutFontEx(SCREEN_TV, 0, 1, "UP/DOWN: Navigate | A: Launch | B: Cancel");
-    OSScreenPutFontEx(SCREEN_DRC, 0, 1, "UP/DOWN: Navigate | A: Launch | B: Cancel");
+// Called when config menu closes
+static void GameItemOnClose(void* context)
+{
+    // Nothing needed
+}
 
-    if (sTitleCount == 0) {
-        OSScreenPutFontEx(SCREEN_TV, 0, 4, "No other games found!");
-        OSScreenPutFontEx(SCREEN_DRC, 0, 4, "No other games found!");
-    } else {
-        char line[80];
-        snprintf(line, sizeof(line), "Games: %d | Selected: %d", sTitleCount, sSelectedIndex + 1);
-        OSScreenPutFontEx(SCREEN_TV, 0, 2, line);
-        OSScreenPutFontEx(SCREEN_DRC, 0, 2, line);
+// Called on input - this is where we detect A button to launch
+static void GameItemOnInput(void* context, WUPSConfigSimplePadData input)
+{
+    if (input.buttons_d & WUPS_CONFIG_BUTTON_A) {
+        uint64_t* titleIdPtr = (uint64_t*)context;
+        if (titleIdPtr) {
+            sPendingLaunchTitleId = *titleIdPtr;
+            sLaunchPending = true;
+        }
+    }
+}
 
-        // Draw visible titles
-        for (int i = 0; i < VISIBLE_TITLES && (sScrollOffset + i) < sTitleCount; i++) {
-            int idx = sScrollOffset + i;
+// Called when item is being destroyed
+static void GameItemOnDelete(void* context)
+{
+    if (context) {
+        free(context);
+    }
+}
 
-            // Truncate name for display
-            char displayName[50];
-            strncpy(displayName, sTitles[idx].name, sizeof(displayName) - 1);
-            displayName[sizeof(displayName) - 1] = '\0';
+// ============================================================================
+// Config Menu Callbacks
+// ============================================================================
 
-            if (idx == sSelectedIndex) {
-                snprintf(line, sizeof(line), "> %s", displayName);
-            } else {
-                snprintf(line, sizeof(line), "  %s", displayName);
+static WUPSConfigAPICallbackStatus ConfigMenuOpenedCallback(WUPSConfigCategoryHandle rootHandle)
+{
+    // Make sure titles are loaded
+    if (!sTitlesLoaded) {
+        loadAllTitles();
+    }
+
+    // Get current running title to exclude it
+    uint64_t currentTitleId = OSGetTitleID();
+
+    // Add each game as a config item
+    for (int i = 0; i < sTitleCount; i++) {
+        // Skip currently running game
+        if (sTitles[i].titleId == currentTitleId) {
+            continue;
+        }
+
+        // Allocate context to hold title ID (freed in OnDelete)
+        uint64_t* titleIdContext = (uint64_t*)malloc(sizeof(uint64_t));
+        if (!titleIdContext) continue;
+        *titleIdContext = sTitles[i].titleId;
+
+        // Create the config item using V2 API
+        WUPSConfigAPIItemOptionsV2 itemOptions = {
+            .displayName = sTitles[i].name,
+            .context = titleIdContext,
+            .callbacks = {
+                .getCurrentValueDisplay = GameItemGetDisplayValue,
+                .getCurrentValueSelectedDisplay = GameItemGetDisplayValue,
+                .onSelected = GameItemOnSelected,
+                .restoreDefault = GameItemRestoreDefault,
+                .isMovementAllowed = GameItemIsMovementAllowed,
+                .onCloseCallback = GameItemOnClose,
+                .onInput = GameItemOnInput,
+                .onInputEx = nullptr,
+                .onDelete = GameItemOnDelete,
             }
+        };
 
-            OSScreenPutFontEx(SCREEN_TV, 0, 4 + i, line);
-            OSScreenPutFontEx(SCREEN_DRC, 0, 4 + i, line);
-        }
-
-        // Scroll indicators
-        if (sScrollOffset > 0) {
-            OSScreenPutFontEx(SCREEN_TV, 55, 4, "[UP]");
-            OSScreenPutFontEx(SCREEN_DRC, 45, 4, "[UP]");
-        }
-        if (sScrollOffset + VISIBLE_TITLES < sTitleCount) {
-            OSScreenPutFontEx(SCREEN_TV, 55, 4 + VISIBLE_TITLES - 1, "[DOWN]");
-            OSScreenPutFontEx(SCREEN_DRC, 45, 4 + VISIBLE_TITLES - 1, "[DOWN]");
+        WUPSConfigItemHandle itemHandle;
+        if (WUPSConfigAPI_Item_Create(itemOptions, &itemHandle) == WUPSCONFIG_API_RESULT_SUCCESS) {
+            WUPSConfigAPI_Category_AddItem(rootHandle, itemHandle);
+        } else {
+            free(titleIdContext);
         }
     }
 
-    // Flush and flip
-    DCFlushRange(sScreenBufferTV, sScreenSizeTV);
-    DCFlushRange(sScreenBufferDRC, sScreenSizeDRC);
-    OSScreenFlipBuffersEx(SCREEN_TV);
-    OSScreenFlipBuffersEx(SCREEN_DRC);
+    return WUPSCONFIG_API_CALLBACK_RESULT_SUCCESS;
 }
 
-/**
- * Open menu
- */
-static void openMenu()
+static void ConfigMenuClosedCallback()
 {
-    if (sMenuOpen) return;
+    // If a launch is pending, do it now that the menu is closed
+    if (sLaunchPending && sPendingLaunchTitleId != 0) {
+        sLaunchPending = false;
+        uint64_t titleId = sPendingLaunchTitleId;
+        sPendingLaunchTitleId = 0;
 
-    OSReport("[TitleSwitcher] Opening menu...\n");
+        // Find the name for notification
+        for (int i = 0; i < sTitleCount; i++) {
+            if (sTitles[i].titleId == titleId) {
+                debugNotifyF("Launching: %s", sTitles[i].name);
+                break;
+            }
+        }
 
-    if (!loadTitles()) {
-        OSReport("[TitleSwitcher] No titles found\n");
-        return;
+        SYSLaunchTitle(titleId);
     }
-
-    if (!initScreen()) {
-        OSReport("[TitleSwitcher] Screen init failed\n");
-        return;
-    }
-
-    sSelectedIndex = 0;
-    sScrollOffset = 0;
-    sMenuOpen = true;
-
-    drawMenu();
 }
 
-/**
- * Close menu
- */
-static void closeMenu()
-{
-    if (!sMenuOpen) return;
-
-    OSReport("[TitleSwitcher] Closing menu...\n");
-    shutdownScreen();
-    sMenuOpen = false;
-}
-
-/**
- * Launch selected game
- */
-static void launchSelected()
-{
-    if (sSelectedIndex < 0 || sSelectedIndex >= sTitleCount) return;
-
-    uint64_t titleId = sTitles[sSelectedIndex].titleId;
-    OSReport("[TitleSwitcher] Launching %s\n", sTitles[sSelectedIndex].name);
-
-    closeMenu();
-    SYSLaunchTitle(titleId);
-}
+// ============================================================================
+// Plugin Lifecycle
+// ============================================================================
 
 INITIALIZE_PLUGIN()
 {
-    OSReport("[TitleSwitcher] Plugin initialized\n");
+    NotificationModule_InitLibrary();
+
+    // Initialize the config API
+    WUPSConfigAPIOptionsV1 configOptions = {
+        .name = "Title Switcher"
+    };
+
+    WUPSConfigAPIStatus configStatus = WUPSConfigAPI_Init(configOptions, ConfigMenuOpenedCallback, ConfigMenuClosedCallback);
+    if (configStatus != WUPSCONFIG_API_RESULT_SUCCESS) {
+        debugNotifyF("Config init failed: %s", WUPSConfigAPI_GetStatusStr(configStatus));
+    }
+
+    // Pre-load titles
+    loadAllTitles();
+
+    debugNotifyF("Title Switcher: %d games", sTitleCount);
 }
 
 DEINITIALIZE_PLUGIN()
 {
-    if (sMenuOpen) closeMenu();
-    OSReport("[TitleSwitcher] Plugin deinitialized\n");
+    NotificationModule_DeInitLibrary();
 }
-
-/**
- * Common input handler
- */
-static void handleInput(VPADStatus *buffer, uint32_t bufferSize)
-{
-    uint32_t pressed = buffer[0].trigger;
-
-    if (sMenuOpen) {
-        if (pressed & VPAD_BUTTON_B) {
-            closeMenu();
-        }
-        else if (pressed & VPAD_BUTTON_A) {
-            launchSelected();
-        }
-        else if (pressed & VPAD_BUTTON_UP) {
-            if (sSelectedIndex > 0) {
-                sSelectedIndex--;
-                if (sSelectedIndex < sScrollOffset) {
-                    sScrollOffset = sSelectedIndex;
-                }
-                drawMenu();
-            }
-        }
-        else if (pressed & VPAD_BUTTON_DOWN) {
-            if (sSelectedIndex < sTitleCount - 1) {
-                sSelectedIndex++;
-                if (sSelectedIndex >= sScrollOffset + VISIBLE_TITLES) {
-                    sScrollOffset = sSelectedIndex - VISIBLE_TITLES + 1;
-                }
-                drawMenu();
-            }
-        }
-
-        // Block all input while menu is open
-        for (uint32_t i = 0; i < bufferSize; i++) {
-            buffer[i].trigger = 0;
-            buffer[i].hold = 0;
-            buffer[i].release = 0;
-        }
-    }
-    else {
-        if (pressed & TRIGGER_BUTTON) {
-            openMenu();
-            for (uint32_t i = 0; i < bufferSize; i++) {
-                buffer[i].trigger &= ~TRIGGER_BUTTON;
-                buffer[i].hold &= ~TRIGGER_BUTTON;
-            }
-        }
-    }
-}
-
-/**
- * VPADRead hook for GAME process
- */
-DECL_FUNCTION(int32_t, VPADRead_Game, VPADChan chan, VPADStatus *buffer, uint32_t bufferSize, VPADReadError *error)
-{
-    VPADReadError realError = VPAD_READ_UNINITIALIZED;
-    int32_t result = real_VPADRead_Game(chan, buffer, bufferSize, &realError);
-
-    if (result > 0 && realError == VPAD_READ_SUCCESS) {
-        handleInput(buffer, bufferSize);
-    }
-
-    if (error) *error = realError;
-    return result;
-}
-
-/**
- * VPADRead hook for Wii U Menu
- */
-DECL_FUNCTION(int32_t, VPADRead_Menu, VPADChan chan, VPADStatus *buffer, uint32_t bufferSize, VPADReadError *error)
-{
-    VPADReadError realError = VPAD_READ_UNINITIALIZED;
-    int32_t result = real_VPADRead_Menu(chan, buffer, bufferSize, &realError);
-
-    if (result > 0 && realError == VPAD_READ_SUCCESS) {
-        handleInput(buffer, bufferSize);
-    }
-
-    if (error) *error = realError;
-    return result;
-}
-
-// Hook for GAME process
-WUPS_MUST_REPLACE_FOR_PROCESS(VPADRead_Game, WUPS_LOADER_LIBRARY_VPAD, VPADRead, WUPS_FP_TARGET_PROCESS_GAME);
-
-// Hook for Wii U Menu
-WUPS_MUST_REPLACE_FOR_PROCESS(VPADRead_Menu, WUPS_LOADER_LIBRARY_VPAD, VPADRead, WUPS_FP_TARGET_PROCESS_WII_U_MENU);
