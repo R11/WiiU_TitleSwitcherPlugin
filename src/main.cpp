@@ -1,8 +1,9 @@
 /**
  * Title Switcher Plugin for Wii U (Aroma)
  *
- * Adds game switching to Aroma's config menu (L+DOWN+SELECT).
- * Select a game from the list to launch it.
+ * Category-based game browser in Aroma config menu.
+ * Games organized alphabetically: A-F, G-L, M-R, S-Z, #(numbers/symbols)
+ * Select a game and press A to launch.
  *
  * Author: R11
  * License: GPLv3
@@ -18,12 +19,13 @@
 #include <cstring>
 #include <cstdio>
 #include <cstdarg>
+#include <cctype>
 #include <malloc.h>
 
 // Plugin metadata
 WUPS_PLUGIN_NAME("Title Switcher");
 WUPS_PLUGIN_DESCRIPTION("Switch games from Aroma config menu");
-WUPS_PLUGIN_VERSION("0.7.0");
+WUPS_PLUGIN_VERSION("0.9.0");
 WUPS_PLUGIN_AUTHOR("R11");
 WUPS_PLUGIN_LICENSE("GPLv3");
 
@@ -122,12 +124,20 @@ static bool loadAllTitles()
         return false;
     }
 
+    // Get current title to exclude
+    uint64_t currentTitleId = OSGetTitleID();
+
     uint32_t count = 0;
     MCPError err = MCP_TitleListByAppType(mcpHandle, MCP_APP_TYPE_GAME, &count,
                                           titleList, sizeof(MCPTitleListType) * MAX_TITLES);
 
     if (err >= 0 && count > 0) {
         for (uint32_t i = 0; i < count && sTitleCount < MAX_TITLES; i++) {
+            // Skip current game
+            if (titleList[i].titleId == currentTitleId) {
+                continue;
+            }
+
             sTitles[sTitleCount].titleId = titleList[i].titleId;
             getTitleName(titleList[i].titleId, sTitles[sTitleCount].name,
                         sizeof(sTitles[sTitleCount].name));
@@ -154,41 +164,63 @@ static bool loadAllTitles()
 }
 
 // ============================================================================
+// Letter Group Helpers
+// ============================================================================
+
+// Returns which group (0-4) a character belongs to:
+// 0 = A-F, 1 = G-L, 2 = M-R, 3 = S-Z, 4 = # (numbers/symbols)
+static int getLetterGroup(char c)
+{
+    char upper = toupper(c);
+    if (upper >= 'A' && upper <= 'F') return 0;
+    if (upper >= 'G' && upper <= 'L') return 1;
+    if (upper >= 'M' && upper <= 'R') return 2;
+    if (upper >= 'S' && upper <= 'Z') return 3;
+    return 4; // Numbers, symbols, etc.
+}
+
+static const char* getGroupName(int group)
+{
+    switch (group) {
+        case 0: return "A - F";
+        case 1: return "G - L";
+        case 2: return "M - R";
+        case 3: return "S - Z";
+        case 4: return "# (0-9)";
+        default: return "Other";
+    }
+}
+
+// ============================================================================
 // Config Item Callbacks for Game Selection
 // ============================================================================
 
-// Get current display text for the item
 static int32_t GameItemGetDisplayValue(void* context, char* buf, int32_t bufSize)
 {
-    snprintf(buf, bufSize, "[Press A to launch]");
+    snprintf(buf, bufSize, "Press A");
     return 0;
 }
 
-// Called when item is selected/deselected (cursor moves to/from it)
 static void GameItemOnSelected(void* context, bool isSelected)
 {
     // Nothing needed
 }
 
-// Called to restore default value
 static void GameItemRestoreDefault(void* context)
 {
-    // Nothing needed - no value to restore
+    // Nothing needed
 }
 
-// Is navigation away from this item allowed
 static bool GameItemIsMovementAllowed(void* context)
 {
-    return true;  // Always allow movement
+    return true;
 }
 
-// Called when config menu closes
 static void GameItemOnClose(void* context)
 {
     // Nothing needed
 }
 
-// Called on input - this is where we detect A button to launch
 static void GameItemOnInput(void* context, WUPSConfigSimplePadData input)
 {
     if (input.buttons_d & WUPS_CONFIG_BUTTON_A) {
@@ -200,7 +232,6 @@ static void GameItemOnInput(void* context, WUPSConfigSimplePadData input)
     }
 }
 
-// Called when item is being destroyed
 static void GameItemOnDelete(void* context)
 {
     if (context) {
@@ -219,44 +250,92 @@ static WUPSConfigAPICallbackStatus ConfigMenuOpenedCallback(WUPSConfigCategoryHa
         loadAllTitles();
     }
 
-    // Get current running title to exclude it
-    uint64_t currentTitleId = OSGetTitleID();
-
-    // Add each game as a config item
-    for (int i = 0; i < sTitleCount; i++) {
-        // Skip currently running game
-        if (sTitles[i].titleId == currentTitleId) {
-            continue;
-        }
-
-        // Allocate context to hold title ID (freed in OnDelete)
-        uint64_t* titleIdContext = (uint64_t*)malloc(sizeof(uint64_t));
-        if (!titleIdContext) continue;
-        *titleIdContext = sTitles[i].titleId;
-
-        // Create the config item using V2 API
+    if (sTitleCount == 0) {
+        // No games - add a placeholder item
         WUPSConfigAPIItemOptionsV2 itemOptions = {
-            .displayName = sTitles[i].name,
-            .context = titleIdContext,
+            .displayName = "(No games found)",
+            .context = nullptr,
             .callbacks = {
-                .getCurrentValueDisplay = GameItemGetDisplayValue,
-                .getCurrentValueSelectedDisplay = GameItemGetDisplayValue,
-                .onSelected = GameItemOnSelected,
-                .restoreDefault = GameItemRestoreDefault,
-                .isMovementAllowed = GameItemIsMovementAllowed,
-                .onCloseCallback = GameItemOnClose,
-                .onInput = GameItemOnInput,
+                .getCurrentValueDisplay = [](void*, char* buf, int32_t size) -> int32_t {
+                    snprintf(buf, size, "---");
+                    return 0;
+                },
+                .getCurrentValueSelectedDisplay = [](void*, char* buf, int32_t size) -> int32_t {
+                    snprintf(buf, size, "---");
+                    return 0;
+                },
+                .onSelected = [](void*, bool) {},
+                .restoreDefault = [](void*) {},
+                .isMovementAllowed = [](void*) -> bool { return true; },
+                .onCloseCallback = [](void*) {},
+                .onInput = [](void*, WUPSConfigSimplePadData) {},
                 .onInputEx = nullptr,
-                .onDelete = GameItemOnDelete,
+                .onDelete = [](void*) {},
             }
         };
 
         WUPSConfigItemHandle itemHandle;
         if (WUPSConfigAPI_Item_Create(itemOptions, &itemHandle) == WUPSCONFIG_API_RESULT_SUCCESS) {
             WUPSConfigAPI_Category_AddItem(rootHandle, itemHandle);
-        } else {
-            free(titleIdContext);
         }
+        return WUPSCONFIG_API_CALLBACK_RESULT_SUCCESS;
+    }
+
+    // Count games per group to know which categories to create
+    int groupCounts[5] = {0, 0, 0, 0, 0};
+    for (int i = 0; i < sTitleCount; i++) {
+        int group = getLetterGroup(sTitles[i].name[0]);
+        groupCounts[group]++;
+    }
+
+    // Create categories for each non-empty group
+    for (int g = 0; g < 5; g++) {
+        if (groupCounts[g] == 0) continue;
+
+        // Create category name with count
+        char categoryName[32];
+        snprintf(categoryName, sizeof(categoryName), "%s (%d)", getGroupName(g), groupCounts[g]);
+
+        WUPSConfigCategoryHandle groupCategory;
+        if (WUPSConfigAPI_Category_Create({.name = categoryName}, &groupCategory) != WUPSCONFIG_API_RESULT_SUCCESS) {
+            continue;
+        }
+
+        // Add games in this group
+        for (int i = 0; i < sTitleCount; i++) {
+            int titleGroup = getLetterGroup(sTitles[i].name[0]);
+            if (titleGroup != g) continue;
+
+            // Allocate context to hold title ID (freed in OnDelete)
+            uint64_t* titleIdContext = (uint64_t*)malloc(sizeof(uint64_t));
+            if (!titleIdContext) continue;
+            *titleIdContext = sTitles[i].titleId;
+
+            WUPSConfigAPIItemOptionsV2 itemOptions = {
+                .displayName = sTitles[i].name,
+                .context = titleIdContext,
+                .callbacks = {
+                    .getCurrentValueDisplay = GameItemGetDisplayValue,
+                    .getCurrentValueSelectedDisplay = GameItemGetDisplayValue,
+                    .onSelected = GameItemOnSelected,
+                    .restoreDefault = GameItemRestoreDefault,
+                    .isMovementAllowed = GameItemIsMovementAllowed,
+                    .onCloseCallback = GameItemOnClose,
+                    .onInput = GameItemOnInput,
+                    .onInputEx = nullptr,
+                    .onDelete = GameItemOnDelete,
+                }
+            };
+
+            WUPSConfigItemHandle itemHandle;
+            if (WUPSConfigAPI_Item_Create(itemOptions, &itemHandle) == WUPSCONFIG_API_RESULT_SUCCESS) {
+                WUPSConfigAPI_Category_AddItem(groupCategory, itemHandle);
+            } else {
+                free(titleIdContext);
+            }
+        }
+
+        WUPSConfigAPI_Category_AddCategory(rootHandle, groupCategory);
     }
 
     return WUPSCONFIG_API_CALLBACK_RESULT_SUCCESS;
@@ -264,7 +343,7 @@ static WUPSConfigAPICallbackStatus ConfigMenuOpenedCallback(WUPSConfigCategoryHa
 
 static void ConfigMenuClosedCallback()
 {
-    // If a launch is pending, do it now that the menu is closed
+    // If a launch is pending, do it now
     if (sLaunchPending && sPendingLaunchTitleId != 0) {
         sLaunchPending = false;
         uint64_t titleId = sPendingLaunchTitleId;
@@ -295,7 +374,9 @@ INITIALIZE_PLUGIN()
         .name = "Title Switcher"
     };
 
-    WUPSConfigAPIStatus configStatus = WUPSConfigAPI_Init(configOptions, ConfigMenuOpenedCallback, ConfigMenuClosedCallback);
+    WUPSConfigAPIStatus configStatus = WUPSConfigAPI_Init(configOptions,
+        ConfigMenuOpenedCallback, ConfigMenuClosedCallback);
+
     if (configStatus != WUPSCONFIG_API_RESULT_SUCCESS) {
         debugNotifyF("Config init failed: %s", WUPSConfigAPI_GetStatusStr(configStatus));
     }

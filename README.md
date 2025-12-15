@@ -1,13 +1,13 @@
 # Title Switcher Plugin for Wii U
 
-A plugin for the Aroma homebrew environment that allows you to switch between games directly from the HOME button menu without returning to the slow Wii U Menu.
+A plugin for the Aroma homebrew environment that allows you to switch between games directly from the Aroma config menu without returning to the slow Wii U Menu.
 
 ## Features
 
-- Quick game switching from the HOME menu overlay
+- Quick game switching from Aroma's config menu
 - Lists all installed Wii U games alphabetically
-- Simple text-based UI on both TV and GamePad
-- Page navigation for large game libraries
+- Single-item browser with page navigation
+- Excludes currently running game from the list
 
 ## Installation
 
@@ -19,16 +19,18 @@ A plugin for the Aroma homebrew environment that allows you to switch between ga
 
 ## Usage
 
-1. While playing any game, press the **HOME** button to open the HOME menu
-2. Press **L + R + MINUS (SELECT)** simultaneously to open Title Switcher
-3. Use the controls to navigate and select a game:
+1. While in any application, press **L + D-Pad Down + Minus** to open Aroma's config menu
+2. Select **Title Switcher** from the plugin list
+3. Use the controls to browse and select a game:
 
 | Button | Action |
 |--------|--------|
-| D-Pad Up/Down | Navigate list |
-| L / R | Page up/down |
+| D-Pad Left/Right | Navigate ±1 game |
+| L / R | Page jump ±10 games |
 | A | Launch selected game |
-| B | Cancel and close menu |
+| B | Back / Exit menu |
+
+The display shows: `GameName (X/Y)` where X is current position and Y is total games.
 
 ## Building
 
@@ -47,10 +49,9 @@ docker run --rm -v "$(pwd):/output" titleswitcherplugin cp /project/TitleSwitche
 
 ## Technical Details
 
-- Hooks `VPADRead` in the HOME Menu process to detect button combos
+- Integrates with WUPS Config API for menu interface
 - Uses `MCP_TitleListByAppType` to enumerate installed games
 - Uses `ACPGetTitleMetaXml` to retrieve game names
-- Uses `OSScreen` for text-based rendering
 - Uses `SYSLaunchTitle` to switch titles
 
 ## Requirements
@@ -64,8 +65,10 @@ GPLv3
 
 ## Author
 
-Rudger
+R11
 
 ## Version History
 
+- 0.8.0 - Single-item browser with L/R pagination
+- 0.7.0 - Config menu integration (full list)
 - 0.1.0 - Initial release
