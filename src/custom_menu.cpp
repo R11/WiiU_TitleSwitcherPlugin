@@ -9,6 +9,7 @@
 
 #include "custom_menu.h"
 #include "dc.h"
+#include "settings.h"
 
 #include <coreinit/screen.h>
 #include <coreinit/cache.h>
@@ -162,14 +163,14 @@ void drawText(int col, int row, const char* text)
  */
 void renderMenu()
 {
-    // Clear both buffers (dark background)
-    OSScreenClearBufferEx(SCREEN_TV, 0x1E1E2EFF);
-    OSScreenClearBufferEx(SCREEN_DRC, 0x1E1E2EFF);
+    // Clear both buffers with background color from settings
+    OSScreenClearBufferEx(SCREEN_TV, Settings::gSettings.bgColor);
+    OSScreenClearBufferEx(SCREEN_DRC, Settings::gSettings.bgColor);
 
-    // Compact header (2 lines instead of 6)
+    // Compact header
     char headerLine[80];
     snprintf(headerLine, sizeof(headerLine),
-             "TITLE SWITCHER  [%d/%d]  A:Launch B:Close L/R:Skip",
+             "TITLE SWITCHER [%d/%d] A:Go B:Close Y:Fav +:Settings",
              sSelectedIndex + 1, sTitleCount);
     drawText(0, 0, headerLine);
     drawText(0, 1, "------------------------------------------------");
@@ -182,15 +183,21 @@ void renderMenu()
             int idx = sScrollOffset + i;
             char line[80];
 
-            // Truncate name to fit (leave room for number prefix)
-            char displayName[48];
+            // Check if this title is a favorite
+            bool isFav = Settings::IsFavorite(sTitles[idx].titleId);
+
+            // Truncate name to fit (leave room for number prefix and star)
+            char displayName[46];
             strncpy(displayName, sTitles[idx].name, sizeof(displayName) - 1);
             displayName[sizeof(displayName) - 1] = '\0';
 
+            // Format: "> 001. * Game Name" or "  001.   Game Name"
+            const char* favMark = isFav ? "*" : " ";
+
             if (idx == sSelectedIndex) {
-                snprintf(line, sizeof(line), "> %3d. %-48s", idx + 1, displayName);
+                snprintf(line, sizeof(line), "> %3d. %s %-44s", idx + 1, favMark, displayName);
             } else {
-                snprintf(line, sizeof(line), "  %3d. %-48s", idx + 1, displayName);
+                snprintf(line, sizeof(line), "  %3d. %s %-44s", idx + 1, favMark, displayName);
             }
 
             drawText(0, 2 + i, line);
@@ -211,6 +218,115 @@ void renderMenu()
 
     OSScreenFlipBuffersEx(SCREEN_TV);
     OSScreenFlipBuffersEx(SCREEN_DRC);
+}
+
+/**
+ * Render a simple settings submenu
+ */
+void renderSettingsMenu(int settingIndex)
+{
+    OSScreenClearBufferEx(SCREEN_TV, Settings::gSettings.bgColor);
+    OSScreenClearBufferEx(SCREEN_DRC, Settings::gSettings.bgColor);
+
+    drawText(0, 0, "SETTINGS                           B:Back");
+    drawText(0, 1, "------------------------------------------------");
+
+    const char* options[] = {
+        "Background Color",
+        "Reset to Defaults",
+        "Save Settings",
+    };
+    const int numOptions = 3;
+
+    for (int i = 0; i < numOptions; i++) {
+        char line[64];
+        if (i == settingIndex) {
+            snprintf(line, sizeof(line), "> %s", options[i]);
+        } else {
+            snprintf(line, sizeof(line), "  %s", options[i]);
+        }
+        drawText(0, 3 + i, line);
+    }
+
+    // Show current values
+    char info[64];
+    snprintf(info, sizeof(info), "BG Color: 0x%08X", Settings::gSettings.bgColor);
+    drawText(0, 10, info);
+    snprintf(info, sizeof(info), "Favorites: %d", (int)Settings::gSettings.favorites.size());
+    drawText(0, 11, info);
+
+    DCFlushRange(sBufferTV, sBufferSizeTV);
+    DCFlushRange(sBufferDRC, sBufferSizeDRC);
+    OSScreenFlipBuffersEx(SCREEN_TV);
+    OSScreenFlipBuffersEx(SCREEN_DRC);
+}
+
+/**
+ * Run the settings submenu
+ */
+void runSettingsMenu()
+{
+    int settingIndex = 0;
+    const int numOptions = 3;
+    VPADStatus vpadStatus;
+    VPADReadError vpadError;
+    bool inSettings = true;
+
+    while (inSettings) {
+        GX2WaitForVsync();
+        renderSettingsMenu(settingIndex);
+
+        int32_t readResult = VPADRead(VPAD_CHAN_0, &vpadStatus, 1, &vpadError);
+        if (readResult > 0 && vpadError == VPAD_READ_SUCCESS) {
+            uint32_t pressed = vpadStatus.trigger;
+
+            if (pressed & VPAD_BUTTON_B) {
+                inSettings = false;
+            }
+
+            if (pressed & VPAD_BUTTON_UP) {
+                if (settingIndex > 0) settingIndex--;
+            }
+
+            if (pressed & VPAD_BUTTON_DOWN) {
+                if (settingIndex < numOptions - 1) settingIndex++;
+            }
+
+            if (pressed & VPAD_BUTTON_A) {
+                switch (settingIndex) {
+                    case 0: // Cycle background color
+                        {
+                            // Cycle through some preset colors
+                            uint32_t colors[] = {
+                                0x1E1E2EFF,  // Catppuccin Base
+                                0x11111BFF,  // Catppuccin Crust
+                                0x181825FF,  // Catppuccin Mantle
+                                0x000000FF,  // Black
+                                0x1A1A2EFF,  // Dark blue
+                                0x2D2D44FF,  // Slate
+                            };
+                            const int numColors = 6;
+                            for (int i = 0; i < numColors; i++) {
+                                if (Settings::gSettings.bgColor == colors[i]) {
+                                    Settings::gSettings.bgColor = colors[(i + 1) % numColors];
+                                    break;
+                                }
+                                if (i == numColors - 1) {
+                                    Settings::gSettings.bgColor = colors[0];
+                                }
+                            }
+                        }
+                        break;
+                    case 1: // Reset to defaults
+                        Settings::gSettings = Settings::PluginSettings();
+                        break;
+                    case 2: // Save settings
+                        Settings::Save();
+                        break;
+                }
+            }
+        }
+    }
 }
 
 /**
@@ -305,6 +421,18 @@ uint64_t runMenuLoop()
                 if (sSelectedIndex >= sScrollOffset + VISIBLE_ROWS) {
                     sScrollOffset = sSelectedIndex - VISIBLE_ROWS + 1;
                 }
+            }
+
+            // Y = Toggle favorite for current selection
+            if (pressed & VPAD_BUTTON_Y) {
+                if (sTitleCount > 0 && sSelectedIndex >= 0 && sSelectedIndex < sTitleCount) {
+                    Settings::ToggleFavorite(sTitles[sSelectedIndex].titleId);
+                }
+            }
+
+            // + = Open settings menu
+            if (pressed & VPAD_BUTTON_PLUS) {
+                runSettingsMenu();
             }
         }
     }
@@ -417,13 +545,27 @@ void Open()
     // Disable home button menu while our menu is open
     OSEnableHomeButtonMenu(false);
 
-    // Reset selection state
-    sSelectedIndex = 0;
-    sScrollOffset = 0;
+    // Restore last selection from settings (clamped to valid range)
+    sSelectedIndex = Settings::gSettings.lastIndex;
+    if (sSelectedIndex >= sTitleCount) sSelectedIndex = sTitleCount > 0 ? sTitleCount - 1 : 0;
+    if (sSelectedIndex < 0) sSelectedIndex = 0;
+
+    // Adjust scroll offset to show selected item
+    sScrollOffset = sSelectedIndex - (VISIBLE_ROWS / 2);
+    if (sScrollOffset < 0) sScrollOffset = 0;
+    if (sScrollOffset + VISIBLE_ROWS > sTitleCount) {
+        sScrollOffset = sTitleCount - VISIBLE_ROWS;
+        if (sScrollOffset < 0) sScrollOffset = 0;
+    }
+
     sIsOpen = true;
 
     // Run the menu loop
     uint64_t titleToLaunch = runMenuLoop();
+
+    // Save last selected index
+    Settings::gSettings.lastIndex = sSelectedIndex;
+    Settings::Save();
 
     // Cleanup
     sIsOpen = false;

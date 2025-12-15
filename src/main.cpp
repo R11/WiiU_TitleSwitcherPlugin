@@ -25,6 +25,7 @@
 #include <malloc.h>
 
 #include "custom_menu.h"
+#include "settings.h"
 
 // Plugin metadata
 WUPS_PLUGIN_NAME("Title Switcher");
@@ -397,6 +398,10 @@ INITIALIZE_PLUGIN()
     if (configStatus != WUPSCONFIG_API_RESULT_SUCCESS) {
         debugNotifyF("Config init failed: %s", WUPSConfigAPI_GetStatusStr(configStatus));
     }
+
+    // Initialize and load settings
+    Settings::Init();
+    Settings::Load();
 
     // Initialize custom menu system and preload titles for instant menu open
     CustomMenu::Init();
