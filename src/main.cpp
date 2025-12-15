@@ -38,7 +38,18 @@ WUPS_USE_STORAGE("TitleSwitcher");
 // ============================================================================
 
 #define MAX_TITLES 512
-#define VWII_TITLE_ID 0x0001000700000100ULL
+
+// System App Title IDs (manually added since MCP may not return them)
+#define VWII_TITLE_ID           0x0005001010004000ULL  // cafe2wii - launches vWii mode
+#define SYSTEM_SETTINGS_JPN     0x0005001010047000ULL
+#define SYSTEM_SETTINGS_USA     0x0005001010047100ULL
+#define SYSTEM_SETTINGS_EUR     0x0005001010047200ULL
+#define MII_MAKER_JPN           0x000500101004A000ULL
+#define MII_MAKER_USA           0x000500101004A100ULL
+#define MII_MAKER_EUR           0x000500101004A200ULL
+#define ESHOP_JPN               0x0005001010036000ULL
+#define ESHOP_USA               0x0005001010036100ULL
+#define ESHOP_EUR               0x0005001010036200ULL
 
 // Category indices
 enum Category {
@@ -193,30 +204,20 @@ static void loadAllTitles()
         }
     }
 
-    // 2. Load System Apps
-    count = 0;
-    err = MCP_TitleListByAppType(mcpHandle, MCP_APP_TYPE_SYSTEM_APPS, &count,
-                                 titleList, sizeof(MCPTitleListType) * MAX_TITLES);
-    if (err >= 0 && count > 0) {
-        for (uint32_t i = 0; i < count; i++) {
-            if (titleList[i].titleId == currentTitleId) continue;
-            addTitle(titleList[i].titleId, CAT_SYSTEM);
-        }
-    }
-
-    // 3. Add vWii Launcher manually
+    // 2. Manually add System Apps (USA region)
     addTitle(VWII_TITLE_ID, CAT_SYSTEM, "vWii Mode");
+    addTitle(SYSTEM_SETTINGS_USA, CAT_SYSTEM, "System Settings");
+    addTitle(MII_MAKER_USA, CAT_SYSTEM, "Mii Maker");
+    addTitle(ESHOP_USA, CAT_SYSTEM, "Nintendo eShop");
 
     free(titleList);
     MCP_Close(mcpHandle);
 
-    // Sort titles by name within their categories
-    // Simple bubble sort - fine for ~100 titles
+    // Sort all titles alphabetically by name
+    // Menu building groups by category, so this ensures alphabetical order within each
     for (int i = 0; i < sTitleCount - 1; i++) {
         for (int j = 0; j < sTitleCount - i - 1; j++) {
-            // Only swap if same category and name is out of order
-            if (sTitles[j].category == sTitles[j+1].category &&
-                strcasecmp(sTitles[j].name, sTitles[j+1].name) > 0) {
+            if (strcasecmp(sTitles[j].name, sTitles[j+1].name) > 0) {
                 TitleInfo temp = sTitles[j];
                 sTitles[j] = sTitles[j+1];
                 sTitles[j+1] = temp;
