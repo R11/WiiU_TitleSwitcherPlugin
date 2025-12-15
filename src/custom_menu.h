@@ -14,6 +14,9 @@ namespace CustomMenu {
 // Initialize the custom menu system (call once at plugin init)
 void Init();
 
+// Preload title list in background (call at plugin init for fast menu open)
+void PreloadTitles();
+
 // Cleanup (call at plugin deinit)
 void Shutdown();
 

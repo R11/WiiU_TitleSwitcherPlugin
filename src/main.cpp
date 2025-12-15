@@ -398,10 +398,11 @@ INITIALIZE_PLUGIN()
         debugNotifyF("Config init failed: %s", WUPSConfigAPI_GetStatusStr(configStatus));
     }
 
-    // Initialize custom menu system
+    // Initialize custom menu system and preload titles for instant menu open
     CustomMenu::Init();
+    CustomMenu::PreloadTitles();
 
-    // Pre-load titles at startup
+    // Pre-load titles for config menu
     loadAllTitles();
 
     debugNotifyF("Title Switcher: %d titles", sTitleCount);
@@ -421,36 +422,56 @@ DEINITIALIZE_PLUGIN()
 
 static bool sComboWasHeld = false;
 
-DECL_FUNCTION(int32_t, VPADRead, VPADChan chan, VPADStatus *buffer, uint32_t bufferSize, VPADReadError *error)
+static void handleCustomMenuInput(VPADStatus *buffer, uint32_t bufferSize)
+{
+    uint32_t held = buffer[0].hold;
+
+    // Check for L + R + Minus combo
+    bool comboHeld = (held & CUSTOM_MENU_COMBO) == CUSTOM_MENU_COMBO;
+
+    // Trigger on press (not held from previous frame)
+    if (comboHeld && !sComboWasHeld && !CustomMenu::IsOpen()) {
+        // Open custom menu - this blocks until menu closes
+        CustomMenu::Open();
+
+        // Clear the input buffer so game/menu doesn't see the combo
+        for (uint32_t i = 0; i < bufferSize; i++) {
+            buffer[i].trigger = 0;
+            buffer[i].hold = 0;
+            buffer[i].release = 0;
+        }
+    }
+
+    sComboWasHeld = comboHeld;
+}
+
+// Hook for GAME processes
+DECL_FUNCTION(int32_t, VPADRead_Game, VPADChan chan, VPADStatus *buffer, uint32_t bufferSize, VPADReadError *error)
 {
     VPADReadError realError = VPAD_READ_UNINITIALIZED;
-    int32_t result = real_VPADRead(chan, buffer, bufferSize, &realError);
+    int32_t result = real_VPADRead_Game(chan, buffer, bufferSize, &realError);
 
     if (result > 0 && realError == VPAD_READ_SUCCESS) {
-        uint32_t held = buffer[0].hold;
-
-        // Check for L + R + Minus combo
-        bool comboHeld = (held & CUSTOM_MENU_COMBO) == CUSTOM_MENU_COMBO;
-
-        // Trigger on press (not held from previous frame)
-        if (comboHeld && !sComboWasHeld && !CustomMenu::IsOpen()) {
-            // Open custom menu - this blocks until menu closes
-            CustomMenu::Open();
-
-            // Clear the input buffer so game doesn't see the combo
-            for (uint32_t i = 0; i < bufferSize; i++) {
-                buffer[i].trigger = 0;
-                buffer[i].hold = 0;
-                buffer[i].release = 0;
-            }
-        }
-
-        sComboWasHeld = comboHeld;
+        handleCustomMenuInput(buffer, bufferSize);
     }
 
     if (error) *error = realError;
     return result;
 }
 
-// Hook VPADRead for game processes
-WUPS_MUST_REPLACE_FOR_PROCESS(VPADRead, WUPS_LOADER_LIBRARY_VPAD, VPADRead, WUPS_FP_TARGET_PROCESS_GAME);
+// Hook for Wii U Menu
+DECL_FUNCTION(int32_t, VPADRead_Menu, VPADChan chan, VPADStatus *buffer, uint32_t bufferSize, VPADReadError *error)
+{
+    VPADReadError realError = VPAD_READ_UNINITIALIZED;
+    int32_t result = real_VPADRead_Menu(chan, buffer, bufferSize, &realError);
+
+    if (result > 0 && realError == VPAD_READ_SUCCESS) {
+        handleCustomMenuInput(buffer, bufferSize);
+    }
+
+    if (error) *error = realError;
+    return result;
+}
+
+WUPS_MUST_REPLACE_FOR_PROCESS(VPADRead_Game, WUPS_LOADER_LIBRARY_VPAD, VPADRead, WUPS_FP_TARGET_PROCESS_GAME);
+WUPS_MUST_REPLACE_FOR_PROCESS(VPADRead_Menu, WUPS_LOADER_LIBRARY_VPAD, VPADRead, WUPS_FP_TARGET_PROCESS_WII_U_MENU);

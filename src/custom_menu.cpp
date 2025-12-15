@@ -28,8 +28,15 @@
 
 namespace {
 
-constexpr int MAX_TITLES = 256;
-constexpr int VISIBLE_ROWS = 14;
+constexpr int MAX_TITLES = 512;
+constexpr int VISIBLE_ROWS = 15;  // Safe for DRC screen
+
+// Navigation skip amounts
+constexpr int SKIP_SMALL = 5;   // Left/Right
+constexpr int SKIP_LARGE = 15;   // L/R triggers
+
+// Cached title data (loaded once at startup)
+bool sTitlesLoaded = false;
 
 struct TitleEntry {
     uint64_t titleId;
@@ -87,22 +94,30 @@ void getTitleName(uint64_t titleId, char* outName, size_t maxLen)
 }
 
 /**
- * Load all game titles from system
+ * Load all game titles from system (cached - only loads once)
  */
-void loadTitles()
+void loadTitles(bool forceReload = false)
 {
+    // Use cached data if available
+    if (sTitlesLoaded && !forceReload) {
+        return;
+    }
+
     sTitleCount = 0;
 
     int32_t mcpHandle = MCP_Open();
-    if (mcpHandle < 0) return;
+    if (mcpHandle < 0) {
+        sTitlesLoaded = true;
+        return;
+    }
 
     MCPTitleListType* titleList = (MCPTitleListType*)malloc(sizeof(MCPTitleListType) * MAX_TITLES);
     if (!titleList) {
         MCP_Close(mcpHandle);
+        sTitlesLoaded = true;
         return;
     }
 
-    uint64_t currentTitleId = OSGetTitleID();
     uint32_t count = 0;
 
     MCPError err = MCP_TitleListByAppType(mcpHandle, MCP_APP_TYPE_GAME, &count,
@@ -110,9 +125,6 @@ void loadTitles()
 
     if (err >= 0 && count > 0) {
         for (uint32_t i = 0; i < count && sTitleCount < MAX_TITLES; i++) {
-            // Skip current running title
-            if (titleList[i].titleId == currentTitleId) continue;
-
             sTitles[sTitleCount].titleId = titleList[i].titleId;
             getTitleName(titleList[i].titleId, sTitles[sTitleCount].name,
                         sizeof(sTitles[sTitleCount].name));
@@ -133,6 +145,7 @@ void loadTitles()
 
     free(titleList);
     MCP_Close(mcpHandle);
+    sTitlesLoaded = true;
 }
 
 /**
@@ -153,49 +166,42 @@ void renderMenu()
     OSScreenClearBufferEx(SCREEN_TV, 0x1E1E2EFF);
     OSScreenClearBufferEx(SCREEN_DRC, 0x1E1E2EFF);
 
-    // Header
-    drawText(0, 0, "========================================");
-    drawText(0, 1, "        TITLE SWITCHER");
-    drawText(0, 2, "========================================");
-
-    // Instructions
-    drawText(0, 3, " D-Pad: Navigate | A: Launch | B: Close");
-
-    char statusLine[64];
-    snprintf(statusLine, sizeof(statusLine), " Games: %d | Selected: %d/%d",
-             sTitleCount, sSelectedIndex + 1, sTitleCount);
-    drawText(0, 4, statusLine);
-
-    drawText(0, 5, "----------------------------------------");
+    // Compact header (2 lines instead of 6)
+    char headerLine[80];
+    snprintf(headerLine, sizeof(headerLine),
+             "TITLE SWITCHER  [%d/%d]  A:Launch B:Close L/R:Skip",
+             sSelectedIndex + 1, sTitleCount);
+    drawText(0, 0, headerLine);
+    drawText(0, 1, "------------------------------------------------");
 
     if (sTitleCount == 0) {
-        drawText(2, 8, "No games found!");
+        drawText(2, 5, "No games found!");
     } else {
-        // Draw visible titles
+        // Draw visible titles starting at row 2
         for (int i = 0; i < VISIBLE_ROWS && (sScrollOffset + i) < sTitleCount; i++) {
             int idx = sScrollOffset + i;
-            char line[72];
+            char line[80];
 
-            // Truncate name to fit
-            char displayName[52];
+            // Truncate name to fit (leave room for number prefix)
+            char displayName[48];
             strncpy(displayName, sTitles[idx].name, sizeof(displayName) - 1);
             displayName[sizeof(displayName) - 1] = '\0';
 
             if (idx == sSelectedIndex) {
-                snprintf(line, sizeof(line), " > %-50s <", displayName);
+                snprintf(line, sizeof(line), "> %3d. %-48s", idx + 1, displayName);
             } else {
-                snprintf(line, sizeof(line), "   %-50s", displayName);
+                snprintf(line, sizeof(line), "  %3d. %-48s", idx + 1, displayName);
             }
 
-            drawText(0, 6 + i, line);
+            drawText(0, 2 + i, line);
         }
 
-        // Scroll indicators
+        // Scroll indicators on the right
         if (sScrollOffset > 0) {
-            drawText(55, 6, "[UP]");
+            drawText(58, 2, "[UP]");
         }
         if (sScrollOffset + VISIBLE_ROWS < sTitleCount) {
-            drawText(55, 6 + VISIBLE_ROWS - 1, "[DOWN]");
+            drawText(56, 2 + VISIBLE_ROWS - 1, "[DOWN]");
         }
     }
 
@@ -265,16 +271,36 @@ uint64_t runMenuLoop()
                 }
             }
 
-            // Left = Page up
+            // Left = Skip 10 up
             if (pressed & VPAD_BUTTON_LEFT) {
-                sSelectedIndex -= VISIBLE_ROWS;
+                sSelectedIndex -= SKIP_SMALL;
                 if (sSelectedIndex < 0) sSelectedIndex = 0;
-                sScrollOffset = sSelectedIndex;
+                if (sSelectedIndex < sScrollOffset) {
+                    sScrollOffset = sSelectedIndex;
+                }
             }
 
-            // Right = Page down
+            // Right = Skip 10 down
             if (pressed & VPAD_BUTTON_RIGHT) {
-                sSelectedIndex += VISIBLE_ROWS;
+                sSelectedIndex += SKIP_SMALL;
+                if (sSelectedIndex >= sTitleCount) sSelectedIndex = sTitleCount - 1;
+                if (sSelectedIndex >= sScrollOffset + VISIBLE_ROWS) {
+                    sScrollOffset = sSelectedIndex - VISIBLE_ROWS + 1;
+                }
+            }
+
+            // L trigger = Skip 50 up
+            if (pressed & VPAD_BUTTON_L) {
+                sSelectedIndex -= SKIP_LARGE;
+                if (sSelectedIndex < 0) sSelectedIndex = 0;
+                if (sSelectedIndex < sScrollOffset) {
+                    sScrollOffset = sSelectedIndex;
+                }
+            }
+
+            // R trigger = Skip 50 down
+            if (pressed & VPAD_BUTTON_R) {
+                sSelectedIndex += SKIP_LARGE;
                 if (sSelectedIndex >= sTitleCount) sSelectedIndex = sTitleCount - 1;
                 if (sSelectedIndex >= sScrollOffset + VISIBLE_ROWS) {
                     sScrollOffset = sSelectedIndex - VISIBLE_ROWS + 1;
@@ -293,6 +319,12 @@ namespace CustomMenu {
 void Init()
 {
     sInitialized = true;
+}
+
+void PreloadTitles()
+{
+    // Load titles at startup so menu opens instantly
+    loadTitles();
 }
 
 void Shutdown()
