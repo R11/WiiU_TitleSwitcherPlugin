@@ -2,8 +2,9 @@
  * Title Switcher Plugin for Wii U (Aroma)
  *
  * Category-based game browser in Aroma config menu.
- * Games organized alphabetically: A-F, G-L, M-R, S-Z, #(numbers/symbols)
- * Select a game and press A to launch.
+ * - Games organized alphabetically: A-F, G-L, M-R, S-Z, # (numbers/symbols)
+ * - System Apps in separate category
+ * - Select a game and press A to launch
  *
  * Author: R11
  * License: GPLv3
@@ -25,7 +26,7 @@
 // Plugin metadata
 WUPS_PLUGIN_NAME("Title Switcher");
 WUPS_PLUGIN_DESCRIPTION("Switch games from Aroma config menu");
-WUPS_PLUGIN_VERSION("0.9.0");
+WUPS_PLUGIN_VERSION("1.0.0");
 WUPS_PLUGIN_AUTHOR("R11");
 WUPS_PLUGIN_LICENSE("GPLv3");
 
@@ -33,10 +34,31 @@ WUPS_USE_WUT_DEVOPTAB();
 WUPS_USE_STORAGE("TitleSwitcher");
 
 // ============================================================================
-// Configuration
+// Constants
 // ============================================================================
 
-#define MAX_TITLES 256
+#define MAX_TITLES 512
+#define VWII_TITLE_ID 0x0001000700000100ULL
+
+// Category indices
+enum Category {
+    CAT_A_F = 0,
+    CAT_G_L,
+    CAT_M_R,
+    CAT_S_Z,
+    CAT_NUMBERS,
+    CAT_SYSTEM,
+    CAT_COUNT
+};
+
+static const char* sCategoryNames[CAT_COUNT] = {
+    "A - F",
+    "G - L",
+    "M - R",
+    "S - Z",
+    "# (0-9)",
+    "System Apps"
+};
 
 // ============================================================================
 // Title Data
@@ -45,15 +67,12 @@ WUPS_USE_STORAGE("TitleSwitcher");
 struct TitleInfo {
     uint64_t titleId;
     char name[64];
+    Category category;
 };
 
 static TitleInfo sTitles[MAX_TITLES];
 static int sTitleCount = 0;
 static bool sTitlesLoaded = false;
-
-// Track which game to launch (set by config item callback)
-static uint64_t sPendingLaunchTitleId = 0;
-static bool sLaunchPending = false;
 
 // ============================================================================
 // Debug Helpers
@@ -72,6 +91,20 @@ static void debugNotifyF(const char* fmt, ...)
     vsnprintf(buf, sizeof(buf), fmt, args);
     va_end(args);
     debugNotify(buf);
+}
+
+// ============================================================================
+// Category Helpers
+// ============================================================================
+
+static Category getLetterCategory(char c)
+{
+    char upper = toupper(c);
+    if (upper >= 'A' && upper <= 'F') return CAT_A_F;
+    if (upper >= 'G' && upper <= 'L') return CAT_G_L;
+    if (upper >= 'M' && upper <= 'R') return CAT_M_R;
+    if (upper >= 'S' && upper <= 'Z') return CAT_S_Z;
+    return CAT_NUMBERS;
 }
 
 // ============================================================================
@@ -96,7 +129,7 @@ static void getTitleName(uint64_t titleId, char* outName, size_t maxLen)
         else if (metaXml->shortname_ja[0]) name = metaXml->shortname_ja;
 
         if (name) {
-            snprintf(outName, maxLen, "%s", name);
+            snprintf(outName, maxLen, "%.63s", name);  // Limit to 63 chars + null
         } else {
             snprintf(outName, maxLen, "%016llX", (unsigned long long)titleId);
         }
@@ -107,92 +140,95 @@ static void getTitleName(uint64_t titleId, char* outName, size_t maxLen)
     free(metaXml);
 }
 
-static bool loadAllTitles()
+// Add a single title to the list
+static void addTitle(uint64_t titleId, Category category, const char* customName = nullptr)
 {
-    if (sTitlesLoaded) return sTitleCount > 0;
+    if (sTitleCount >= MAX_TITLES) return;
+
+    sTitles[sTitleCount].titleId = titleId;
+    sTitles[sTitleCount].category = category;
+
+    if (customName) {
+        snprintf(sTitles[sTitleCount].name, sizeof(sTitles[sTitleCount].name), "%s", customName);
+    } else {
+        getTitleName(titleId, sTitles[sTitleCount].name, sizeof(sTitles[sTitleCount].name));
+    }
+
+    // For non-system titles, determine category from name if not specified
+    if (category != CAT_SYSTEM) {
+        sTitles[sTitleCount].category = getLetterCategory(sTitles[sTitleCount].name[0]);
+    }
+
+    sTitleCount++;
+}
+
+static void loadAllTitles()
+{
+    if (sTitlesLoaded) return;
 
     sTitleCount = 0;
+    uint64_t currentTitleId = OSGetTitleID();
 
     int32_t mcpHandle = MCP_Open();
     if (mcpHandle < 0) {
-        return false;
+        sTitlesLoaded = true;
+        return;
     }
 
     MCPTitleListType* titleList = (MCPTitleListType*)malloc(sizeof(MCPTitleListType) * MAX_TITLES);
     if (!titleList) {
         MCP_Close(mcpHandle);
-        return false;
+        sTitlesLoaded = true;
+        return;
     }
 
-    // Get current title to exclude
-    uint64_t currentTitleId = OSGetTitleID();
-
+    // 1. Load Wii U Games
     uint32_t count = 0;
     MCPError err = MCP_TitleListByAppType(mcpHandle, MCP_APP_TYPE_GAME, &count,
                                           titleList, sizeof(MCPTitleListType) * MAX_TITLES);
-
     if (err >= 0 && count > 0) {
-        for (uint32_t i = 0; i < count && sTitleCount < MAX_TITLES; i++) {
-            // Skip current game
-            if (titleList[i].titleId == currentTitleId) {
-                continue;
-            }
-
-            sTitles[sTitleCount].titleId = titleList[i].titleId;
-            getTitleName(titleList[i].titleId, sTitles[sTitleCount].name,
-                        sizeof(sTitles[sTitleCount].name));
-            sTitleCount++;
-        }
-
-        // Sort by name
-        for (int i = 0; i < sTitleCount - 1; i++) {
-            for (int j = 0; j < sTitleCount - i - 1; j++) {
-                if (strcasecmp(sTitles[j].name, sTitles[j+1].name) > 0) {
-                    TitleInfo temp = sTitles[j];
-                    sTitles[j] = sTitles[j+1];
-                    sTitles[j+1] = temp;
-                }
-            }
+        for (uint32_t i = 0; i < count; i++) {
+            if (titleList[i].titleId == currentTitleId) continue;
+            addTitle(titleList[i].titleId, CAT_A_F);  // Category will be determined by name
         }
     }
+
+    // 2. Load System Apps
+    count = 0;
+    err = MCP_TitleListByAppType(mcpHandle, MCP_APP_TYPE_SYSTEM_APPS, &count,
+                                 titleList, sizeof(MCPTitleListType) * MAX_TITLES);
+    if (err >= 0 && count > 0) {
+        for (uint32_t i = 0; i < count; i++) {
+            if (titleList[i].titleId == currentTitleId) continue;
+            addTitle(titleList[i].titleId, CAT_SYSTEM);
+        }
+    }
+
+    // 3. Add vWii Launcher manually
+    addTitle(VWII_TITLE_ID, CAT_SYSTEM, "vWii Mode");
 
     free(titleList);
     MCP_Close(mcpHandle);
 
-    sTitlesLoaded = true;
-    return sTitleCount > 0;
-}
-
-// ============================================================================
-// Letter Group Helpers
-// ============================================================================
-
-// Returns which group (0-4) a character belongs to:
-// 0 = A-F, 1 = G-L, 2 = M-R, 3 = S-Z, 4 = # (numbers/symbols)
-static int getLetterGroup(char c)
-{
-    char upper = toupper(c);
-    if (upper >= 'A' && upper <= 'F') return 0;
-    if (upper >= 'G' && upper <= 'L') return 1;
-    if (upper >= 'M' && upper <= 'R') return 2;
-    if (upper >= 'S' && upper <= 'Z') return 3;
-    return 4; // Numbers, symbols, etc.
-}
-
-static const char* getGroupName(int group)
-{
-    switch (group) {
-        case 0: return "A - F";
-        case 1: return "G - L";
-        case 2: return "M - R";
-        case 3: return "S - Z";
-        case 4: return "# (0-9)";
-        default: return "Other";
+    // Sort titles by name within their categories
+    // Simple bubble sort - fine for ~100 titles
+    for (int i = 0; i < sTitleCount - 1; i++) {
+        for (int j = 0; j < sTitleCount - i - 1; j++) {
+            // Only swap if same category and name is out of order
+            if (sTitles[j].category == sTitles[j+1].category &&
+                strcasecmp(sTitles[j].name, sTitles[j+1].name) > 0) {
+                TitleInfo temp = sTitles[j];
+                sTitles[j] = sTitles[j+1];
+                sTitles[j+1] = temp;
+            }
+        }
     }
+
+    sTitlesLoaded = true;
 }
 
 // ============================================================================
-// Config Item Callbacks for Game Selection
+// Config Item Callbacks
 // ============================================================================
 
 static int32_t GameItemGetDisplayValue(void* context, char* buf, int32_t bufSize)
@@ -201,33 +237,22 @@ static int32_t GameItemGetDisplayValue(void* context, char* buf, int32_t bufSize
     return 0;
 }
 
-static void GameItemOnSelected(void* context, bool isSelected)
-{
-    // Nothing needed
-}
-
-static void GameItemRestoreDefault(void* context)
-{
-    // Nothing needed
-}
-
-static bool GameItemIsMovementAllowed(void* context)
-{
-    return true;
-}
-
-static void GameItemOnClose(void* context)
-{
-    // Nothing needed
-}
-
 static void GameItemOnInput(void* context, WUPSConfigSimplePadData input)
 {
     if (input.buttons_d & WUPS_CONFIG_BUTTON_A) {
         uint64_t* titleIdPtr = (uint64_t*)context;
         if (titleIdPtr) {
-            sPendingLaunchTitleId = *titleIdPtr;
-            sLaunchPending = true;
+            uint64_t titleId = *titleIdPtr;
+
+            // Find name for notification
+            for (int i = 0; i < sTitleCount; i++) {
+                if (sTitles[i].titleId == titleId) {
+                    debugNotifyF("Launching: %s", sTitles[i].name);
+                    break;
+                }
+            }
+
+            SYSLaunchTitle(titleId);
         }
     }
 }
@@ -240,20 +265,50 @@ static void GameItemOnDelete(void* context)
 }
 
 // ============================================================================
-// Config Menu Callbacks
+// Config Menu Building
 // ============================================================================
+
+static void addGameItemToCategory(WUPSConfigCategoryHandle category, TitleInfo* title)
+{
+    // Allocate context to hold title ID (freed in OnDelete)
+    uint64_t* titleIdContext = (uint64_t*)malloc(sizeof(uint64_t));
+    if (!titleIdContext) return;
+    *titleIdContext = title->titleId;
+
+    WUPSConfigAPIItemOptionsV2 itemOptions = {
+        .displayName = title->name,
+        .context = titleIdContext,
+        .callbacks = {
+            .getCurrentValueDisplay = GameItemGetDisplayValue,
+            .getCurrentValueSelectedDisplay = GameItemGetDisplayValue,
+            .onSelected = [](void*, bool) {},
+            .restoreDefault = [](void*) {},
+            .isMovementAllowed = [](void*) -> bool { return true; },
+            .onCloseCallback = [](void*) {},
+            .onInput = GameItemOnInput,
+            .onInputEx = nullptr,
+            .onDelete = GameItemOnDelete,
+        }
+    };
+
+    WUPSConfigItemHandle itemHandle;
+    if (WUPSConfigAPI_Item_Create(itemOptions, &itemHandle) == WUPSCONFIG_API_RESULT_SUCCESS) {
+        WUPSConfigAPI_Category_AddItem(category, itemHandle);
+    } else {
+        free(titleIdContext);
+    }
+}
 
 static WUPSConfigAPICallbackStatus ConfigMenuOpenedCallback(WUPSConfigCategoryHandle rootHandle)
 {
-    // Make sure titles are loaded
     if (!sTitlesLoaded) {
         loadAllTitles();
     }
 
     if (sTitleCount == 0) {
-        // No games - add a placeholder item
+        // No titles - show placeholder
         WUPSConfigAPIItemOptionsV2 itemOptions = {
-            .displayName = "(No games found)",
+            .displayName = "(No titles found)",
             .context = nullptr,
             .callbacks = {
                 .getCurrentValueDisplay = [](void*, char* buf, int32_t size) -> int32_t {
@@ -281,61 +336,35 @@ static WUPSConfigAPICallbackStatus ConfigMenuOpenedCallback(WUPSConfigCategoryHa
         return WUPSCONFIG_API_CALLBACK_RESULT_SUCCESS;
     }
 
-    // Count games per group to know which categories to create
-    int groupCounts[5] = {0, 0, 0, 0, 0};
+    // Category handles and tracking
+    WUPSConfigCategoryHandle categories[CAT_COUNT];
+    bool categoryCreated[CAT_COUNT] = {false};
+    int categoryCounts[CAT_COUNT] = {0};
+
+    // First pass: count titles per category
     for (int i = 0; i < sTitleCount; i++) {
-        int group = getLetterGroup(sTitles[i].name[0]);
-        groupCounts[group]++;
+        categoryCounts[sTitles[i].category]++;
     }
 
-    // Create categories for each non-empty group
-    for (int g = 0; g < 5; g++) {
-        if (groupCounts[g] == 0) continue;
+    // Create categories that have titles
+    for (int c = 0; c < CAT_COUNT; c++) {
+        if (categoryCounts[c] == 0) continue;
 
-        // Create category name with count
-        char categoryName[32];
-        snprintf(categoryName, sizeof(categoryName), "%s (%d)", getGroupName(g), groupCounts[g]);
+        char categoryName[48];
+        snprintf(categoryName, sizeof(categoryName), "%s (%d)", sCategoryNames[c], categoryCounts[c]);
 
-        WUPSConfigCategoryHandle groupCategory;
-        if (WUPSConfigAPI_Category_Create({.name = categoryName}, &groupCategory) != WUPSCONFIG_API_RESULT_SUCCESS) {
-            continue;
+        if (WUPSConfigAPI_Category_Create({.name = categoryName}, &categories[c]) == WUPSCONFIG_API_RESULT_SUCCESS) {
+            WUPSConfigAPI_Category_AddCategory(rootHandle, categories[c]);
+            categoryCreated[c] = true;
         }
+    }
 
-        // Add games in this group
-        for (int i = 0; i < sTitleCount; i++) {
-            int titleGroup = getLetterGroup(sTitles[i].name[0]);
-            if (titleGroup != g) continue;
-
-            // Allocate context to hold title ID (freed in OnDelete)
-            uint64_t* titleIdContext = (uint64_t*)malloc(sizeof(uint64_t));
-            if (!titleIdContext) continue;
-            *titleIdContext = sTitles[i].titleId;
-
-            WUPSConfigAPIItemOptionsV2 itemOptions = {
-                .displayName = sTitles[i].name,
-                .context = titleIdContext,
-                .callbacks = {
-                    .getCurrentValueDisplay = GameItemGetDisplayValue,
-                    .getCurrentValueSelectedDisplay = GameItemGetDisplayValue,
-                    .onSelected = GameItemOnSelected,
-                    .restoreDefault = GameItemRestoreDefault,
-                    .isMovementAllowed = GameItemIsMovementAllowed,
-                    .onCloseCallback = GameItemOnClose,
-                    .onInput = GameItemOnInput,
-                    .onInputEx = nullptr,
-                    .onDelete = GameItemOnDelete,
-                }
-            };
-
-            WUPSConfigItemHandle itemHandle;
-            if (WUPSConfigAPI_Item_Create(itemOptions, &itemHandle) == WUPSCONFIG_API_RESULT_SUCCESS) {
-                WUPSConfigAPI_Category_AddItem(groupCategory, itemHandle);
-            } else {
-                free(titleIdContext);
-            }
+    // Second pass: add titles to their categories
+    for (int i = 0; i < sTitleCount; i++) {
+        Category cat = sTitles[i].category;
+        if (categoryCreated[cat]) {
+            addGameItemToCategory(categories[cat], &sTitles[i]);
         }
-
-        WUPSConfigAPI_Category_AddCategory(rootHandle, groupCategory);
     }
 
     return WUPSCONFIG_API_CALLBACK_RESULT_SUCCESS;
@@ -343,22 +372,7 @@ static WUPSConfigAPICallbackStatus ConfigMenuOpenedCallback(WUPSConfigCategoryHa
 
 static void ConfigMenuClosedCallback()
 {
-    // If a launch is pending, do it now
-    if (sLaunchPending && sPendingLaunchTitleId != 0) {
-        sLaunchPending = false;
-        uint64_t titleId = sPendingLaunchTitleId;
-        sPendingLaunchTitleId = 0;
-
-        // Find the name for notification
-        for (int i = 0; i < sTitleCount; i++) {
-            if (sTitles[i].titleId == titleId) {
-                debugNotifyF("Launching: %s", sTitles[i].name);
-                break;
-            }
-        }
-
-        SYSLaunchTitle(titleId);
-    }
+    // Nothing needed - we launch immediately on A press now
 }
 
 // ============================================================================
@@ -369,7 +383,6 @@ INITIALIZE_PLUGIN()
 {
     NotificationModule_InitLibrary();
 
-    // Initialize the config API
     WUPSConfigAPIOptionsV1 configOptions = {
         .name = "Title Switcher"
     };
@@ -381,10 +394,10 @@ INITIALIZE_PLUGIN()
         debugNotifyF("Config init failed: %s", WUPSConfigAPI_GetStatusStr(configStatus));
     }
 
-    // Pre-load titles
+    // Pre-load titles at startup
     loadAllTitles();
 
-    debugNotifyF("Title Switcher: %d games", sTitleCount);
+    debugNotifyF("Title Switcher: %d titles", sTitleCount);
 }
 
 DEINITIALIZE_PLUGIN()
