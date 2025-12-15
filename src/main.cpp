@@ -17,16 +17,19 @@
 #include <coreinit/mcp.h>
 #include <nn/acp/title.h>
 #include <sysapp/launch.h>
+#include <vpad/input.h>
 #include <cstring>
 #include <cstdio>
 #include <cstdarg>
 #include <cctype>
 #include <malloc.h>
 
+#include "custom_menu.h"
+
 // Plugin metadata
 WUPS_PLUGIN_NAME("Title Switcher");
-WUPS_PLUGIN_DESCRIPTION("Switch games from Aroma config menu");
-WUPS_PLUGIN_VERSION("1.0.0");
+WUPS_PLUGIN_DESCRIPTION("Switch games via config menu or L+R+Minus");
+WUPS_PLUGIN_VERSION("1.1.0");
 WUPS_PLUGIN_AUTHOR("R11");
 WUPS_PLUGIN_LICENSE("GPLv3");
 
@@ -395,6 +398,9 @@ INITIALIZE_PLUGIN()
         debugNotifyF("Config init failed: %s", WUPSConfigAPI_GetStatusStr(configStatus));
     }
 
+    // Initialize custom menu system
+    CustomMenu::Init();
+
     // Pre-load titles at startup
     loadAllTitles();
 
@@ -403,5 +409,48 @@ INITIALIZE_PLUGIN()
 
 DEINITIALIZE_PLUGIN()
 {
+    CustomMenu::Shutdown();
     NotificationModule_DeInitLibrary();
 }
+
+// ============================================================================
+// Custom Menu Button Combo Hook (L + R + Minus)
+// ============================================================================
+
+#define CUSTOM_MENU_COMBO (VPAD_BUTTON_L | VPAD_BUTTON_R | VPAD_BUTTON_MINUS)
+
+static bool sComboWasHeld = false;
+
+DECL_FUNCTION(int32_t, VPADRead, VPADChan chan, VPADStatus *buffer, uint32_t bufferSize, VPADReadError *error)
+{
+    VPADReadError realError = VPAD_READ_UNINITIALIZED;
+    int32_t result = real_VPADRead(chan, buffer, bufferSize, &realError);
+
+    if (result > 0 && realError == VPAD_READ_SUCCESS) {
+        uint32_t held = buffer[0].hold;
+
+        // Check for L + R + Minus combo
+        bool comboHeld = (held & CUSTOM_MENU_COMBO) == CUSTOM_MENU_COMBO;
+
+        // Trigger on press (not held from previous frame)
+        if (comboHeld && !sComboWasHeld && !CustomMenu::IsOpen()) {
+            // Open custom menu - this blocks until menu closes
+            CustomMenu::Open();
+
+            // Clear the input buffer so game doesn't see the combo
+            for (uint32_t i = 0; i < bufferSize; i++) {
+                buffer[i].trigger = 0;
+                buffer[i].hold = 0;
+                buffer[i].release = 0;
+            }
+        }
+
+        sComboWasHeld = comboHeld;
+    }
+
+    if (error) *error = realError;
+    return result;
+}
+
+// Hook VPADRead for game processes
+WUPS_MUST_REPLACE_FOR_PROCESS(VPADRead, WUPS_LOADER_LIBRARY_VPAD, VPADRead, WUPS_FP_TARGET_PROCESS_GAME);

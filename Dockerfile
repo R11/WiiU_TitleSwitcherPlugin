@@ -1,9 +1,9 @@
 FROM ghcr.io/wiiu-env/devkitppc:20241128
 
-# Copy WUPS (Wii U Plugin System) and libnotifications from their artifact images
-# Try latest tag to get overlay support
+# Copy WUPS (Wii U Plugin System), libnotifications, and libmappedmemory from their artifact images
 COPY --from=ghcr.io/wiiu-env/wiiupluginsystem:latest /artifacts $DEVKITPRO
 COPY --from=ghcr.io/wiiu-env/libnotifications:latest /artifacts $DEVKITPRO
+COPY --from=ghcr.io/wiiu-env/libmappedmemory:20230621 /artifacts $DEVKITPRO
 
 COPY --chown=developer:developer . /project
 WORKDIR /project

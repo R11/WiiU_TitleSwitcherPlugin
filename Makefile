@@ -37,14 +37,14 @@ CFLAGS	+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -D__WUPS__
 CXXFLAGS	:= $(CFLAGS) -std=c++20
 
 ASFLAGS	:=	$(ARCH)
-LDFLAGS	=	$(ARCH) $(RPXSPECS) -Wl,-Map,$(notdir $*.map) $(WUPSSPECS)
+LDFLAGS	=	$(ARCH) $(RPXSPECS) -Wl,-Map,$(notdir $*.map) -T$(WUMS_ROOT)/share/libmappedmemory.ld $(WUPSSPECS)
 
 ifeq ($(DEBUG),1)
 CXXFLAGS += -DDEBUG -g
 CFLAGS += -DDEBUG -g
 endif
 
-LIBS	:= -lnotifications -lwups -lwut
+LIBS	:= -lnotifications -lmappedmemory -lwups -lwut
 
 #-------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level
