@@ -143,15 +143,15 @@ void clampSelection()
     if (sSelectedIndex < sScrollOffset) {
         sScrollOffset = sSelectedIndex;
     }
-    if (sSelectedIndex >= sScrollOffset + VISIBLE_ROWS) {
-        sScrollOffset = sSelectedIndex - VISIBLE_ROWS + 1;
+    if (sSelectedIndex >= sScrollOffset + Renderer::GetVisibleRows()) {
+        sScrollOffset = sSelectedIndex - Renderer::GetVisibleRows() + 1;
     }
 
     // Clamp scroll offset
     if (sScrollOffset < 0) {
         sScrollOffset = 0;
     }
-    int maxScroll = count - VISIBLE_ROWS;
+    int maxScroll = count - Renderer::GetVisibleRows();
     if (maxScroll < 0) maxScroll = 0;
     if (sScrollOffset > maxScroll) {
         sScrollOffset = maxScroll;
@@ -196,8 +196,8 @@ void drawCategoryBar()
 void drawDivider()
 {
     // Draw vertical bar from list start to footer (not in header)
-    for (int row = LIST_START_ROW; row < FOOTER_ROW; row++) {
-        Renderer::DrawText(DIVIDER_COL, row, "|");
+    for (int row = LIST_START_ROW; row < Renderer::GetFooterRow(); row++) {
+        Renderer::DrawText(Renderer::GetDividerCol(), row, "|");
     }
 }
 
@@ -217,10 +217,10 @@ void drawTitleList()
     bool showNums = Settings::Get().showNumbers;
 
     // Calculate max name width based on whether numbers are shown
-    int maxNameLen = showNums ? TITLE_NAME_WIDTH_NUM : TITLE_NAME_WIDTH;
+    int maxNameLen = Renderer::GetTitleNameWidth(showNums);
 
     // Draw visible titles
-    for (int i = 0; i < VISIBLE_ROWS && (sScrollOffset + i) < count; i++) {
+    for (int i = 0; i < Renderer::GetVisibleRows() && (sScrollOffset + i) < count; i++) {
         int idx = sScrollOffset + i;
         const Titles::TitleInfo* title = Categories::GetFilteredTitle(idx);
 
@@ -258,10 +258,10 @@ void drawTitleList()
 
     // Scroll indicators
     if (sScrollOffset > 0) {
-        Renderer::DrawText(LIST_WIDTH - 4, LIST_START_ROW, "[UP]");
+        Renderer::DrawText(Renderer::GetListWidth() - 4, LIST_START_ROW, "[UP]");
     }
-    if (sScrollOffset + VISIBLE_ROWS < count) {
-        Renderer::DrawText(LIST_WIDTH - 6, LIST_START_ROW + VISIBLE_ROWS - 1, "[DOWN]");
+    if (sScrollOffset + Renderer::GetVisibleRows() < count) {
+        Renderer::DrawText(Renderer::GetListWidth() - 6, LIST_START_ROW + Renderer::GetVisibleRows() - 1, "[DOWN]");
     }
 }
 
@@ -282,13 +282,12 @@ void drawDetailsPanel()
     ImageLoader::Request(title->titleId, ImageLoader::Priority::HIGH);
 
     // Title name (left-aligned with details panel)
-    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW, title->name);
+    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW, title->name);
 
     // Draw icon below title (128x128 = 2x the original 64x64)
-    // Use absolute pixel position to ensure it's on the right side of screen
+    // Position aligned with details panel text
     constexpr int ICON_SIZE = 128;
-    int screenWidth = Renderer::GetScreenWidth();
-    int iconX = (screenWidth / 2) + 20;  // Right half of screen, with some padding
+    int iconX = Renderer::ColToPixelX(Renderer::GetDetailsPanelCol());  // Aligned with details panel
     int iconY = Renderer::RowToPixelY(LIST_START_ROW + 1);  // Below title
 
     if (ImageLoader::IsReady(title->titleId)) {
@@ -306,26 +305,26 @@ void drawDetailsPanel()
     char idStr[32];
     snprintf(idStr, sizeof(idStr), "ID: %016llX",
              static_cast<unsigned long long>(title->titleId));
-    Renderer::DrawText(DETAILS_START_COL, INFO_START_ROW, idStr);
+    Renderer::DrawText(Renderer::GetDetailsPanelCol(), INFO_START_ROW, idStr);
 
     // Favorite status
     const char* favStatus = Settings::IsFavorite(title->titleId) ? "Yes" : "No";
-    Renderer::DrawTextF(DETAILS_START_COL, INFO_START_ROW + 1, "Favorite: %s", favStatus);
+    Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), INFO_START_ROW + 1, "Favorite: %s", favStatus);
 
     // Categories this title belongs to
-    Renderer::DrawText(DETAILS_START_COL, INFO_START_ROW + 3, "Categories:");
+    Renderer::DrawText(Renderer::GetDetailsPanelCol(), INFO_START_ROW + 3, "Categories:");
 
     uint16_t catIds[Settings::MAX_CATEGORIES];
     int catCount = Settings::GetCategoriesForTitle(title->titleId, catIds, Settings::MAX_CATEGORIES);
 
     if (catCount == 0) {
-        Renderer::DrawText(DETAILS_START_COL + 2, INFO_START_ROW + 4, "(none)");
+        Renderer::DrawText(Renderer::GetDetailsPanelCol() + 2, INFO_START_ROW + 4, "(none)");
     } else {
         int row = INFO_START_ROW + 4;
-        for (int i = 0; i < catCount && row < FOOTER_ROW - 1; i++) {
+        for (int i = 0; i < catCount && row < Renderer::GetFooterRow() - 1; i++) {
             const Settings::Category* cat = Settings::GetCategory(catIds[i]);
             if (cat) {
-                Renderer::DrawTextF(DETAILS_START_COL + 2, row, "- %s", cat->name);
+                Renderer::DrawTextF(Renderer::GetDetailsPanelCol() + 2, row, "- %s", cat->name);
                 row++;
             }
         }
@@ -351,7 +350,7 @@ void drawFooter()
              sSelectedIndex + 1,
              count);
 
-    Renderer::DrawText(0, FOOTER_ROW, footer);
+    Renderer::DrawText(0, Renderer::GetFooterRow(), footer);
 }
 
 /**
@@ -499,17 +498,17 @@ void renderEditMode()
     drawDivider();
 
     // --- Right side: Category checkboxes ---
-    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW, "Categories:");
-    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 1, "------------");
+    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW, "Categories:");
+    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 1, "------------");
 
     // Get user-defined categories
     int catCount = Settings::GetCategoryCount();
     const auto& categories = Settings::Get().categories;
 
     if (catCount == 0) {
-        Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 3,
+        Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 3,
                          "No categories defined.");
-        Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 4,
+        Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 4,
                          "Create in Settings (+)");
     } else {
         // Calculate visible rows for categories
@@ -546,16 +545,16 @@ void renderEditMode()
             const char* cursor = (idx == sEditCategoryIndex) ? ">" : " ";
             const char* checkbox = inCategory ? "[X]" : "[ ]";
 
-            Renderer::DrawTextF(DETAILS_START_COL, startRow + i,
+            Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), startRow + i,
                               "%s %s %s", cursor, checkbox, cat.name);
         }
 
         // Scroll indicators
         if (sEditCategoryScroll > 0) {
-            Renderer::DrawText(DETAILS_START_COL + 20, startRow, "[UP]");
+            Renderer::DrawText(Renderer::GetDetailsPanelCol() + 20, startRow, "[UP]");
         }
         if (sEditCategoryScroll + CAT_VISIBLE_ROWS < catCount) {
-            Renderer::DrawText(DETAILS_START_COL + 18, startRow + CAT_VISIBLE_ROWS - 1, "[DOWN]");
+            Renderer::DrawText(Renderer::GetDetailsPanelCol() + 18, startRow + CAT_VISIBLE_ROWS - 1, "[DOWN]");
         }
     }
 
@@ -567,7 +566,7 @@ void renderEditMode()
              Buttons::Actions::CANCEL.label,
              sEditCategoryIndex + 1,
              catCount > 0 ? catCount : 1);
-    Renderer::DrawText(0, FOOTER_ROW, footer);
+    Renderer::DrawText(0, Renderer::GetFooterRow(), footer);
 }
 
 /**
@@ -637,7 +636,7 @@ void renderSettingsMain()
     // --- Left side: Settings list (data-driven) ---
     int row = LIST_START_ROW;
 
-    for (int i = 0; i < SETTINGS_ITEM_COUNT && row < FOOTER_ROW - 1; i++) {
+    for (int i = 0; i < SETTINGS_ITEM_COUNT && row < Renderer::GetFooterRow() - 1; i++) {
         const SettingItem& item = sSettingItems[i];
         const char* cursor = (sSettingsIndex == i) ? ">" : " ";
 
@@ -664,13 +663,13 @@ void renderSettingsMain()
     }
 
     // --- Right side: Description ---
-    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW, "Description:");
-    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 1, "------------");
+    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW, "Description:");
+    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 1, "------------");
 
     // Show description for selected item
     const SettingItem& selected = sSettingItems[sSettingsIndex];
-    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 3, selected.descLine1);
-    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 4, selected.descLine2);
+    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 3, selected.descLine1);
+    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 4, selected.descLine2);
 
     // Show action hint based on type
     const char* hint = "";
@@ -679,10 +678,10 @@ void renderSettingsMain()
         case SettingType::COLOR:  hint = "Press A to edit"; break;
         case SettingType::ACTION: hint = "Press A to open"; break;
     }
-    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 6, hint);
+    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 6, hint);
 
     // --- Footer ---
-    Renderer::DrawTextF(0, FOOTER_ROW, "%s:Edit %s:Back  [%d/%d]",
+    Renderer::DrawTextF(0, Renderer::GetFooterRow(), "%s:Edit %s:Back  [%d/%d]",
                       Buttons::Actions::CONFIRM.label,
                       Buttons::Actions::CANCEL.label,
                       sSettingsIndex + 1, SETTINGS_ITEM_COUNT);
@@ -746,37 +745,37 @@ void renderManageCategories()
     }
 
     // --- Right side: Actions ---
-    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW, "Actions:");
-    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 1, "--------");
+    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW, "Actions:");
+    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 1, "--------");
 
     if (sManageCatIndex == 0) {
-        Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 3, "Create a new category");
-        Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 4, "for organizing titles.");
-        Renderer::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 6, "%s: Create",
+        Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 3, "Create a new category");
+        Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 4, "for organizing titles.");
+        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 6, "%s: Create",
                           Buttons::Actions::CONFIRM.label);
     } else if (sManageCatIndex <= catCount) {
         const Settings::Category& cat = categories[sManageCatIndex - 1];
-        Renderer::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 3, "Category: %s", cat.name);
+        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 3, "Category: %s", cat.name);
 
         // Show visibility status
         const char* visStatus = cat.hidden ? "Hidden" : "Visible";
-        Renderer::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 4, "Status: %s", visStatus);
+        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 4, "Status: %s", visStatus);
 
         // Action hints
-        Renderer::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 6, "%s: Rename",
+        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 6, "%s: Rename",
                           Buttons::Actions::CONFIRM.label);
-        Renderer::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 7, "%s: Delete",
+        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 7, "%s: Delete",
                           Buttons::Actions::EDIT.label);
-        Renderer::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 8, "%s: %s",
+        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 8, "%s: %s",
                           Buttons::Actions::FAVORITE.label,
                           cat.hidden ? "Show" : "Hide");
-        Renderer::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 10, "%s/%s: Move Up/Down",
+        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 10, "%s/%s: Move Up/Down",
                           Buttons::Actions::NAV_PAGE_UP.label,
                           Buttons::Actions::NAV_PAGE_DOWN.label);
     }
 
     // --- Footer ---
-    Renderer::DrawTextF(0, FOOTER_ROW, "%s:Select %s:Back %s:Hide/Show L/R:Move  [%d/%d]",
+    Renderer::DrawTextF(0, Renderer::GetFooterRow(), "%s:Select %s:Back %s:Hide/Show L/R:Move  [%d/%d]",
                       Buttons::Actions::CONFIRM.label,
                       Buttons::Actions::CANCEL.label,
                       Buttons::Actions::FAVORITE.label,
