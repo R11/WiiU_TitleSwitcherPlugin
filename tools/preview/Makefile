@@ -46,24 +46,44 @@ run-favs: $(TARGET)
 # Snapshot directory
 SNAPSHOT_DIR := snapshots
 
+# Screen types for snapshots
+SCREENS := drc tv1080 tv720 tv480
+
 # Generate all snapshots (for updating golden files)
+# Creates snapshots for all 4 screen types
 snapshots: $(TARGET)
 	@mkdir -p $(SNAPSHOT_DIR)
-	./$(TARGET) --no-color > $(SNAPSHOT_DIR)/browse_default.txt
-	./$(TARGET) --no-color --numbers > $(SNAPSHOT_DIR)/browse_with_numbers.txt
-	./$(TARGET) --no-color --category 1 > $(SNAPSHOT_DIR)/browse_favorites.txt
-	./$(TARGET) --no-color --select 15 --scroll 10 > $(SNAPSHOT_DIR)/browse_scrolled.txt
-	./$(TARGET) --no-color --no-favs > $(SNAPSHOT_DIR)/browse_no_favorites.txt
+	@echo "Generating snapshots for all screen types..."
+	@for screen in $(SCREENS); do \
+		echo "  $$screen..."; \
+		./$(TARGET) --no-color --screen $$screen > $(SNAPSHOT_DIR)/$${screen}_default.txt; \
+	done
 	@echo "Snapshots generated in $(SNAPSHOT_DIR)/"
 
 # Verify snapshots match current output (for CI/testing)
 verify-snapshots: $(TARGET)
 	@echo "Verifying snapshots..."
-	@./$(TARGET) --no-color | diff -q - $(SNAPSHOT_DIR)/browse_default.txt
-	@./$(TARGET) --no-color --numbers | diff -q - $(SNAPSHOT_DIR)/browse_with_numbers.txt
-	@./$(TARGET) --no-color --category 1 | diff -q - $(SNAPSHOT_DIR)/browse_favorites.txt
-	@./$(TARGET) --no-color --select 15 --scroll 10 | diff -q - $(SNAPSHOT_DIR)/browse_scrolled.txt
-	@./$(TARGET) --no-color --no-favs | diff -q - $(SNAPSHOT_DIR)/browse_no_favorites.txt
-	@echo "All snapshots match!"
+	@failed=0; \
+	for screen in $(SCREENS); do \
+		if ./$(TARGET) --no-color --screen $$screen | diff -q - $(SNAPSHOT_DIR)/$${screen}_default.txt > /dev/null 2>&1; then \
+			echo "  $$screen: OK"; \
+		else \
+			echo "  $$screen: MISMATCH"; \
+			failed=1; \
+		fi; \
+	done; \
+	if [ $$failed -eq 1 ]; then \
+		echo "Snapshot verification FAILED"; \
+		exit 1; \
+	else \
+		echo "All snapshots match!"; \
+	fi
 
-.PHONY: all clean run run-nocolor run-numbers run-favs snapshots verify-snapshots
+# Show diff if snapshots don't match
+diff-snapshots: $(TARGET)
+	@for screen in $(SCREENS); do \
+		echo "=== $$screen ==="; \
+		./$(TARGET) --no-color --screen $$screen | diff - $(SNAPSHOT_DIR)/$${screen}_default.txt || true; \
+	done
+
+.PHONY: all clean run run-nocolor run-numbers run-favs snapshots verify-snapshots diff-snapshots

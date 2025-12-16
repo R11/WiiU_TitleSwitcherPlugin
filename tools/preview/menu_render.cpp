@@ -6,6 +6,14 @@
  *
  * IMPORTANT: This file should be kept in sync with src/menu/menu.cpp
  * when the rendering logic changes.
+ *
+ * LAYOUT ADAPTATION:
+ * Layout is calculated dynamically based on screen size using Renderer
+ * helper functions. This allows the same rendering code to work on:
+ * - DRC (GamePad): 854x480, 100x18 chars
+ * - TV 1080p: 1920x1080, 160x36 chars
+ * - TV 720p: 1280x720, 120x27 chars
+ * - TV 480p (4:3): 640x480, 80x20 chars
  */
 
 // Include stubs for desktop compilation
@@ -19,24 +27,30 @@
 
 #include <cstdio>
 #include <cstring>
+#include <algorithm>
 
 namespace MenuRender {
 
 // =============================================================================
-// Display Constants (from menu.h)
+// Fixed Layout Constants
 // =============================================================================
 
-constexpr int VISIBLE_ROWS = 15;
-constexpr int LIST_START_COL = 0;
-constexpr int LIST_WIDTH = 30;
-constexpr int DIVIDER_COL = 30;
-constexpr int DETAILS_START_COL = 32;
-constexpr int TITLE_NAME_WIDTH = 24;
-constexpr int TITLE_NAME_WIDTH_NUM = 21;
 constexpr int CATEGORY_ROW = 0;
 constexpr int HEADER_ROW = 1;
 constexpr int LIST_START_ROW = 2;
-constexpr int FOOTER_ROW = 17;
+constexpr int LIST_START_COL = 0;
+
+// =============================================================================
+// Dynamic Layout Helpers
+// =============================================================================
+
+// These wrap Renderer functions for convenience
+inline int getDividerCol() { return Renderer::GetDividerCol(); }
+inline int getDetailsPanelCol() { return Renderer::GetDetailsPanelCol(); }
+inline int getVisibleRows() { return Renderer::GetVisibleRows(); }
+inline int getFooterRow() { return Renderer::GetFooterRow(); }
+inline int getTitleNameWidth(bool showNumbers) { return Renderer::GetTitleNameWidth(showNumbers); }
+inline int getIconSize() { return Renderer::GetIconSize(); }
 
 // =============================================================================
 // Rendering State (mirrors menu.cpp state)
@@ -63,6 +77,7 @@ int GetScrollOffset() { return sScrollOffset; }
 
 void clampSelection() {
     int count = Categories::GetFilteredCount();
+    int visibleRows = getVisibleRows();
 
     if (sSelectedIndex < 0) sSelectedIndex = 0;
     if (sSelectedIndex >= count) sSelectedIndex = count > 0 ? count - 1 : 0;
@@ -70,12 +85,12 @@ void clampSelection() {
     if (sSelectedIndex < sScrollOffset) {
         sScrollOffset = sSelectedIndex;
     }
-    if (sSelectedIndex >= sScrollOffset + VISIBLE_ROWS) {
-        sScrollOffset = sSelectedIndex - VISIBLE_ROWS + 1;
+    if (sSelectedIndex >= sScrollOffset + visibleRows) {
+        sScrollOffset = sSelectedIndex - visibleRows + 1;
     }
 
     if (sScrollOffset < 0) sScrollOffset = 0;
-    int maxScroll = count - VISIBLE_ROWS;
+    int maxScroll = count - visibleRows;
     if (maxScroll < 0) maxScroll = 0;
     if (sScrollOffset > maxScroll) sScrollOffset = maxScroll;
 }
@@ -87,11 +102,12 @@ void clampSelection() {
 void drawCategoryBar() {
     char line[80];
     int col = 0;
+    int maxCol = Renderer::GetGridWidth() - 10;  // Leave space for nav hint
 
     int catCount = Categories::GetTotalCategoryCount();
     int currentCat = Categories::GetCurrentCategoryIndex();
 
-    for (int i = 0; i < catCount && col < 60; i++) {
+    for (int i = 0; i < catCount && col < maxCol; i++) {
         if (!Categories::IsCategoryVisible(i)) continue;
 
         const char* name = Categories::GetCategoryName(i);
@@ -108,13 +124,18 @@ void drawCategoryBar() {
 }
 
 void drawDivider() {
-    for (int row = LIST_START_ROW; row < FOOTER_ROW; row++) {
-        Renderer::DrawText(DIVIDER_COL, row, "|");
+    int dividerCol = getDividerCol();
+    int footerRow = getFooterRow();
+
+    for (int row = LIST_START_ROW; row < footerRow; row++) {
+        Renderer::DrawText(dividerCol, row, "|");
     }
 }
 
 void drawTitleList() {
     int count = Categories::GetFilteredCount();
+    int visibleRows = getVisibleRows();
+    int dividerCol = getDividerCol();
 
     if (count == 0) {
         Renderer::DrawText(2, LIST_START_ROW + 2, "No titles in this category");
@@ -122,16 +143,16 @@ void drawTitleList() {
     }
 
     bool showNums = Settings::Get().showNumbers;
-    int maxNameLen = showNums ? TITLE_NAME_WIDTH_NUM : TITLE_NAME_WIDTH;
+    int maxNameLen = getTitleNameWidth(showNums);
 
-    for (int i = 0; i < VISIBLE_ROWS && (sScrollOffset + i) < count; i++) {
+    for (int i = 0; i < visibleRows && (sScrollOffset + i) < count; i++) {
         int idx = sScrollOffset + i;
         const Titles::TitleInfo* title = Categories::GetFilteredTitle(idx);
 
         if (!title) continue;
 
-        char line[48];
-        char displayName[32];
+        char line[128];
+        char displayName[64];
         strncpy(displayName, title->name, maxNameLen);
         displayName[maxNameLen] = '\0';
 
@@ -152,15 +173,20 @@ void drawTitleList() {
                      cursor, favMark, maxNameLen, displayName);
         }
 
+        // Truncate line to fit before divider
+        if ((int)strlen(line) >= dividerCol) {
+            line[dividerCol - 1] = '\0';
+        }
+
         Renderer::DrawText(LIST_START_COL, LIST_START_ROW + i, line);
     }
 
     // Scroll indicators
     if (sScrollOffset > 0) {
-        Renderer::DrawText(LIST_WIDTH - 4, LIST_START_ROW, "[UP]");
+        Renderer::DrawText(dividerCol - 5, LIST_START_ROW, "[UP]");
     }
-    if (sScrollOffset + VISIBLE_ROWS < count) {
-        Renderer::DrawText(LIST_WIDTH - 6, LIST_START_ROW + VISIBLE_ROWS - 1, "[DOWN]");
+    if (sScrollOffset + visibleRows < count) {
+        Renderer::DrawText(dividerCol - 7, LIST_START_ROW + visibleRows - 1, "[DOWN]");
     }
 }
 
@@ -173,50 +199,66 @@ void drawDetailsPanel() {
     const Titles::TitleInfo* title = Categories::GetFilteredTitle(sSelectedIndex);
     if (!title) return;
 
+    int detailsCol = getDetailsPanelCol();
+    int footerRow = getFooterRow();
+
     // Request icon loading
     ImageLoader::Request(title->titleId, ImageLoader::Priority::HIGH);
 
-    // Title name
-    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW, title->name);
+    // Title name (truncate to fit panel width)
+    int panelWidth = Renderer::GetGridWidth() - detailsCol - 1;
+    char titleName[128];
+    strncpy(titleName, title->name, std::min(panelWidth, (int)sizeof(titleName) - 1));
+    titleName[std::min(panelWidth, (int)sizeof(titleName) - 1)] = '\0';
+    Renderer::DrawText(detailsCol, LIST_START_ROW, titleName);
 
-    // Draw icon
-    constexpr int ICON_SIZE = 128;
-    int screenWidth = Renderer::GetScreenWidth();
-    int iconX = (screenWidth / 2) + 20;
-    int iconY = Renderer::RowToPixelY(LIST_START_ROW + 1);
+    // Draw icon - position calculated by Renderer based on screen size
+    int iconSize = getIconSize();
+    int iconX = Renderer::GetIconX();
+    int iconY = Renderer::GetIconY();
 
     if (ImageLoader::IsReady(title->titleId)) {
         Renderer::ImageHandle icon = ImageLoader::Get(title->titleId);
-        Renderer::DrawImage(iconX, iconY, icon, ICON_SIZE, ICON_SIZE);
+        Renderer::DrawImage(iconX, iconY, icon, iconSize, iconSize);
     } else {
-        Renderer::DrawPlaceholder(iconX, iconY, ICON_SIZE, ICON_SIZE, 0x333333FF);
+        Renderer::DrawPlaceholder(iconX, iconY, iconSize, iconSize, 0x333333FF);
     }
 
-    // Info after icon
-    constexpr int INFO_START_ROW = LIST_START_ROW + 7;
+    // Calculate info row based on icon position
+    // Icon takes about 4-6 rows depending on screen size
+    int iconRows = (iconSize / Renderer::GetScreenConfig().charHeight) + 1;
+    int infoStartRow = LIST_START_ROW + 1 + iconRows;
+
+    // Ensure info doesn't overlap footer
+    if (infoStartRow + 5 > footerRow) {
+        infoStartRow = footerRow - 5;
+    }
+    if (infoStartRow < LIST_START_ROW + 2) {
+        infoStartRow = LIST_START_ROW + 2;
+    }
 
     char idStr[32];
     snprintf(idStr, sizeof(idStr), "ID: %016llX",
              static_cast<unsigned long long>(title->titleId));
-    Renderer::DrawText(DETAILS_START_COL, INFO_START_ROW, idStr);
+    Renderer::DrawText(detailsCol, infoStartRow, idStr);
 
     const char* favStatus = Settings::IsFavorite(title->titleId) ? "Yes" : "No";
-    Renderer::DrawTextF(DETAILS_START_COL, INFO_START_ROW + 1, "Favorite: %s", favStatus);
+    Renderer::DrawTextF(detailsCol, infoStartRow + 1, "Favorite: %s", favStatus);
 
     // Categories
-    Renderer::DrawText(DETAILS_START_COL, INFO_START_ROW + 3, "Categories:");
+    Renderer::DrawText(detailsCol, infoStartRow + 3, "Categories:");
 
     uint16_t catIds[Settings::MAX_CATEGORIES];
     int catCount = Settings::GetCategoriesForTitle(title->titleId, catIds, Settings::MAX_CATEGORIES);
 
     if (catCount == 0) {
-        Renderer::DrawText(DETAILS_START_COL + 2, INFO_START_ROW + 4, "(none)");
+        Renderer::DrawText(detailsCol + 2, infoStartRow + 4, "(none)");
     } else {
-        int row = INFO_START_ROW + 4;
-        for (int i = 0; i < catCount && row < FOOTER_ROW - 1; i++) {
+        int row = infoStartRow + 4;
+        for (int i = 0; i < catCount && row < footerRow - 1; i++) {
             const Settings::Category* cat = Settings::GetCategory(catIds[i]);
             if (cat) {
-                Renderer::DrawTextF(DETAILS_START_COL + 2, row, "- %s", cat->name);
+                Renderer::DrawTextF(detailsCol + 2, row, "- %s", cat->name);
                 row++;
             }
         }
@@ -225,8 +267,9 @@ void drawDetailsPanel() {
 
 void drawFooter() {
     int count = Categories::GetFilteredCount();
+    int footerRow = getFooterRow();
 
-    char footer[100];
+    char footer[128];
     snprintf(footer, sizeof(footer),
              "%s:Go %s:Close %s:Fav %s:Edit %s:Settings ZL/ZR:Cat [%d/%d]",
              Buttons::Actions::CONFIRM.label,
@@ -237,7 +280,17 @@ void drawFooter() {
              sSelectedIndex + 1,
              count);
 
-    Renderer::DrawText(0, FOOTER_ROW, footer);
+    Renderer::DrawText(0, footerRow, footer);
+}
+
+void drawHeader() {
+    // Draw horizontal divider line that spans the screen width
+    int width = Renderer::GetGridWidth();
+    char line[256];
+    int len = std::min(width, (int)sizeof(line) - 1);
+    memset(line, '-', len);
+    line[len] = '\0';
+    Renderer::DrawText(0, HEADER_ROW, line);
 }
 
 // =============================================================================
@@ -246,10 +299,10 @@ void drawFooter() {
 
 void renderBrowseMode() {
     drawCategoryBar();
-    Renderer::DrawText(0, HEADER_ROW, "------------------------------------------------------------");
-    drawDivider();
+    drawHeader();
     drawTitleList();
     drawDetailsPanel();
+    drawDivider();  // Draw divider AFTER content so it's not overwritten
     drawFooter();
 }
 

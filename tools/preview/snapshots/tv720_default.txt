@@ -1,0 +1,34 @@
+
+=== Wii U Menu Preview ===
+(Using actual menu.cpp rendering code)
+
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│[All]  Favorites   System   Games   Apps                                                                                │
+│------------------------------------------------------------------------------------------------------------------------│
+│  * Super Mario 3D World            | Mario Kart 8                                                                      │
+│> * Mario Kart 8                    | ░░░░░░░░░░░░░                                                                     │
+│    Splatoon                        | ░░░░░░░░░░░░░                                                                     │
+│  * Super Smash Bros. for Wii U     | ░░░░░░░░░░░░░                                                                     │
+│    The Legend of Zelda: Breath of  | ░░░░░░░░░░░░░                                                                     │
+│    Bayonetta 2                     | ░░░░░░░░░░░░░                                                                     │
+│    Pikmin 3                        | ID: 000500001010EC00                                                              │
+│    Xenoblade Chronicles X          | Favorite: Yes                                                                     │
+│    Hyrule Warriors                 |                                                                                   │
+│    Donkey Kong Country: Tropical F | Categories:                                                                       │
+│    Captain Toad: Treasure Tracker  |   - Games                                                                         │
+│    Yoshi's Woolly World            |                                                                                   │
+│    Star Fox Zero                   |                                                                                   │
+│    NES Remix Pack                  |                                                                                   │
+│    Mii Verse                       |                                                                                   │
+│    Nintendo eShop                  |                                                                                   │
+│    Internet Browser                |                                                                                   │
+│    Tokyo Mirage Sessions FE        |                                                                                   │
+│    Pokken Tournament               |                                                                                   │
+│    Super Mario Maker               |                                                                                   │
+│                                    |                                                                                   │
+│                                    |                                                                                   │
+│                                    |                                                                                   │
+│                                    |                                                                                   │
+│A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [2/20]                                                                   │
+└────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+Screen: TV 720p | 1280x720 pixels | 120x27 chars

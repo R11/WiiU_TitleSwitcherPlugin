@@ -1,0 +1,27 @@
+
+=== Wii U Menu Preview ===
+(Using actual menu.cpp rendering code)
+
+┌────────────────────────────────────────────────────────────────────────────────┐
+│[All]  Favorites   System   Games   Apps                                        │
+│--------------------------------------------------------------------------------│
+│  * Super Mario 3D Worl | Mario Kart 8                                          │
+│> * Mario Kart 8        | ░░░░░░░░░░░░                                          │
+│    Splatoon            | ░░░░░░░░░░░░                                          │
+│  * Super Smash Bros. f | ░░░░░░░░░░░░                                          │
+│    The Legend of Zelda | ░░░░░░░░░░░░                                          │
+│    Bayonetta 2         |                                                       │
+│    Pikmin 3            | ID: 000500001010EC00                                  │
+│    Xenoblade Chronicle | Favorite: Yes                                         │
+│    Hyrule Warriors     |                                                       │
+│    Donkey Kong Country | Categories:                                           │
+│    Captain Toad: Treas |   - Games                                             │
+│    Yoshi's Woolly Worl |                                                       │
+│    Star Fox Zero       |                                                       │
+│    NES Remix Pack      |                                                       │
+│    Mii Verse           |                                                       │
+│    Nintendo eShop      |                                                       │
+│    Internet Brow[DOWN] |                                                       │
+│A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [2/20]                           │
+└────────────────────────────────────────────────────────────────────────────────┘
+Screen: TV 480p (4:3) | 640x480 pixels | 80x20 chars (4:3)
