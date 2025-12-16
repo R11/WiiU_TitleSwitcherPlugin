@@ -43,4 +43,27 @@ run-numbers: $(TARGET)
 run-favs: $(TARGET)
 	./$(TARGET) --no-color --category 1
 
-.PHONY: all clean run run-nocolor run-numbers run-favs
+# Snapshot directory
+SNAPSHOT_DIR := snapshots
+
+# Generate all snapshots (for updating golden files)
+snapshots: $(TARGET)
+	@mkdir -p $(SNAPSHOT_DIR)
+	./$(TARGET) --no-color > $(SNAPSHOT_DIR)/browse_default.txt
+	./$(TARGET) --no-color --numbers > $(SNAPSHOT_DIR)/browse_with_numbers.txt
+	./$(TARGET) --no-color --category 1 > $(SNAPSHOT_DIR)/browse_favorites.txt
+	./$(TARGET) --no-color --select 15 --scroll 10 > $(SNAPSHOT_DIR)/browse_scrolled.txt
+	./$(TARGET) --no-color --no-favs > $(SNAPSHOT_DIR)/browse_no_favorites.txt
+	@echo "Snapshots generated in $(SNAPSHOT_DIR)/"
+
+# Verify snapshots match current output (for CI/testing)
+verify-snapshots: $(TARGET)
+	@echo "Verifying snapshots..."
+	@./$(TARGET) --no-color | diff -q - $(SNAPSHOT_DIR)/browse_default.txt
+	@./$(TARGET) --no-color --numbers | diff -q - $(SNAPSHOT_DIR)/browse_with_numbers.txt
+	@./$(TARGET) --no-color --category 1 | diff -q - $(SNAPSHOT_DIR)/browse_favorites.txt
+	@./$(TARGET) --no-color --select 15 --scroll 10 | diff -q - $(SNAPSHOT_DIR)/browse_scrolled.txt
+	@./$(TARGET) --no-color --no-favs | diff -q - $(SNAPSHOT_DIR)/browse_no_favorites.txt
+	@echo "All snapshots match!"
+
+.PHONY: all clean run run-nocolor run-numbers run-favs snapshots verify-snapshots

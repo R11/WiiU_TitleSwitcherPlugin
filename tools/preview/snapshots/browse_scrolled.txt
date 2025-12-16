@@ -1,0 +1,25 @@
+
+=== Wii U GamePad Screen Preview ===
+(Using actual menu.cpp rendering code)
+
+┌────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│[All]  Favorites   System   Games   Apps                                                            │
+│------------------------------------------------------------                                        │
+│    Captain Toad: Treasure[UP]| Nintendo eShop                                                      │
+│    Yoshi's Woolly World      |                         ░░░░░░░░░░░░░░░░                            │
+│    Star Fox Zero             |                         ░░░░░░░░░░░░░░░░                            │
+│    NES Remix Pack            |                         ░░░░░░░░░░░░░░░░                            │
+│    Mii Verse                 |                         ░░░░░░░░░░░░░░░░                            │
+│>   Nintendo eShop            |                         ░░░░░░░░░░░░░░░░                            │
+│    Internet Browser          |                                                                     │
+│    Tokyo Mirage Sessions FE  | ID: 000500301001200A                                                │
+│    Pokken Tournament         | Favorite: No                                                        │
+│    Super Mario Maker         |                                                                     │
+│                              | Categories:                                                         │
+│                              |   (none)                                                            │
+│                              |                                                                     │
+│                              |                                                                     │
+│                              |                                                                     │
+│A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [16/20]                                              │
+└────────────────────────────────────────────────────────────────────────────────────────────────────┘
+Screen: DRC (GamePad) | 854x480 pixels | 100x18 chars

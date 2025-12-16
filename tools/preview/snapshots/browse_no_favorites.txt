@@ -1,0 +1,25 @@
+
+=== Wii U GamePad Screen Preview ===
+(Using actual menu.cpp rendering code)
+
+┌────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│[All]  Favorites   System   Games   Apps                                                            │
+│------------------------------------------------------------                                        │
+│  Super Mario 3D World        | Mario Kart 8                                                        │
+│> Mario Kart 8                |                         ░░░░░░░░░░░░░░░░                            │
+│  Splatoon                    |                         ░░░░░░░░░░░░░░░░                            │
+│  Super Smash Bros. for Wi    |                         ░░░░░░░░░░░░░░░░                            │
+│  The Legend of Zelda: Bre    |                         ░░░░░░░░░░░░░░░░                            │
+│  Bayonetta 2                 |                         ░░░░░░░░░░░░░░░░                            │
+│  Pikmin 3                    |                                                                     │
+│  Xenoblade Chronicles X      | ID: 000500001010EC00                                                │
+│  Hyrule Warriors             | Favorite: Yes                                                       │
+│  Donkey Kong Country: Tro    |                                                                     │
+│  Captain Toad: Treasure T    | Categories:                                                         │
+│  Yoshi's Woolly World        |   - Games                                                           │
+│  Star Fox Zero               |                                                                     │
+│  NES Remix Pack              |                                                                     │
+│  Mii Verse             [DOWN]|                                                                     │
+│A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [2/20]                                               │
+└────────────────────────────────────────────────────────────────────────────────────────────────────┘
+Screen: DRC (GamePad) | 854x480 pixels | 100x18 chars
