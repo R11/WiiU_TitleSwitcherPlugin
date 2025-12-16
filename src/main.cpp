@@ -15,6 +15,9 @@
 #include <notifications/notifications.h>
 #include <coreinit/title.h>
 #include <coreinit/mcp.h>
+#include <coreinit/time.h>
+#include <coreinit/foreground.h>
+#include <proc_ui/procui.h>
 #include <nn/acp/title.h>
 #include <sysapp/launch.h>
 #include <vpad/input.h>
@@ -36,6 +39,20 @@ WUPS_PLUGIN_LICENSE("GPLv3");
 
 WUPS_USE_WUT_DEVOPTAB();
 WUPS_USE_STORAGE("TitleSwitcher");
+
+// ============================================================================
+// Safety Checks for Menu Opening
+// ============================================================================
+
+// Grace period after application starts (in milliseconds)
+// Prevents opening menu while game is still initializing
+static constexpr uint32_t STARTUP_GRACE_PERIOD_MS = 3000;
+
+// Timestamp when current application started (set in ON_APPLICATION_STARTS)
+static OSTime sApplicationStartTime = 0;
+
+// Track if we're in a stable foreground state
+static bool sInForeground = false;
 
 // ============================================================================
 // Constants
@@ -420,12 +437,89 @@ DEINITIALIZE_PLUGIN()
 }
 
 // ============================================================================
+// Application Lifecycle Hooks (for safety timing)
+// ============================================================================
+
+ON_APPLICATION_START()
+{
+    // Record when application started - used for grace period
+    sApplicationStartTime = OSGetTime();
+    sInForeground = true;  // Assume foreground on start
+}
+
+ON_APPLICATION_ENDS()
+{
+    // Reset state when application exits
+    sApplicationStartTime = 0;
+    sInForeground = false;
+
+    // Close menu if open when app ends
+    if (CustomMenu::IsOpen()) {
+        CustomMenu::Close();
+    }
+}
+
+ON_ACQUIRED_FOREGROUND()
+{
+    // App has returned to foreground
+    sInForeground = true;
+}
+
+ON_RELEASE_FOREGROUND()
+{
+    // App is going to background (e.g., HOME menu)
+    sInForeground = false;
+
+    // Close our menu if it's open when losing foreground
+    if (CustomMenu::IsOpen()) {
+        CustomMenu::Close();
+    }
+}
+
+// ============================================================================
 // Custom Menu Button Combo Hook (L + R + Minus)
 // ============================================================================
 
 #define CUSTOM_MENU_COMBO (VPAD_BUTTON_L | VPAD_BUTTON_R | VPAD_BUTTON_MINUS)
 
 static bool sComboWasHeld = false;
+
+/**
+ * Check if it's safe to open the custom menu.
+ * Returns false during loading/transitions to prevent graphical glitches.
+ */
+static bool IsSafeToOpenMenu()
+{
+    // 1. Check if menu is already open
+    if (CustomMenu::IsOpen()) {
+        return false;
+    }
+
+    // 2. Check startup grace period
+    //    Prevents opening during initial game load
+    if (sApplicationStartTime != 0) {
+        OSTime now = OSGetTime();
+        OSTime elapsed = now - sApplicationStartTime;
+        uint32_t elapsedMs = (uint32_t)OSTicksToMilliseconds(elapsed);
+
+        if (elapsedMs < STARTUP_GRACE_PERIOD_MS) {
+            return false;
+        }
+    }
+
+    // 3. Check if we're in foreground (not transitioning)
+    if (!sInForeground) {
+        return false;
+    }
+
+    // 4. Check ProcUI state - ensure app is running normally
+    //    ProcUIIsRunning() returns false if app should be exiting
+    if (!ProcUIIsRunning()) {
+        return false;
+    }
+
+    return true;
+}
 
 static void handleCustomMenuInput(VPADStatus *buffer, uint32_t bufferSize)
 {
@@ -434,8 +528,8 @@ static void handleCustomMenuInput(VPADStatus *buffer, uint32_t bufferSize)
     // Check for L + R + Minus combo
     bool comboHeld = (held & CUSTOM_MENU_COMBO) == CUSTOM_MENU_COMBO;
 
-    // Trigger on press (not held from previous frame)
-    if (comboHeld && !sComboWasHeld && !CustomMenu::IsOpen()) {
+    // Trigger on press (not held from previous frame) AND safe to open
+    if (comboHeld && !sComboWasHeld && IsSafeToOpenMenu()) {
         // Open custom menu - this blocks until menu closes
         CustomMenu::Open();
 
