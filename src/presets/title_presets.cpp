@@ -79,53 +79,6 @@ const char* ParseString(const char* p, char* outStr, int maxLen) {
 }
 
 /**
- * Parse a JSON number (integer only).
- */
-const char* ParseNumber(const char* p, int* outValue) {
-    *outValue = 0;
-    bool negative = false;
-
-    if (*p == '-') {
-        negative = true;
-        p++;
-    }
-
-    while (*p >= '0' && *p <= '9') {
-        *outValue = (*outValue * 10) + (*p - '0');
-        p++;
-    }
-
-    if (negative) *outValue = -*outValue;
-    return p;
-}
-
-/**
- * Parse a hex string (16 chars) into a uint64_t title ID.
- */
-bool ParseTitleId(const char* hexStr, uint64_t* outId) {
-    *outId = 0;
-
-    for (int i = 0; i < 16; i++) {
-        char c = hexStr[i];
-        uint64_t nibble;
-
-        if (c >= '0' && c <= '9') {
-            nibble = c - '0';
-        } else if (c >= 'A' && c <= 'F') {
-            nibble = 10 + (c - 'A');
-        } else if (c >= 'a' && c <= 'f') {
-            nibble = 10 + (c - 'a');
-        } else {
-            return false;
-        }
-
-        *outId = (*outId << 4) | nibble;
-    }
-
-    return true;
-}
-
-/**
  * Parse a date string (YYYY-MM-DD or YYYY) into components.
  */
 void ParseDate(const char* dateStr, uint16_t* year, uint8_t* month, uint8_t* day) {
@@ -133,8 +86,10 @@ void ParseDate(const char* dateStr, uint16_t* year, uint8_t* month, uint8_t* day
     *month = 0;
     *day = 0;
 
+    int len = strlen(dateStr);
+
     // Parse year
-    if (strlen(dateStr) >= 4) {
+    if (len >= 4) {
         *year = (dateStr[0] - '0') * 1000 +
                 (dateStr[1] - '0') * 100 +
                 (dateStr[2] - '0') * 10 +
@@ -142,12 +97,12 @@ void ParseDate(const char* dateStr, uint16_t* year, uint8_t* month, uint8_t* day
     }
 
     // Parse month if present (YYYY-MM-DD format)
-    if (strlen(dateStr) >= 7 && dateStr[4] == '-') {
+    if (len >= 7 && dateStr[4] == '-') {
         *month = (dateStr[5] - '0') * 10 + (dateStr[6] - '0');
     }
 
     // Parse day if present
-    if (strlen(dateStr) >= 10 && dateStr[7] == '-') {
+    if (len >= 10 && dateStr[7] == '-') {
         *day = (dateStr[8] - '0') * 10 + (dateStr[9] - '0');
     }
 }
@@ -240,15 +195,11 @@ bool ParseTitleObject(const char* objStart, const char* objEnd, TitlePreset* pre
     bool success = false;
     char tempStr[MAX_PRESET_NAME];
 
-    // Required: titleId
-    const char* val = FindKey(obj, "titleId");
+    // Required: id (game ID / product code)
+    const char* val = FindKey(obj, "id");
     if (val && *val == '"') {
-        val++;
-        char idStr[17] = {0};
-        for (int i = 0; i < 16 && val[i] && val[i] != '"'; i++) {
-            idStr[i] = val[i];
-        }
-        if (ParseTitleId(idStr, &preset->titleId)) {
+        ParseString(val, preset->gameId, MAX_GAME_ID);
+        if (preset->gameId[0] != '\0') {
             success = true;
         }
     }
@@ -260,7 +211,7 @@ bool ParseTitleObject(const char* objStart, const char* objEnd, TitlePreset* pre
 
     // Required: name
     val = FindKey(obj, "name");
-    if (val) {
+    if (val && *val == '"') {
         ParseString(val, preset->name, MAX_PRESET_NAME);
     }
 
@@ -351,6 +302,16 @@ bool StrEqualsIgnoreCase(const char* a, const char* b) {
     return *a == *b;
 }
 
+/**
+ * Check if string 'haystack' ends with 'needle' (case-insensitive).
+ */
+bool StrEndsWith(const char* haystack, const char* needle) {
+    int hLen = strlen(haystack);
+    int nLen = strlen(needle);
+    if (nLen > hLen) return false;
+    return StrEqualsIgnoreCase(haystack + (hLen - nLen), needle);
+}
+
 } // anonymous namespace
 
 // =============================================================================
@@ -426,13 +387,50 @@ void GetStats(PresetStats& stats) {
     stats.uniqueRegions = static_cast<int>(regions.size());
 }
 
-const TitlePreset* GetPreset(uint64_t titleId) {
+const TitlePreset* GetPresetByGameId(const char* gameId) {
+    if (!gameId || gameId[0] == '\0') {
+        return nullptr;
+    }
+
+    int searchLen = strlen(gameId);
+
     for (int i = 0; i < gPresetCount; i++) {
-        if (gPresets[i].titleId == titleId) {
+        const char* presetId = gPresets[i].gameId;
+
+        // Exact match
+        if (StrEqualsIgnoreCase(presetId, gameId)) {
+            return &gPresets[i];
+        }
+
+        // Partial match: product code like "WUP-P-ARDE01" should match "ARDE01"
+        // Check if the preset's gameId matches the end of the search string
+        if (StrEndsWith(gameId, presetId)) {
+            return &gPresets[i];
+        }
+
+        // Also check if search string matches end of preset's gameId
+        // e.g., searching "ARDE" should match preset "ARDE01"
+        int presetLen = strlen(presetId);
+        if (searchLen <= presetLen && StrEndsWith(presetId, gameId)) {
+            return &gPresets[i];
+        }
+
+        // Check after last hyphen in search string
+        // e.g., "WUP-P-ARDE01" -> check "ARDE01"
+        const char* lastHyphen = strrchr(gameId, '-');
+        if (lastHyphen && StrEqualsIgnoreCase(lastHyphen + 1, presetId)) {
             return &gPresets[i];
         }
     }
+
     return nullptr;
+}
+
+const TitlePreset* GetPresetByIndex(int index) {
+    if (index < 0 || index >= gPresetCount) {
+        return nullptr;
+    }
+    return &gPresets[index];
 }
 
 // =============================================================================
@@ -524,76 +522,76 @@ int GetUniqueYears(std::vector<uint16_t>& outYears) {
     return static_cast<int>(outYears.size());
 }
 
-int GetTitlesByPublisher(const char* publisher, std::vector<uint64_t>& outTitleIds) {
-    outTitleIds.clear();
+int GetGameIdsByPublisher(const char* publisher, std::vector<const char*>& outGameIds) {
+    outGameIds.clear();
 
     for (int i = 0; i < gPresetCount; i++) {
         if (StrEqualsIgnoreCase(gPresets[i].publisher, publisher)) {
-            outTitleIds.push_back(gPresets[i].titleId);
+            outGameIds.push_back(gPresets[i].gameId);
         }
     }
 
-    return static_cast<int>(outTitleIds.size());
+    return static_cast<int>(outGameIds.size());
 }
 
-int GetTitlesByDeveloper(const char* developer, std::vector<uint64_t>& outTitleIds) {
-    outTitleIds.clear();
+int GetGameIdsByDeveloper(const char* developer, std::vector<const char*>& outGameIds) {
+    outGameIds.clear();
 
     for (int i = 0; i < gPresetCount; i++) {
         if (StrEqualsIgnoreCase(gPresets[i].developer, developer)) {
-            outTitleIds.push_back(gPresets[i].titleId);
+            outGameIds.push_back(gPresets[i].gameId);
         }
     }
 
-    return static_cast<int>(outTitleIds.size());
+    return static_cast<int>(outGameIds.size());
 }
 
-int GetTitlesByGenre(const char* genre, std::vector<uint64_t>& outTitleIds) {
-    outTitleIds.clear();
+int GetGameIdsByGenre(const char* genre, std::vector<const char*>& outGameIds) {
+    outGameIds.clear();
 
     for (int i = 0; i < gPresetCount; i++) {
         if (StrEqualsIgnoreCase(gPresets[i].genre, genre)) {
-            outTitleIds.push_back(gPresets[i].titleId);
+            outGameIds.push_back(gPresets[i].gameId);
         }
     }
 
-    return static_cast<int>(outTitleIds.size());
+    return static_cast<int>(outGameIds.size());
 }
 
-int GetTitlesByRegion(const char* region, std::vector<uint64_t>& outTitleIds) {
-    outTitleIds.clear();
+int GetGameIdsByRegion(const char* region, std::vector<const char*>& outGameIds) {
+    outGameIds.clear();
 
     for (int i = 0; i < gPresetCount; i++) {
         if (StrEqualsIgnoreCase(gPresets[i].region, region)) {
-            outTitleIds.push_back(gPresets[i].titleId);
+            outGameIds.push_back(gPresets[i].gameId);
         }
     }
 
-    return static_cast<int>(outTitleIds.size());
+    return static_cast<int>(outGameIds.size());
 }
 
-int GetTitlesByYear(uint16_t year, std::vector<uint64_t>& outTitleIds) {
-    outTitleIds.clear();
+int GetGameIdsByYear(uint16_t year, std::vector<const char*>& outGameIds) {
+    outGameIds.clear();
 
     for (int i = 0; i < gPresetCount; i++) {
         if (gPresets[i].releaseYear == year) {
-            outTitleIds.push_back(gPresets[i].titleId);
+            outGameIds.push_back(gPresets[i].gameId);
         }
     }
 
-    return static_cast<int>(outTitleIds.size());
+    return static_cast<int>(outGameIds.size());
 }
 
-int GetTitlesByYearRange(uint16_t startYear, uint16_t endYear, std::vector<uint64_t>& outTitleIds) {
-    outTitleIds.clear();
+int GetGameIdsByYearRange(uint16_t startYear, uint16_t endYear, std::vector<const char*>& outGameIds) {
+    outGameIds.clear();
 
     for (int i = 0; i < gPresetCount; i++) {
         if (gPresets[i].releaseYear >= startYear && gPresets[i].releaseYear <= endYear) {
-            outTitleIds.push_back(gPresets[i].titleId);
+            outGameIds.push_back(gPresets[i].gameId);
         }
     }
 
-    return static_cast<int>(outTitleIds.size());
+    return static_cast<int>(outGameIds.size());
 }
 
 // =============================================================================
@@ -610,13 +608,13 @@ int GetSuggestedCategories(PresetCategoryType type,
             std::vector<const char*> publishers;
             GetUniquePublishers(publishers);
             for (const char* pub : publishers) {
-                std::vector<uint64_t> titles;
-                GetTitlesByPublisher(pub, titles);
-                if (static_cast<int>(titles.size()) >= minTitles) {
+                std::vector<const char*> gameIds;
+                GetGameIdsByPublisher(pub, gameIds);
+                if (static_cast<int>(gameIds.size()) >= minTitles) {
                     SuggestedCategory cat;
                     strncpy(cat.name, pub, MAX_PUBLISHER_NAME - 1);
                     cat.name[MAX_PUBLISHER_NAME - 1] = '\0';
-                    cat.titleCount = static_cast<int>(titles.size());
+                    cat.titleCount = static_cast<int>(gameIds.size());
                     outSuggestions.push_back(cat);
                 }
             }
@@ -627,13 +625,13 @@ int GetSuggestedCategories(PresetCategoryType type,
             std::vector<const char*> developers;
             GetUniqueDevelopers(developers);
             for (const char* dev : developers) {
-                std::vector<uint64_t> titles;
-                GetTitlesByDeveloper(dev, titles);
-                if (static_cast<int>(titles.size()) >= minTitles) {
+                std::vector<const char*> gameIds;
+                GetGameIdsByDeveloper(dev, gameIds);
+                if (static_cast<int>(gameIds.size()) >= minTitles) {
                     SuggestedCategory cat;
                     strncpy(cat.name, dev, MAX_PUBLISHER_NAME - 1);
                     cat.name[MAX_PUBLISHER_NAME - 1] = '\0';
-                    cat.titleCount = static_cast<int>(titles.size());
+                    cat.titleCount = static_cast<int>(gameIds.size());
                     outSuggestions.push_back(cat);
                 }
             }
@@ -644,13 +642,13 @@ int GetSuggestedCategories(PresetCategoryType type,
             std::vector<const char*> genres;
             GetUniqueGenres(genres);
             for (const char* genre : genres) {
-                std::vector<uint64_t> titles;
-                GetTitlesByGenre(genre, titles);
-                if (static_cast<int>(titles.size()) >= minTitles) {
+                std::vector<const char*> gameIds;
+                GetGameIdsByGenre(genre, gameIds);
+                if (static_cast<int>(gameIds.size()) >= minTitles) {
                     SuggestedCategory cat;
                     strncpy(cat.name, genre, MAX_PUBLISHER_NAME - 1);
                     cat.name[MAX_PUBLISHER_NAME - 1] = '\0';
-                    cat.titleCount = static_cast<int>(titles.size());
+                    cat.titleCount = static_cast<int>(gameIds.size());
                     outSuggestions.push_back(cat);
                 }
             }
@@ -661,13 +659,13 @@ int GetSuggestedCategories(PresetCategoryType type,
             std::vector<const char*> regions;
             GetUniqueRegions(regions);
             for (const char* region : regions) {
-                std::vector<uint64_t> titles;
-                GetTitlesByRegion(region, titles);
-                if (static_cast<int>(titles.size()) >= minTitles) {
+                std::vector<const char*> gameIds;
+                GetGameIdsByRegion(region, gameIds);
+                if (static_cast<int>(gameIds.size()) >= minTitles) {
                     SuggestedCategory cat;
                     strncpy(cat.name, region, MAX_PUBLISHER_NAME - 1);
                     cat.name[MAX_PUBLISHER_NAME - 1] = '\0';
-                    cat.titleCount = static_cast<int>(titles.size());
+                    cat.titleCount = static_cast<int>(gameIds.size());
                     outSuggestions.push_back(cat);
                 }
             }
@@ -678,12 +676,12 @@ int GetSuggestedCategories(PresetCategoryType type,
             std::vector<uint16_t> years;
             GetUniqueYears(years);
             for (uint16_t year : years) {
-                std::vector<uint64_t> titles;
-                GetTitlesByYear(year, titles);
-                if (static_cast<int>(titles.size()) >= minTitles) {
+                std::vector<const char*> gameIds;
+                GetGameIdsByYear(year, gameIds);
+                if (static_cast<int>(gameIds.size()) >= minTitles) {
                     SuggestedCategory cat;
                     snprintf(cat.name, MAX_PUBLISHER_NAME, "%d", year);
-                    cat.titleCount = static_cast<int>(titles.size());
+                    cat.titleCount = static_cast<int>(gameIds.size());
                     outSuggestions.push_back(cat);
                 }
             }
@@ -701,12 +699,12 @@ int GetSuggestedCategories(PresetCategoryType type,
                 minYear = (minYear / 2) * 2;
 
                 for (uint16_t y = minYear; y <= maxYear; y += 2) {
-                    std::vector<uint64_t> titles;
-                    GetTitlesByYearRange(y, y + 1, titles);
-                    if (static_cast<int>(titles.size()) >= minTitles) {
+                    std::vector<const char*> gameIds;
+                    GetGameIdsByYearRange(y, y + 1, gameIds);
+                    if (static_cast<int>(gameIds.size()) >= minTitles) {
                         SuggestedCategory cat;
                         snprintf(cat.name, MAX_PUBLISHER_NAME, "%d-%d", y, y + 1);
-                        cat.titleCount = static_cast<int>(titles.size());
+                        cat.titleCount = static_cast<int>(gameIds.size());
                         outSuggestions.push_back(cat);
                     }
                 }

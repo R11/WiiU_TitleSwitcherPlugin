@@ -35,25 +35,33 @@ int sTitleCount = 0;
 bool sIsLoaded = false;
 
 // -----------------------------------------------------------------------------
-// Helper: Retrieve title name from system metadata
+// Helper: Retrieve title metadata from system
 // -----------------------------------------------------------------------------
-// This function reads the title's meta.xml file to get its human-readable name.
-// The meta.xml contains localized names in multiple languages; we prefer English.
+// This function reads the title's meta.xml file to get its human-readable name
+// and product code. The meta.xml contains localized names in multiple languages;
+// we prefer English.
 //
 // The ACPMetaXml structure is quite large (~20KB) and must be aligned for
 // proper access, so we allocate it dynamically with memalign().
 //
 // Reference: https://wut.devkitpro.org/nn__acp.html
 // -----------------------------------------------------------------------------
-void getTitleNameFromSystem(uint64_t titleId, char* outName, int maxLen)
+void getTitleMetadataFromSystem(uint64_t titleId, char* outName, int maxNameLen,
+                                 char* outProductCode, int maxCodeLen)
 {
+    // Initialize outputs
+    if (outName) {
+        snprintf(outName, maxNameLen, "%016llX", static_cast<unsigned long long>(titleId));
+    }
+    if (outProductCode) {
+        outProductCode[0] = '\0';
+    }
+
     // Allocate aligned memory for the metadata structure
     // The structure must be 0x40 (64) byte aligned for the ACP functions
     ACPMetaXml* metaXml = static_cast<ACPMetaXml*>(memalign(0x40, sizeof(ACPMetaXml)));
 
     if (!metaXml) {
-        // Allocation failed - fall back to hex ID
-        snprintf(outName, maxLen, "%016llX", static_cast<unsigned long long>(titleId));
         return;
     }
 
@@ -65,37 +73,43 @@ void getTitleNameFromSystem(uint64_t titleId, char* outName, int maxLen)
     ACPResult result = ACPGetTitleMetaXml(titleId, metaXml);
 
     if (result == ACP_RESULT_SUCCESS) {
-        // Try to find a name, preferring English
+        // Extract name, preferring English
         // The meta.xml contains multiple name fields for different languages:
         //   shortname_en - Short English name (preferred)
         //   longname_en  - Long English name (fallback)
         //   shortname_ja - Short Japanese name (last resort)
-        const char* name = nullptr;
+        if (outName) {
+            const char* name = nullptr;
 
-        if (metaXml->shortname_en[0] != '\0') {
-            name = metaXml->shortname_en;
-        } else if (metaXml->longname_en[0] != '\0') {
-            name = metaXml->longname_en;
-        } else if (metaXml->shortname_ja[0] != '\0') {
-            name = metaXml->shortname_ja;
+            if (metaXml->shortname_en[0] != '\0') {
+                name = metaXml->shortname_en;
+            } else if (metaXml->longname_en[0] != '\0') {
+                name = metaXml->longname_en;
+            } else if (metaXml->shortname_ja[0] != '\0') {
+                name = metaXml->shortname_ja;
+            }
+
+            if (name) {
+                snprintf(outName, maxNameLen, "%.63s", name);
+            }
         }
 
-        if (name) {
-            // Copy the name, limiting to our max length
-            // Use %.63s to ensure null termination
-            snprintf(outName, maxLen, "%.63s", name);
-        } else {
-            // No name found in metadata - use hex ID
-            snprintf(outName, maxLen, "%016llX", static_cast<unsigned long long>(titleId));
+        // Extract product code (e.g., "WUP-P-ARDE")
+        // This is used to match against GameTDB database
+        if (outProductCode && metaXml->product_code[0] != '\0') {
+            strncpy(outProductCode, metaXml->product_code, maxCodeLen - 1);
+            outProductCode[maxCodeLen - 1] = '\0';
         }
-    } else {
-        // Metadata retrieval failed - use hex ID
-        // This can happen for system titles or corrupted installations
-        snprintf(outName, maxLen, "%016llX", static_cast<unsigned long long>(titleId));
     }
 
     // Free the metadata structure
     free(metaXml);
+}
+
+// Legacy wrapper for backward compatibility
+void getTitleNameFromSystem(uint64_t titleId, char* outName, int maxLen)
+{
+    getTitleMetadataFromSystem(titleId, outName, maxLen, nullptr, 0);
 }
 
 // -----------------------------------------------------------------------------
@@ -204,8 +218,10 @@ void Load(bool forceReload)
             // Store the title ID
             sTitles[sTitleCount].titleId = titleId;
 
-            // Get the human-readable name
-            getTitleNameFromSystem(titleId, sTitles[sTitleCount].name, MAX_NAME_LENGTH);
+            // Get the human-readable name and product code
+            getTitleMetadataFromSystem(titleId,
+                                       sTitles[sTitleCount].name, MAX_NAME_LENGTH,
+                                       sTitles[sTitleCount].productCode, MAX_PRODUCT_CODE);
 
             sTitleCount++;
         }
@@ -282,6 +298,46 @@ void GetNameForId(uint64_t titleId, char* outName, int maxLen)
 
     // Not in cache - query system directly
     getTitleNameFromSystem(titleId, outName, maxLen);
+}
+
+const TitleInfo* FindByProductCode(const char* productCode)
+{
+    if (!productCode || productCode[0] == '\0') {
+        return nullptr;
+    }
+
+    int searchLen = strlen(productCode);
+
+    for (int i = 0; i < sTitleCount; i++) {
+        const char* code = sTitles[i].productCode;
+        if (code[0] == '\0') continue;
+
+        int codeLen = strlen(code);
+
+        // Exact match
+        if (strcasecmp(code, productCode) == 0) {
+            return &sTitles[i];
+        }
+
+        // Partial match: GameTDB uses short IDs like "ARDE" which appear
+        // at the end of full product codes like "WUP-P-ARDE"
+        // Check if the search string matches the end of the product code
+        if (searchLen <= codeLen) {
+            const char* suffix = code + (codeLen - searchLen);
+            if (strcasecmp(suffix, productCode) == 0) {
+                return &sTitles[i];
+            }
+        }
+
+        // Also check if product code ends with search string after last hyphen
+        // e.g., searching "ARDE01" should match "WUP-P-ARDE01"
+        const char* lastHyphen = strrchr(code, '-');
+        if (lastHyphen && strcasecmp(lastHyphen + 1, productCode) == 0) {
+            return &sTitles[i];
+        }
+    }
+
+    return nullptr;
 }
 
 } // namespace Titles

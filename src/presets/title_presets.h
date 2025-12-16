@@ -10,12 +10,13 @@
  * The preset data should be stored in a JSON file on the SD card:
  *   sd:/wiiu/plugins/config/TitleSwitcher_presets.json
  *
- * Users can populate this file by:
- * 1. Using their Wii U to dump installed title IDs and names
- * 2. Cross-referencing with online databases like:
- *    - GameTDB (gametdb.com/WiiU) - has publisher, developer, release dates
- *    - GitHub: dojafoja/Wii-U-title-info-database - has title IDs and regions
- *    - WiiUBrew Title Database (wiiubrew.org/wiki/Title_database)
+ * The recommended source is GameTDB (gametdb.com/WiiU) which provides:
+ *   - Game IDs (product codes) that match the Wii U's ACPMetaXml.product_code
+ *   - Publisher, developer, release dates, genres, ratings
+ *   - Download: https://www.gametdb.com/wiiutdb.zip
+ *
+ * Use the included Python converter script to transform wiiutdb.xml to JSON:
+ *   python3 tools/convert_gametdb.py wiiutdb.xml TitleSwitcher_presets.json
  *
  * JSON SCHEMA:
  * ------------
@@ -23,8 +24,8 @@
  *   "version": 1,
  *   "titles": [
  *     {
- *       "titleId": "0005000010101000",    // Required: 16-char hex string
- *       "name": "Super Mario 3D World",   // Required: Display name
+ *       "id": "ARDE01",                    // Required: GameTDB game ID (matches product code)
+ *       "name": "Super Mario 3D World",    // Required: Display name
  *       "publisher": "Nintendo",           // Optional: Publisher name
  *       "developer": "Nintendo EAD Tokyo", // Optional: Developer name
  *       "releaseDate": "2013-11-22",       // Optional: YYYY-MM-DD or YYYY
@@ -32,33 +33,31 @@
  *       "genre": "Platformer"              // Optional: Game genre
  *     },
  *     ...
- *   ],
- *   "publishers": [                        // Optional: Publisher aliases
- *     {
- *       "name": "Nintendo",
- *       "aliases": ["Nintendo Co., Ltd.", "Nintendo of America"]
- *     }
  *   ]
  * }
+ *
+ * Note: The "id" field is the GameTDB game ID which corresponds to the last
+ * portion of the Wii U product code (e.g., "ARDE01" from "WUP-P-ARDE01").
+ * This allows automatic matching against installed titles.
  *
  * USAGE:
  * ------
  *   // Load presets from SD card
  *   TitlePresets::Load();
  *
- *   // Get metadata for a title
- *   const TitlePreset* preset = TitlePresets::GetPreset(titleId);
+ *   // Get metadata for a title by its product code (from Titles::TitleInfo)
+ *   const TitlePreset* preset = TitlePresets::GetPresetByGameId("ARDE01");
  *   if (preset) {
  *       printf("Publisher: %s\n", preset->publisher);
  *   }
  *
  *   // Get all unique publishers for category creation
- *   std::vector<std::string> publishers;
+ *   std::vector<const char*> publishers;
  *   TitlePresets::GetUniquePublishers(publishers);
  *
- *   // Get titles by publisher
- *   std::vector<uint64_t> nintendoTitles;
- *   TitlePresets::GetTitlesByPublisher("Nintendo", nintendoTitles);
+ *   // Get game IDs by publisher (can then match to installed titles)
+ *   std::vector<const char*> nintendoGames;
+ *   TitlePresets::GetGameIdsByPublisher("Nintendo", nintendoGames);
  */
 
 #pragma once
@@ -73,6 +72,7 @@ namespace TitlePresets {
 // =============================================================================
 
 // Maximum lengths for string fields
+constexpr int MAX_GAME_ID = 16;        // GameTDB game ID (e.g., "ARDE01")
 constexpr int MAX_PRESET_NAME = 128;
 constexpr int MAX_PUBLISHER_NAME = 64;
 constexpr int MAX_DEVELOPER_NAME = 64;
@@ -91,10 +91,14 @@ constexpr int PRESET_VERSION = 1;
 
 /**
  * Metadata for a single Wii U title.
+ *
+ * Titles are identified by their GameTDB game ID (product code), which
+ * can be matched against the productCode field in Titles::TitleInfo.
  */
 struct TitlePreset {
-    // The 64-bit title ID
-    uint64_t titleId;
+    // GameTDB game ID / product code (e.g., "ARDE01", "ALZE01")
+    // This matches against Titles::TitleInfo::productCode
+    char gameId[MAX_GAME_ID];
 
     // Display name of the title
     char name[MAX_PRESET_NAME];
@@ -121,7 +125,8 @@ struct TitlePreset {
     char genre[MAX_GENRE_NAME];
 
     // Default constructor
-    TitlePreset() : titleId(0), releaseYear(0), releaseMonth(0), releaseDay(0) {
+    TitlePreset() : releaseYear(0), releaseMonth(0), releaseDay(0) {
+        gameId[0] = '\0';
         name[0] = '\0';
         publisher[0] = '\0';
         developer[0] = '\0';
@@ -177,12 +182,23 @@ int GetPresetCount();
 void GetStats(PresetStats& stats);
 
 /**
- * Get preset data for a specific title.
+ * Get preset data for a title by its game ID (product code).
  *
- * @param titleId The title ID to look up
+ * This performs partial matching to support both full product codes
+ * (e.g., "WUP-P-ARDE01") and GameTDB-style IDs (e.g., "ARDE01").
+ *
+ * @param gameId The game ID or product code to look up
  * @return Pointer to preset data, or nullptr if not found
  */
-const TitlePreset* GetPreset(uint64_t titleId);
+const TitlePreset* GetPresetByGameId(const char* gameId);
+
+/**
+ * Get preset data by index (for iteration).
+ *
+ * @param index Index from 0 to GetPresetCount()-1
+ * @return Pointer to preset data, or nullptr if out of range
+ */
+const TitlePreset* GetPresetByIndex(int index);
 
 // =============================================================================
 // Query Functions - For Building Categories
@@ -229,59 +245,59 @@ int GetUniqueRegions(std::vector<const char*>& outRegions);
 int GetUniqueYears(std::vector<uint16_t>& outYears);
 
 /**
- * Get all title IDs from a specific publisher.
+ * Get all game IDs from a specific publisher.
  *
  * @param publisher Publisher name to match (case-insensitive)
- * @param outTitleIds Vector to receive matching title IDs (cleared first)
+ * @param outGameIds Vector to receive matching game IDs (cleared first)
  * @return Number of matching titles
  */
-int GetTitlesByPublisher(const char* publisher, std::vector<uint64_t>& outTitleIds);
+int GetGameIdsByPublisher(const char* publisher, std::vector<const char*>& outGameIds);
 
 /**
- * Get all title IDs from a specific developer.
+ * Get all game IDs from a specific developer.
  *
  * @param developer Developer name to match (case-insensitive)
- * @param outTitleIds Vector to receive matching title IDs (cleared first)
+ * @param outGameIds Vector to receive matching game IDs (cleared first)
  * @return Number of matching titles
  */
-int GetTitlesByDeveloper(const char* developer, std::vector<uint64_t>& outTitleIds);
+int GetGameIdsByDeveloper(const char* developer, std::vector<const char*>& outGameIds);
 
 /**
- * Get all title IDs of a specific genre.
+ * Get all game IDs of a specific genre.
  *
  * @param genre Genre name to match (case-insensitive)
- * @param outTitleIds Vector to receive matching title IDs (cleared first)
+ * @param outGameIds Vector to receive matching game IDs (cleared first)
  * @return Number of matching titles
  */
-int GetTitlesByGenre(const char* genre, std::vector<uint64_t>& outTitleIds);
+int GetGameIdsByGenre(const char* genre, std::vector<const char*>& outGameIds);
 
 /**
- * Get all title IDs from a specific region.
+ * Get all game IDs from a specific region.
  *
  * @param region Region code to match (e.g., "USA", "EUR", "JPN")
- * @param outTitleIds Vector to receive matching title IDs (cleared first)
+ * @param outGameIds Vector to receive matching game IDs (cleared first)
  * @return Number of matching titles
  */
-int GetTitlesByRegion(const char* region, std::vector<uint64_t>& outTitleIds);
+int GetGameIdsByRegion(const char* region, std::vector<const char*>& outGameIds);
 
 /**
- * Get all title IDs released in a specific year.
+ * Get all game IDs released in a specific year.
  *
  * @param year Release year to match
- * @param outTitleIds Vector to receive matching title IDs (cleared first)
+ * @param outGameIds Vector to receive matching game IDs (cleared first)
  * @return Number of matching titles
  */
-int GetTitlesByYear(uint16_t year, std::vector<uint64_t>& outTitleIds);
+int GetGameIdsByYear(uint16_t year, std::vector<const char*>& outGameIds);
 
 /**
- * Get all title IDs released in a year range.
+ * Get all game IDs released in a year range.
  *
  * @param startYear Start of range (inclusive)
  * @param endYear End of range (inclusive)
- * @param outTitleIds Vector to receive matching title IDs (cleared first)
+ * @param outGameIds Vector to receive matching game IDs (cleared first)
  * @return Number of matching titles
  */
-int GetTitlesByYearRange(uint16_t startYear, uint16_t endYear, std::vector<uint64_t>& outTitleIds);
+int GetGameIdsByYearRange(uint16_t startYear, uint16_t endYear, std::vector<const char*>& outGameIds);
 
 // =============================================================================
 // Category Generation Helpers

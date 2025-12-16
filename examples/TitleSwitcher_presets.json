@@ -2,7 +2,7 @@
   "version": 1,
   "titles": [
     {
-      "titleId": "0005000010101000",
+      "id": "ARDP01",
       "name": "Super Mario 3D World",
       "publisher": "Nintendo",
       "developer": "Nintendo EAD Tokyo",
@@ -11,7 +11,7 @@
       "genre": "Platformer"
     },
     {
-      "titleId": "0005000010101100",
+      "id": "ARDF01",
       "name": "Super Mario 3D World",
       "publisher": "Nintendo",
       "developer": "Nintendo EAD Tokyo",
@@ -20,7 +20,7 @@
       "genre": "Platformer"
     },
     {
-      "titleId": "0005000010143500",
+      "id": "AMKE01",
       "name": "Mario Kart 8",
       "publisher": "Nintendo",
       "developer": "Nintendo EAD",
@@ -29,7 +29,7 @@
       "genre": "Racing"
     },
     {
-      "titleId": "0005000010143600",
+      "id": "AMKP01",
       "name": "Mario Kart 8",
       "publisher": "Nintendo",
       "developer": "Nintendo EAD",
@@ -38,7 +38,7 @@
       "genre": "Racing"
     },
     {
-      "titleId": "00050000101C9300",
+      "id": "ALZE01",
       "name": "The Legend of Zelda: Breath of the Wild",
       "publisher": "Nintendo",
       "developer": "Nintendo EPD",
@@ -47,7 +47,7 @@
       "genre": "Action-Adventure"
     },
     {
-      "titleId": "00050000101C9400",
+      "id": "ALZP01",
       "name": "The Legend of Zelda: Breath of the Wild",
       "publisher": "Nintendo",
       "developer": "Nintendo EPD",
@@ -56,7 +56,7 @@
       "genre": "Action-Adventure"
     },
     {
-      "titleId": "0005000010145D00",
+      "id": "AGME01",
       "name": "Splatoon",
       "publisher": "Nintendo",
       "developer": "Nintendo EAD",
@@ -65,7 +65,7 @@
       "genre": "Shooter"
     },
     {
-      "titleId": "0005000010176900",
+      "id": "AXFE01",
       "name": "Super Smash Bros. for Wii U",
       "publisher": "Nintendo",
       "developer": "Bandai Namco Studios",
@@ -74,7 +74,7 @@
       "genre": "Fighting"
     },
     {
-      "titleId": "0005000010176A00",
+      "id": "AXFP01",
       "name": "Super Smash Bros. for Wii U",
       "publisher": "Nintendo",
       "developer": "Bandai Namco Studios",
@@ -83,7 +83,7 @@
       "genre": "Fighting"
     },
     {
-      "titleId": "000500001010EC00",
+      "id": "ARPE01",
       "name": "New Super Mario Bros. U",
       "publisher": "Nintendo",
       "developer": "Nintendo EAD",
@@ -92,7 +92,7 @@
       "genre": "Platformer"
     },
     {
-      "titleId": "000500001010ED00",
+      "id": "ARPP01",
       "name": "New Super Mario Bros. U",
       "publisher": "Nintendo",
       "developer": "Nintendo EAD",
@@ -101,7 +101,7 @@
       "genre": "Platformer"
     },
     {
-      "titleId": "0005000010116100",
+      "id": "ALCE01",
       "name": "Nintendo Land",
       "publisher": "Nintendo",
       "developer": "Nintendo EAD",
@@ -110,7 +110,7 @@
       "genre": "Party"
     },
     {
-      "titleId": "000500001014B700",
+      "id": "AQUE01",
       "name": "Bayonetta 2",
       "publisher": "Nintendo",
       "developer": "Platinum Games",
@@ -119,7 +119,7 @@
       "genre": "Action"
     },
     {
-      "titleId": "000500001014B800",
+      "id": "AQUP01",
       "name": "Bayonetta 2",
       "publisher": "Nintendo",
       "developer": "Platinum Games",
@@ -128,7 +128,7 @@
       "genre": "Action"
     },
     {
-      "titleId": "0005000010172600",
+      "id": "AKNE01",
       "name": "Donkey Kong Country: Tropical Freeze",
       "publisher": "Nintendo",
       "developer": "Retro Studios",
@@ -137,7 +137,7 @@
       "genre": "Platformer"
     },
     {
-      "titleId": "0005000010137F00",
+      "id": "AC3E01",
       "name": "Pikmin 3",
       "publisher": "Nintendo",
       "developer": "Nintendo EAD",
@@ -146,7 +146,7 @@
       "genre": "Strategy"
     },
     {
-      "titleId": "00050000101B0700",
+      "id": "AX5E01",
       "name": "Xenoblade Chronicles X",
       "publisher": "Nintendo",
       "developer": "Monolith Soft",
@@ -155,7 +155,7 @@
       "genre": "RPG"
     },
     {
-      "titleId": "00050000101B0800",
+      "id": "AX5P01",
       "name": "Xenoblade Chronicles X",
       "publisher": "Nintendo",
       "developer": "Monolith Soft",
@@ -164,7 +164,7 @@
       "genre": "RPG"
     },
     {
-      "titleId": "0005000010180600",
+      "id": "AKBE01",
       "name": "Captain Toad: Treasure Tracker",
       "publisher": "Nintendo",
       "developer": "Nintendo EAD Tokyo",
@@ -173,7 +173,7 @@
       "genre": "Puzzle"
     },
     {
-      "titleId": "0005000010180700",
+      "id": "AKBP01",
       "name": "Captain Toad: Treasure Tracker",
       "publisher": "Nintendo",
       "developer": "Nintendo EAD Tokyo",
@@ -182,7 +182,7 @@
       "genre": "Puzzle"
     },
     {
-      "titleId": "0005000010199500",
+      "id": "AYWE01",
       "name": "Yoshi's Woolly World",
       "publisher": "Nintendo",
       "developer": "Good-Feel",
@@ -191,7 +191,7 @@
       "genre": "Platformer"
     },
     {
-      "titleId": "0005000010162B00",
+      "id": "BWPE01",
       "name": "Hyrule Warriors",
       "publisher": "Nintendo",
       "developer": "Omega Force",
@@ -200,7 +200,7 @@
       "genre": "Action"
     },
     {
-      "titleId": "000500001019E500",
+      "id": "AFXE01",
       "name": "Star Fox Zero",
       "publisher": "Nintendo",
       "developer": "Platinum Games",
@@ -209,7 +209,7 @@
       "genre": "Shooter"
     },
     {
-      "titleId": "0005000010195E00",
+      "id": "ASEE01",
       "name": "Tokyo Mirage Sessions #FE",
       "publisher": "Nintendo",
       "developer": "Atlus",
@@ -218,7 +218,7 @@
       "genre": "RPG"
     },
     {
-      "titleId": "0005000010110E00",
+      "id": "AMHE01",
       "name": "Monster Hunter 3 Ultimate",
       "publisher": "Capcom",
       "developer": "Capcom",
@@ -227,7 +227,7 @@
       "genre": "Action-RPG"
     },
     {
-      "titleId": "0005000010110F00",
+      "id": "AMHP01",
       "name": "Monster Hunter 3 Ultimate",
       "publisher": "Capcom",
       "developer": "Capcom",
@@ -236,7 +236,7 @@
       "genre": "Action-RPG"
     },
     {
-      "titleId": "0005000010175B00",
+      "id": "ABTE01",
       "name": "Sonic Boom: Rise of Lyric",
       "publisher": "Sega",
       "developer": "Big Red Button",
@@ -245,7 +245,7 @@
       "genre": "Action-Adventure"
     },
     {
-      "titleId": "0005000010157F00",
+      "id": "ASNE01",
       "name": "Sonic Lost World",
       "publisher": "Sega",
       "developer": "Sonic Team",
@@ -254,7 +254,7 @@
       "genre": "Platformer"
     },
     {
-      "titleId": "00050000101A1E00",
+      "id": "ALCE41",
       "name": "LEGO City Undercover",
       "publisher": "Warner Bros. Interactive",
       "developer": "TT Fusion",
@@ -263,7 +263,7 @@
       "genre": "Action-Adventure"
     },
     {
-      "titleId": "0005000010144000",
+      "id": "ACME01",
       "name": "The Wonderful 101",
       "publisher": "Nintendo",
       "developer": "Platinum Games",
@@ -272,7 +272,7 @@
       "genre": "Action"
     },
     {
-      "titleId": "0005000010144100",
+      "id": "ACMP01",
       "name": "The Wonderful 101",
       "publisher": "Nintendo",
       "developer": "Platinum Games",
@@ -281,7 +281,7 @@
       "genre": "Action"
     },
     {
-      "titleId": "0005000010132400",
+      "id": "ALME01",
       "name": "LEGO Marvel Super Heroes",
       "publisher": "Warner Bros. Interactive",
       "developer": "TT Games",
@@ -290,7 +290,7 @@
       "genre": "Action-Adventure"
     },
     {
-      "titleId": "0005000010139500",
+      "id": "AS4E41",
       "name": "Assassin's Creed IV: Black Flag",
       "publisher": "Ubisoft",
       "developer": "Ubisoft Montreal",
@@ -299,7 +299,7 @@
       "genre": "Action-Adventure"
     },
     {
-      "titleId": "0005000010128E00",
+      "id": "ARYE41",
       "name": "Rayman Legends",
       "publisher": "Ubisoft",
       "developer": "Ubisoft Montpellier",
@@ -308,7 +308,7 @@
       "genre": "Platformer"
     },
     {
-      "titleId": "0005000010128F00",
+      "id": "ARYP41",
       "name": "Rayman Legends",
       "publisher": "Ubisoft",
       "developer": "Ubisoft Montpellier",
@@ -317,7 +317,7 @@
       "genre": "Platformer"
     },
     {
-      "titleId": "000500001012BE00",
+      "id": "AZUE41",
       "name": "ZombiU",
       "publisher": "Ubisoft",
       "developer": "Ubisoft Montpellier",
@@ -326,7 +326,7 @@
       "genre": "Survival Horror"
     },
     {
-      "titleId": "000500001012BF00",
+      "id": "AZUP41",
       "name": "ZombiU",
       "publisher": "Ubisoft",
       "developer": "Ubisoft Montpellier",
@@ -335,7 +335,7 @@
       "genre": "Survival Horror"
     },
     {
-      "titleId": "0005000010185200",
+      "id": "WSKE8P",
       "name": "Shovel Knight",
       "publisher": "Yacht Club Games",
       "developer": "Yacht Club Games",
@@ -344,7 +344,7 @@
       "genre": "Platformer"
     },
     {
-      "titleId": "0005000010195C00",
+      "id": "CNSE01",
       "name": "Paper Mario: Color Splash",
       "publisher": "Nintendo",
       "developer": "Intelligent Systems",
@@ -353,7 +353,7 @@
       "genre": "Action-RPG"
     },
     {
-      "titleId": "0005000010195D00",
+      "id": "CNSP01",
       "name": "Paper Mario: Color Splash",
       "publisher": "Nintendo",
       "developer": "Intelligent Systems",
