@@ -1,0 +1,365 @@
+{
+  "version": 1,
+  "titles": [
+    {
+      "titleId": "0005000010101000",
+      "name": "Super Mario 3D World",
+      "publisher": "Nintendo",
+      "developer": "Nintendo EAD Tokyo",
+      "releaseDate": "2013-11-22",
+      "region": "USA",
+      "genre": "Platformer"
+    },
+    {
+      "titleId": "0005000010101100",
+      "name": "Super Mario 3D World",
+      "publisher": "Nintendo",
+      "developer": "Nintendo EAD Tokyo",
+      "releaseDate": "2013-11-29",
+      "region": "EUR",
+      "genre": "Platformer"
+    },
+    {
+      "titleId": "0005000010143500",
+      "name": "Mario Kart 8",
+      "publisher": "Nintendo",
+      "developer": "Nintendo EAD",
+      "releaseDate": "2014-05-30",
+      "region": "USA",
+      "genre": "Racing"
+    },
+    {
+      "titleId": "0005000010143600",
+      "name": "Mario Kart 8",
+      "publisher": "Nintendo",
+      "developer": "Nintendo EAD",
+      "releaseDate": "2014-05-30",
+      "region": "EUR",
+      "genre": "Racing"
+    },
+    {
+      "titleId": "00050000101C9300",
+      "name": "The Legend of Zelda: Breath of the Wild",
+      "publisher": "Nintendo",
+      "developer": "Nintendo EPD",
+      "releaseDate": "2017-03-03",
+      "region": "USA",
+      "genre": "Action-Adventure"
+    },
+    {
+      "titleId": "00050000101C9400",
+      "name": "The Legend of Zelda: Breath of the Wild",
+      "publisher": "Nintendo",
+      "developer": "Nintendo EPD",
+      "releaseDate": "2017-03-03",
+      "region": "EUR",
+      "genre": "Action-Adventure"
+    },
+    {
+      "titleId": "0005000010145D00",
+      "name": "Splatoon",
+      "publisher": "Nintendo",
+      "developer": "Nintendo EAD",
+      "releaseDate": "2015-05-29",
+      "region": "USA",
+      "genre": "Shooter"
+    },
+    {
+      "titleId": "0005000010176900",
+      "name": "Super Smash Bros. for Wii U",
+      "publisher": "Nintendo",
+      "developer": "Bandai Namco Studios",
+      "releaseDate": "2014-11-21",
+      "region": "USA",
+      "genre": "Fighting"
+    },
+    {
+      "titleId": "0005000010176A00",
+      "name": "Super Smash Bros. for Wii U",
+      "publisher": "Nintendo",
+      "developer": "Bandai Namco Studios",
+      "releaseDate": "2014-11-28",
+      "region": "EUR",
+      "genre": "Fighting"
+    },
+    {
+      "titleId": "000500001010EC00",
+      "name": "New Super Mario Bros. U",
+      "publisher": "Nintendo",
+      "developer": "Nintendo EAD",
+      "releaseDate": "2012-11-18",
+      "region": "USA",
+      "genre": "Platformer"
+    },
+    {
+      "titleId": "000500001010ED00",
+      "name": "New Super Mario Bros. U",
+      "publisher": "Nintendo",
+      "developer": "Nintendo EAD",
+      "releaseDate": "2012-11-30",
+      "region": "EUR",
+      "genre": "Platformer"
+    },
+    {
+      "titleId": "0005000010116100",
+      "name": "Nintendo Land",
+      "publisher": "Nintendo",
+      "developer": "Nintendo EAD",
+      "releaseDate": "2012-11-18",
+      "region": "USA",
+      "genre": "Party"
+    },
+    {
+      "titleId": "000500001014B700",
+      "name": "Bayonetta 2",
+      "publisher": "Nintendo",
+      "developer": "Platinum Games",
+      "releaseDate": "2014-10-24",
+      "region": "USA",
+      "genre": "Action"
+    },
+    {
+      "titleId": "000500001014B800",
+      "name": "Bayonetta 2",
+      "publisher": "Nintendo",
+      "developer": "Platinum Games",
+      "releaseDate": "2014-10-24",
+      "region": "EUR",
+      "genre": "Action"
+    },
+    {
+      "titleId": "0005000010172600",
+      "name": "Donkey Kong Country: Tropical Freeze",
+      "publisher": "Nintendo",
+      "developer": "Retro Studios",
+      "releaseDate": "2014-02-21",
+      "region": "USA",
+      "genre": "Platformer"
+    },
+    {
+      "titleId": "0005000010137F00",
+      "name": "Pikmin 3",
+      "publisher": "Nintendo",
+      "developer": "Nintendo EAD",
+      "releaseDate": "2013-08-04",
+      "region": "USA",
+      "genre": "Strategy"
+    },
+    {
+      "titleId": "00050000101B0700",
+      "name": "Xenoblade Chronicles X",
+      "publisher": "Nintendo",
+      "developer": "Monolith Soft",
+      "releaseDate": "2015-12-04",
+      "region": "USA",
+      "genre": "RPG"
+    },
+    {
+      "titleId": "00050000101B0800",
+      "name": "Xenoblade Chronicles X",
+      "publisher": "Nintendo",
+      "developer": "Monolith Soft",
+      "releaseDate": "2015-12-04",
+      "region": "EUR",
+      "genre": "RPG"
+    },
+    {
+      "titleId": "0005000010180600",
+      "name": "Captain Toad: Treasure Tracker",
+      "publisher": "Nintendo",
+      "developer": "Nintendo EAD Tokyo",
+      "releaseDate": "2014-12-05",
+      "region": "USA",
+      "genre": "Puzzle"
+    },
+    {
+      "titleId": "0005000010180700",
+      "name": "Captain Toad: Treasure Tracker",
+      "publisher": "Nintendo",
+      "developer": "Nintendo EAD Tokyo",
+      "releaseDate": "2015-01-09",
+      "region": "EUR",
+      "genre": "Puzzle"
+    },
+    {
+      "titleId": "0005000010199500",
+      "name": "Yoshi's Woolly World",
+      "publisher": "Nintendo",
+      "developer": "Good-Feel",
+      "releaseDate": "2015-10-16",
+      "region": "USA",
+      "genre": "Platformer"
+    },
+    {
+      "titleId": "0005000010162B00",
+      "name": "Hyrule Warriors",
+      "publisher": "Nintendo",
+      "developer": "Omega Force",
+      "releaseDate": "2014-09-26",
+      "region": "USA",
+      "genre": "Action"
+    },
+    {
+      "titleId": "000500001019E500",
+      "name": "Star Fox Zero",
+      "publisher": "Nintendo",
+      "developer": "Platinum Games",
+      "releaseDate": "2016-04-22",
+      "region": "USA",
+      "genre": "Shooter"
+    },
+    {
+      "titleId": "0005000010195E00",
+      "name": "Tokyo Mirage Sessions #FE",
+      "publisher": "Nintendo",
+      "developer": "Atlus",
+      "releaseDate": "2016-06-24",
+      "region": "USA",
+      "genre": "RPG"
+    },
+    {
+      "titleId": "0005000010110E00",
+      "name": "Monster Hunter 3 Ultimate",
+      "publisher": "Capcom",
+      "developer": "Capcom",
+      "releaseDate": "2013-03-19",
+      "region": "USA",
+      "genre": "Action-RPG"
+    },
+    {
+      "titleId": "0005000010110F00",
+      "name": "Monster Hunter 3 Ultimate",
+      "publisher": "Capcom",
+      "developer": "Capcom",
+      "releaseDate": "2013-03-22",
+      "region": "EUR",
+      "genre": "Action-RPG"
+    },
+    {
+      "titleId": "0005000010175B00",
+      "name": "Sonic Boom: Rise of Lyric",
+      "publisher": "Sega",
+      "developer": "Big Red Button",
+      "releaseDate": "2014-11-11",
+      "region": "USA",
+      "genre": "Action-Adventure"
+    },
+    {
+      "titleId": "0005000010157F00",
+      "name": "Sonic Lost World",
+      "publisher": "Sega",
+      "developer": "Sonic Team",
+      "releaseDate": "2013-10-29",
+      "region": "USA",
+      "genre": "Platformer"
+    },
+    {
+      "titleId": "00050000101A1E00",
+      "name": "LEGO City Undercover",
+      "publisher": "Warner Bros. Interactive",
+      "developer": "TT Fusion",
+      "releaseDate": "2013-03-18",
+      "region": "USA",
+      "genre": "Action-Adventure"
+    },
+    {
+      "titleId": "0005000010144000",
+      "name": "The Wonderful 101",
+      "publisher": "Nintendo",
+      "developer": "Platinum Games",
+      "releaseDate": "2013-09-15",
+      "region": "USA",
+      "genre": "Action"
+    },
+    {
+      "titleId": "0005000010144100",
+      "name": "The Wonderful 101",
+      "publisher": "Nintendo",
+      "developer": "Platinum Games",
+      "releaseDate": "2013-08-23",
+      "region": "EUR",
+      "genre": "Action"
+    },
+    {
+      "titleId": "0005000010132400",
+      "name": "LEGO Marvel Super Heroes",
+      "publisher": "Warner Bros. Interactive",
+      "developer": "TT Games",
+      "releaseDate": "2013-10-22",
+      "region": "USA",
+      "genre": "Action-Adventure"
+    },
+    {
+      "titleId": "0005000010139500",
+      "name": "Assassin's Creed IV: Black Flag",
+      "publisher": "Ubisoft",
+      "developer": "Ubisoft Montreal",
+      "releaseDate": "2013-10-29",
+      "region": "USA",
+      "genre": "Action-Adventure"
+    },
+    {
+      "titleId": "0005000010128E00",
+      "name": "Rayman Legends",
+      "publisher": "Ubisoft",
+      "developer": "Ubisoft Montpellier",
+      "releaseDate": "2013-09-03",
+      "region": "USA",
+      "genre": "Platformer"
+    },
+    {
+      "titleId": "0005000010128F00",
+      "name": "Rayman Legends",
+      "publisher": "Ubisoft",
+      "developer": "Ubisoft Montpellier",
+      "releaseDate": "2013-08-30",
+      "region": "EUR",
+      "genre": "Platformer"
+    },
+    {
+      "titleId": "000500001012BE00",
+      "name": "ZombiU",
+      "publisher": "Ubisoft",
+      "developer": "Ubisoft Montpellier",
+      "releaseDate": "2012-11-18",
+      "region": "USA",
+      "genre": "Survival Horror"
+    },
+    {
+      "titleId": "000500001012BF00",
+      "name": "ZombiU",
+      "publisher": "Ubisoft",
+      "developer": "Ubisoft Montpellier",
+      "releaseDate": "2012-11-30",
+      "region": "EUR",
+      "genre": "Survival Horror"
+    },
+    {
+      "titleId": "0005000010185200",
+      "name": "Shovel Knight",
+      "publisher": "Yacht Club Games",
+      "developer": "Yacht Club Games",
+      "releaseDate": "2015-04-02",
+      "region": "USA",
+      "genre": "Platformer"
+    },
+    {
+      "titleId": "0005000010195C00",
+      "name": "Paper Mario: Color Splash",
+      "publisher": "Nintendo",
+      "developer": "Intelligent Systems",
+      "releaseDate": "2016-10-07",
+      "region": "USA",
+      "genre": "Action-RPG"
+    },
+    {
+      "titleId": "0005000010195D00",
+      "name": "Paper Mario: Color Splash",
+      "publisher": "Nintendo",
+      "developer": "Intelligent Systems",
+      "releaseDate": "2016-10-07",
+      "region": "EUR",
+      "genre": "Action-RPG"
+    }
+  ]
+}
