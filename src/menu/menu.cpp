@@ -6,7 +6,7 @@
 
 #include "menu.h"
 #include "categories.h"
-#include "../render/screen.h"
+#include "../render/renderer.h"
 #include "../input/buttons.h"
 #include "../input/text_input.h"
 #include "../titles/titles.h"
@@ -126,12 +126,12 @@ void drawCategoryBar()
             snprintf(line, sizeof(line), " %s  ", name);
         }
 
-        Screen::DrawText(col, CATEGORY_ROW, line);
+        Renderer::DrawText(col, CATEGORY_ROW, line);
         col += strlen(line);
     }
 
     // Draw category navigation hint on the right
-    Screen::DrawText(50, CATEGORY_ROW, "ZL/ZR: Categories");
+    Renderer::DrawText(50, CATEGORY_ROW, "ZL/ZR: Categories");
 }
 
 /**
@@ -141,7 +141,7 @@ void drawDivider()
 {
     // Draw vertical bar from list start to footer (not in header)
     for (int row = LIST_START_ROW; row < FOOTER_ROW; row++) {
-        Screen::DrawText(DIVIDER_COL, row, "|");
+        Renderer::DrawText(DIVIDER_COL, row, "|");
     }
 }
 
@@ -153,7 +153,7 @@ void drawTitleList()
     int count = Categories::GetFilteredCount();
 
     if (count == 0) {
-        Screen::DrawText(2, LIST_START_ROW + 2, "No titles in this category");
+        Renderer::DrawText(2, LIST_START_ROW + 2, "No titles in this category");
         return;
     }
 
@@ -194,15 +194,15 @@ void drawTitleList()
                      cursor, favMark, maxNameLen, displayName);
         }
 
-        Screen::DrawText(LIST_START_COL, LIST_START_ROW + i, line);
+        Renderer::DrawText(LIST_START_COL, LIST_START_ROW + i, line);
     }
 
     // Scroll indicators
     if (sScrollOffset > 0) {
-        Screen::DrawText(LIST_WIDTH - 4, LIST_START_ROW, "[UP]");
+        Renderer::DrawText(LIST_WIDTH - 4, LIST_START_ROW, "[UP]");
     }
     if (sScrollOffset + VISIBLE_ROWS < count) {
-        Screen::DrawText(LIST_WIDTH - 6, LIST_START_ROW + VISIBLE_ROWS - 1, "[DOWN]");
+        Renderer::DrawText(LIST_WIDTH - 6, LIST_START_ROW + VISIBLE_ROWS - 1, "[DOWN]");
     }
 }
 
@@ -220,42 +220,42 @@ void drawDetailsPanel()
     if (!title) return;
 
     // Title name (full, may wrap)
-    Screen::DrawText(DETAILS_START_COL, LIST_START_ROW, title->name);
+    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW, title->name);
 
     // Divider
-    Screen::DrawText(DETAILS_START_COL, LIST_START_ROW + 1, "------------------------");
+    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 1, "------------------------");
 
     // Title ID
     char idStr[32];
     snprintf(idStr, sizeof(idStr), "ID: %016llX",
              static_cast<unsigned long long>(title->titleId));
-    Screen::DrawText(DETAILS_START_COL, LIST_START_ROW + 3, idStr);
+    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 3, idStr);
 
     // Favorite status
     const char* favStatus = Settings::IsFavorite(title->titleId) ? "Yes" : "No";
-    Screen::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 4, "Favorite: %s", favStatus);
+    Renderer::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 4, "Favorite: %s", favStatus);
 
     // Categories this title belongs to
-    Screen::DrawText(DETAILS_START_COL, LIST_START_ROW + 6, "Categories:");
+    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 6, "Categories:");
 
     uint16_t catIds[Settings::MAX_CATEGORIES];
     int catCount = Settings::GetCategoriesForTitle(title->titleId, catIds, Settings::MAX_CATEGORIES);
 
     if (catCount == 0) {
-        Screen::DrawText(DETAILS_START_COL + 2, LIST_START_ROW + 7, "(none)");
+        Renderer::DrawText(DETAILS_START_COL + 2, LIST_START_ROW + 7, "(none)");
     } else {
         int row = LIST_START_ROW + 7;
         for (int i = 0; i < catCount && row < FOOTER_ROW - 2; i++) {
             const Settings::Category* cat = Settings::GetCategory(catIds[i]);
             if (cat) {
-                Screen::DrawTextF(DETAILS_START_COL + 2, row, "- %s", cat->name);
+                Renderer::DrawTextF(DETAILS_START_COL + 2, row, "- %s", cat->name);
                 row++;
             }
         }
     }
 
     // Action hints
-    Screen::DrawText(DETAILS_START_COL, FOOTER_ROW - 2, "X: Edit Title");
+    Renderer::DrawText(DETAILS_START_COL, FOOTER_ROW - 2, "X: Edit Title");
 }
 
 /**
@@ -276,7 +276,7 @@ void drawFooter()
              sSelectedIndex + 1,
              count);
 
-    Screen::DrawText(0, FOOTER_ROW, footer);
+    Renderer::DrawText(0, FOOTER_ROW, footer);
 }
 
 /**
@@ -285,7 +285,7 @@ void drawFooter()
 void renderBrowseMode()
 {
     drawCategoryBar();
-    Screen::DrawText(0, HEADER_ROW, "------------------------------------------------------------");
+    Renderer::DrawText(0, HEADER_ROW, "------------------------------------------------------------");
     drawDivider();
     drawTitleList();
     drawDetailsPanel();
@@ -402,39 +402,39 @@ void renderEditMode()
     // Get the title being edited
     const Titles::TitleInfo* title = Categories::GetFilteredTitle(sSelectedIndex);
     if (!title) {
-        Screen::DrawText(0, 0, "Error: No title selected");
+        Renderer::DrawText(0, 0, "Error: No title selected");
         return;
     }
 
     // --- Header ---
-    Screen::DrawText(0, 0, "EDIT TITLE CATEGORIES");
-    Screen::DrawText(0, HEADER_ROW, "------------------------------------------------------------");
+    Renderer::DrawText(0, 0, "EDIT TITLE CATEGORIES");
+    Renderer::DrawText(0, HEADER_ROW, "------------------------------------------------------------");
 
     // --- Left side: Title info (abbreviated) ---
     char nameLine[32];
     strncpy(nameLine, title->name, 28);
     nameLine[28] = '\0';
-    Screen::DrawTextF(0, LIST_START_ROW, "> %s", nameLine);
+    Renderer::DrawTextF(0, LIST_START_ROW, "> %s", nameLine);
 
     // Show title ID
-    Screen::DrawTextF(0, LIST_START_ROW + 2, "ID: %016llX",
+    Renderer::DrawTextF(0, LIST_START_ROW + 2, "ID: %016llX",
                       static_cast<unsigned long long>(title->titleId));
 
     // --- Divider ---
     drawDivider();
 
     // --- Right side: Category checkboxes ---
-    Screen::DrawText(DETAILS_START_COL, LIST_START_ROW, "Categories:");
-    Screen::DrawText(DETAILS_START_COL, LIST_START_ROW + 1, "------------");
+    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW, "Categories:");
+    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 1, "------------");
 
     // Get user-defined categories
     int catCount = Settings::GetCategoryCount();
     const auto& categories = Settings::Get().categories;
 
     if (catCount == 0) {
-        Screen::DrawText(DETAILS_START_COL, LIST_START_ROW + 3,
+        Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 3,
                          "No categories defined.");
-        Screen::DrawText(DETAILS_START_COL, LIST_START_ROW + 4,
+        Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 4,
                          "Create in Settings (+)");
     } else {
         // Calculate visible rows for categories
@@ -471,16 +471,16 @@ void renderEditMode()
             const char* cursor = (idx == sEditCategoryIndex) ? ">" : " ";
             const char* checkbox = inCategory ? "[X]" : "[ ]";
 
-            Screen::DrawTextF(DETAILS_START_COL, startRow + i,
+            Renderer::DrawTextF(DETAILS_START_COL, startRow + i,
                               "%s %s %s", cursor, checkbox, cat.name);
         }
 
         // Scroll indicators
         if (sEditCategoryScroll > 0) {
-            Screen::DrawText(DETAILS_START_COL + 20, startRow, "[UP]");
+            Renderer::DrawText(DETAILS_START_COL + 20, startRow, "[UP]");
         }
         if (sEditCategoryScroll + CAT_VISIBLE_ROWS < catCount) {
-            Screen::DrawText(DETAILS_START_COL + 18, startRow + CAT_VISIBLE_ROWS - 1, "[DOWN]");
+            Renderer::DrawText(DETAILS_START_COL + 18, startRow + CAT_VISIBLE_ROWS - 1, "[DOWN]");
         }
     }
 
@@ -492,7 +492,7 @@ void renderEditMode()
              Buttons::Actions::CANCEL.label,
              sEditCategoryIndex + 1,
              catCount > 0 ? catCount : 1);
-    Screen::DrawText(0, FOOTER_ROW, footer);
+    Renderer::DrawText(0, FOOTER_ROW, footer);
 }
 
 /**
@@ -606,8 +606,8 @@ void renderSettingsMain()
     auto& settings = Settings::Get();
 
     // --- Header ---
-    Screen::DrawText(0, 0, "SETTINGS");
-    Screen::DrawText(0, HEADER_ROW, "------------------------------------------------------------");
+    Renderer::DrawText(0, 0, "SETTINGS");
+    Renderer::DrawText(0, HEADER_ROW, "------------------------------------------------------------");
 
     // --- Divider ---
     drawDivider();
@@ -618,25 +618,25 @@ void renderSettingsMain()
 
     // 0: Show Numbers
     cursor = (sSettingsIndex == 0) ? ">" : " ";
-    Screen::DrawTextF(0, row++, "%s Show Numbers: %s", cursor,
+    Renderer::DrawTextF(0, row++, "%s Show Numbers: %s", cursor,
                       settings.showNumbers ? "ON" : "OFF");
 
     // 1-6: Colors
     for (int i = 1; i <= 6; i++) {
         cursor = (sSettingsIndex == i) ? ">" : " ";
         uint32_t* color = getColorByIndex(i);
-        Screen::DrawTextF(0, row++, "%s %s: %08X", cursor,
+        Renderer::DrawTextF(0, row++, "%s %s: %08X", cursor,
                           getColorName(i), *color);
     }
 
     // 7: Manage Categories
     cursor = (sSettingsIndex == 7) ? ">" : " ";
-    Screen::DrawTextF(0, row++, "%s Manage Categories (%d)",
+    Renderer::DrawTextF(0, row++, "%s Manage Categories (%d)",
                       cursor, Settings::GetCategoryCount());
 
     // --- Right side: Description ---
-    Screen::DrawText(DETAILS_START_COL, LIST_START_ROW, "Description:");
-    Screen::DrawText(DETAILS_START_COL, LIST_START_ROW + 1, "------------");
+    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW, "Description:");
+    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 1, "------------");
 
     // Show description for selected item
     const char* desc = getSettingDescription(sSettingsIndex);
@@ -654,20 +654,20 @@ void renderSettingsMain()
         strncpy(line1, desc, 30);
     }
 
-    Screen::DrawText(DETAILS_START_COL, LIST_START_ROW + 3, line1);
-    Screen::DrawText(DETAILS_START_COL, LIST_START_ROW + 4, line2);
+    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 3, line1);
+    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 4, line2);
 
     // Show current value preview for colors
     if (sSettingsIndex >= 1 && sSettingsIndex <= 6) {
-        Screen::DrawText(DETAILS_START_COL, LIST_START_ROW + 6, "Press A to edit");
+        Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 6, "Press A to edit");
     } else if (sSettingsIndex == 0) {
-        Screen::DrawText(DETAILS_START_COL, LIST_START_ROW + 6, "Press A to toggle");
+        Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 6, "Press A to toggle");
     } else if (sSettingsIndex == 7) {
-        Screen::DrawText(DETAILS_START_COL, LIST_START_ROW + 6, "Press A to open");
+        Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 6, "Press A to open");
     }
 
     // --- Footer ---
-    Screen::DrawTextF(0, FOOTER_ROW, "%s:Edit %s:Back  [%d/%d]",
+    Renderer::DrawTextF(0, FOOTER_ROW, "%s:Edit %s:Back  [%d/%d]",
                       Buttons::Actions::CONFIRM.label,
                       Buttons::Actions::CANCEL.label,
                       sSettingsIndex + 1, SETTINGS_ITEM_COUNT);
@@ -679,8 +679,8 @@ void renderSettingsMain()
 void renderManageCategories()
 {
     // --- Header ---
-    Screen::DrawText(0, 0, "MANAGE CATEGORIES");
-    Screen::DrawText(0, HEADER_ROW, "------------------------------------------------------------");
+    Renderer::DrawText(0, 0, "MANAGE CATEGORIES");
+    Renderer::DrawText(0, HEADER_ROW, "------------------------------------------------------------");
 
     // --- Divider ---
     drawDivider();
@@ -694,13 +694,13 @@ void renderManageCategories()
 
     // "+ Add New" always at top
     const char* cursor = (sManageCatIndex == 0) ? ">" : " ";
-    Screen::DrawTextF(0, row++, "%s + Add New Category", cursor);
+    Renderer::DrawTextF(0, row++, "%s + Add New Category", cursor);
 
     row++;  // Blank line
 
     // Existing categories
     if (catCount == 0) {
-        Screen::DrawText(2, row, "(No categories)");
+        Renderer::DrawText(2, row, "(No categories)");
     } else {
         // Clamp scroll and selection
         if (sManageCatScroll > catCount - CAT_VISIBLE_ROWS + 2) {
@@ -720,30 +720,30 @@ void renderManageCategories()
 
             // Selection index is offset by 1
             cursor = (sManageCatIndex == idx + 1) ? ">" : " ";
-            Screen::DrawTextF(0, row + i, "%s %s", cursor, cat.name);
+            Renderer::DrawTextF(0, row + i, "%s %s", cursor, cat.name);
         }
     }
 
     // --- Right side: Actions ---
-    Screen::DrawText(DETAILS_START_COL, LIST_START_ROW, "Actions:");
-    Screen::DrawText(DETAILS_START_COL, LIST_START_ROW + 1, "--------");
+    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW, "Actions:");
+    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 1, "--------");
 
     if (sManageCatIndex == 0) {
-        Screen::DrawText(DETAILS_START_COL, LIST_START_ROW + 3, "Create a new category");
-        Screen::DrawText(DETAILS_START_COL, LIST_START_ROW + 4, "for organizing titles.");
-        Screen::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 6, "%s: Create",
+        Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 3, "Create a new category");
+        Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 4, "for organizing titles.");
+        Renderer::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 6, "%s: Create",
                           Buttons::Actions::CONFIRM.label);
     } else if (sManageCatIndex <= catCount) {
         const Settings::Category& cat = categories[sManageCatIndex - 1];
-        Screen::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 3, "Category: %s", cat.name);
-        Screen::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 5, "%s: Rename",
+        Renderer::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 3, "Category: %s", cat.name);
+        Renderer::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 5, "%s: Rename",
                           Buttons::Actions::CONFIRM.label);
-        Screen::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 6, "%s: Delete",
+        Renderer::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 6, "%s: Delete",
                           Buttons::Actions::EDIT.label);
     }
 
     // --- Footer ---
-    Screen::DrawTextF(0, FOOTER_ROW, "%s:Select %s:Back  [%d/%d]",
+    Renderer::DrawTextF(0, FOOTER_ROW, "%s:Select %s:Back  [%d/%d]",
                       Buttons::Actions::CONFIRM.label,
                       Buttons::Actions::CANCEL.label,
                       sManageCatIndex + 1, catCount + 1);
@@ -754,21 +754,21 @@ void renderManageCategories()
  */
 void renderColorInput()
 {
-    Screen::DrawText(0, 0, "EDIT COLOR");
-    Screen::DrawText(0, HEADER_ROW, "------------------------------------------------------------");
+    Renderer::DrawText(0, 0, "EDIT COLOR");
+    Renderer::DrawText(0, HEADER_ROW, "------------------------------------------------------------");
 
-    Screen::DrawTextF(0, LIST_START_ROW, "Editing: %s Color", getColorName(sEditingColorIndex));
-    Screen::DrawText(0, LIST_START_ROW + 2, "Enter RGBA hex value (8 digits):");
+    Renderer::DrawTextF(0, LIST_START_ROW, "Editing: %s Color", getColorName(sEditingColorIndex));
+    Renderer::DrawText(0, LIST_START_ROW + 2, "Enter RGBA hex value (8 digits):");
 
     // Render the input field
     sInputField.Render(0, LIST_START_ROW + 4);
 
     // Instructions
-    Screen::DrawText(0, LIST_START_ROW + 7, "Up/Down: Change character");
-    Screen::DrawTextF(0, LIST_START_ROW + 8, "%s/%s: Move cursor",
+    Renderer::DrawText(0, LIST_START_ROW + 7, "Up/Down: Change character");
+    Renderer::DrawTextF(0, LIST_START_ROW + 8, "%s/%s: Move cursor",
                       Buttons::Actions::INPUT_RIGHT.label,
                       Buttons::Actions::INPUT_LEFT.label);
-    Screen::DrawTextF(0, LIST_START_ROW + 9, "%s: Delete  %s: Confirm  %s: Cancel",
+    Renderer::DrawTextF(0, LIST_START_ROW + 9, "%s: Delete  %s: Confirm  %s: Cancel",
                       Buttons::Actions::INPUT_DELETE.label,
                       Buttons::Actions::INPUT_CONFIRM.label,
                       Buttons::Actions::INPUT_CANCEL.label);
@@ -779,24 +779,24 @@ void renderColorInput()
  */
 void renderNameInput()
 {
-    Screen::DrawText(0, 0, "CATEGORY NAME");
-    Screen::DrawText(0, HEADER_ROW, "------------------------------------------------------------");
+    Renderer::DrawText(0, 0, "CATEGORY NAME");
+    Renderer::DrawText(0, HEADER_ROW, "------------------------------------------------------------");
 
     if (sEditingCategoryId < 0) {
-        Screen::DrawText(0, LIST_START_ROW, "Enter name for new category:");
+        Renderer::DrawText(0, LIST_START_ROW, "Enter name for new category:");
     } else {
-        Screen::DrawText(0, LIST_START_ROW, "Enter new name:");
+        Renderer::DrawText(0, LIST_START_ROW, "Enter new name:");
     }
 
     // Render the input field
     sInputField.Render(0, LIST_START_ROW + 2);
 
     // Instructions
-    Screen::DrawText(0, LIST_START_ROW + 5, "Up/Down: Change character");
-    Screen::DrawTextF(0, LIST_START_ROW + 6, "%s/%s: Move cursor",
+    Renderer::DrawText(0, LIST_START_ROW + 5, "Up/Down: Change character");
+    Renderer::DrawTextF(0, LIST_START_ROW + 6, "%s/%s: Move cursor",
                       Buttons::Actions::INPUT_RIGHT.label,
                       Buttons::Actions::INPUT_LEFT.label);
-    Screen::DrawTextF(0, LIST_START_ROW + 7, "%s: Delete  %s: Confirm  %s: Cancel",
+    Renderer::DrawTextF(0, LIST_START_ROW + 7, "%s: Delete  %s: Confirm  %s: Cancel",
                       Buttons::Actions::INPUT_DELETE.label,
                       Buttons::Actions::INPUT_CONFIRM.label,
                       Buttons::Actions::INPUT_CANCEL.label);
@@ -1033,7 +1033,7 @@ uint64_t runMenuLoop()
 
     while (sIsOpen) {
         // Begin frame (waits for vsync, clears screen)
-        Screen::BeginFrame(Settings::Get().bgColor);
+        Renderer::BeginFrame(Settings::Get().bgColor);
 
         // Render based on current mode
         switch (sCurrentMode) {
@@ -1049,7 +1049,7 @@ uint64_t runMenuLoop()
         }
 
         // End frame (flush and flip)
-        Screen::EndFrame();
+        Renderer::EndFrame();
 
         // Read input
         int32_t readResult = VPADRead(VPAD_CHAN_0, &vpadStatus, 1, &vpadError);
@@ -1143,7 +1143,7 @@ void Open()
     if (sIsOpen) return;
 
     // Initialize screen rendering
-    if (!Screen::Init()) {
+    if (!Renderer::Init()) {
         // Screen init failed - can't open menu
         return;
     }
@@ -1171,7 +1171,7 @@ void Open()
 
     // Cleanup
     sIsOpen = false;
-    Screen::Shutdown();
+    Renderer::Shutdown();
 
     // Launch selected title if any
     if (titleToLaunch != 0) {

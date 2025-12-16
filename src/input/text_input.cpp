@@ -6,7 +6,7 @@
 
 #include "text_input.h"
 #include "buttons.h"
-#include "../render/screen.h"
+#include "../render/renderer.h"
 
 #include <cstring>
 
@@ -165,8 +165,8 @@ void Field::Render(int col, int row) const
     cursorLine[mMaxLength * 2 - 1] = '\0';
 
     // Render both lines
-    Screen::DrawText(col, row, displayLine);
-    Screen::DrawText(col, row + 1, cursorLine);
+    Renderer::DrawText(col, row, displayLine);
+    Renderer::DrawText(col, row + 1, cursorLine);
 }
 
 Result Field::HandleInput(uint32_t pressed, uint32_t held)
