@@ -12,7 +12,6 @@
 #include "../input/text_input.h"
 #include "../titles/titles.h"
 #include "../storage/settings.h"
-#include "../editor/pixel_editor.h"
 
 // Wii U SDK headers
 #include <vpad/input.h>           // VPADRead, VPADStatus
@@ -53,15 +52,68 @@ enum class SettingsSubMode {
     NAME_INPUT      // Editing a category name
 };
 
-constexpr int SETTINGS_ITEM_COUNT = 9;  // Number of settings items
+// =============================================================================
+// Data-Driven Settings System
+// =============================================================================
+
+enum class SettingType {
+    TOGGLE,     // Boolean on/off
+    COLOR,      // RGBA hex color
+    ACTION      // Opens a submenu or performs an action
+};
+
+enum SettingAction {
+    ACTION_MANAGE_CATEGORIES = -1
+};
+
+struct SettingItem {
+    const char* name;
+    const char* descLine1;
+    const char* descLine2;
+    SettingType type;
+    int dataOffset;  // offsetof() for TOGGLE/COLOR, action ID for ACTION
+};
+
+// Helper macros for cleaner definitions
+#define TOGGLE_SETTING(n, d1, d2, member) \
+    {n, d1, d2, SettingType::TOGGLE, (int)offsetof(Settings::PluginSettings, member)}
+#define COLOR_SETTING(n, d1, d2, member) \
+    {n, d1, d2, SettingType::COLOR, (int)offsetof(Settings::PluginSettings, member)}
+#define ACTION_SETTING(n, d1, d2, actionId) \
+    {n, d1, d2, SettingType::ACTION, actionId}
+
+// All settings defined in one place - easy to add/remove/reorder
+static const SettingItem sSettingItems[] = {
+    TOGGLE_SETTING("Show Numbers",    "Show line numbers before",    "each title in the list.",    showNumbers),
+    TOGGLE_SETTING("Show Favorites",  "Show favorite marker (*)",    "in the title list.",         showFavorites),
+    COLOR_SETTING("Background",       "Menu background color.",      "RGBA hex format.",           bgColor),
+    COLOR_SETTING("Title Text",       "Normal title text color.",    "RGBA hex format.",           titleColor),
+    COLOR_SETTING("Highlighted",      "Selected title color.",       "RGBA hex format.",           highlightedTitleColor),
+    COLOR_SETTING("Favorite",         "Favorite marker color.",      "RGBA hex format.",           favoriteColor),
+    COLOR_SETTING("Header",           "Header text color.",          "RGBA hex format.",           headerColor),
+    COLOR_SETTING("Category",         "Category tab color.",         "RGBA hex format.",           categoryColor),
+    ACTION_SETTING("Manage Categories", "Create, rename, or delete", "custom categories.",         ACTION_MANAGE_CATEGORIES),
+};
+
+static constexpr int SETTINGS_ITEM_COUNT = sizeof(sSettingItems) / sizeof(sSettingItems[0]);
 
 int sSettingsIndex = 0;              // Currently selected setting
 SettingsSubMode sSettingsSubMode = SettingsSubMode::MAIN;
 int sManageCatIndex = 0;             // Selected category in manage mode
 int sManageCatScroll = 0;            // Scroll offset in manage mode
-int sEditingColorIndex = -1;         // Which color is being edited (-1 = none)
+int sEditingSettingIndex = -1;       // Which setting is being edited (-1 = none)
 int sEditingCategoryId = -1;         // Which category is being renamed (-1 = new)
 TextInput::Field sInputField;        // Reusable text input field
+
+// Helper to get a toggle value pointer from offset
+bool* getTogglePtr(int offset) {
+    return (bool*)((char*)&Settings::Get() + offset);
+}
+
+// Helper to get a color value pointer from offset
+uint32_t* getColorPtr(int offset) {
+    return (uint32_t*)((char*)&Settings::Get() + offset);
+}
 
 // Safety tracking
 OSTime sApplicationStartTime = 0;       // When current app started
@@ -114,11 +166,16 @@ void drawCategoryBar()
     char line[80];
     int col = 0;
 
-    // Draw each category tab
+    // Draw each visible category tab
     int catCount = Categories::GetTotalCategoryCount();
     int currentCat = Categories::GetCurrentCategoryIndex();
 
     for (int i = 0; i < catCount && col < 60; i++) {
+        // Skip hidden categories
+        if (!Categories::IsCategoryVisible(i)) {
+            continue;
+        }
+
         const char* name = Categories::GetCategoryName(i);
 
         if (i == currentCat) {
@@ -171,25 +228,28 @@ void drawTitleList()
 
         char line[48];
 
-        // Check if this title is a favorite
-        bool isFav = Settings::IsFavorite(title->titleId);
-
         // Truncate name to fit
         char displayName[32];
         strncpy(displayName, title->name, maxNameLen);
         displayName[maxNameLen] = '\0';
 
-        // Format depends on showNumbers setting
-        const char* favMark = isFav ? "*" : " ";
         const char* cursor = (idx == sSelectedIndex) ? ">" : " ";
 
+        // Check if we should show favorite markers
+        bool showFavs = Settings::Get().showFavorites;
+        const char* favMark = "";
+        if (showFavs) {
+            bool isFav = Settings::IsFavorite(title->titleId);
+            favMark = isFav ? "* " : "  ";
+        }
+
         if (showNums) {
-            // Format: "> 001. * Name"
-            snprintf(line, sizeof(line), "%s%3d. %s %-*s",
+            // Format: "> 001. * Name" or "> 001. Name"
+            snprintf(line, sizeof(line), "%s%3d. %s%-*s",
                      cursor, idx + 1, favMark, maxNameLen, displayName);
         } else {
-            // Format: "> * Name" (no numbers)
-            snprintf(line, sizeof(line), "%s %s %-*s",
+            // Format: "> * Name" or "> Name"
+            snprintf(line, sizeof(line), "%s %s%-*s",
                      cursor, favMark, maxNameLen, displayName);
         }
 
@@ -225,8 +285,10 @@ void drawDetailsPanel()
     Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW, title->name);
 
     // Draw icon below title (128x128 = 2x the original 64x64)
+    // Use absolute pixel position to ensure it's on the right side of screen
     constexpr int ICON_SIZE = 128;
-    int iconX = Renderer::ColToPixelX(DETAILS_START_COL);
+    int screenWidth = Renderer::GetScreenWidth();
+    int iconX = (screenWidth / 2) + 20;  // Right half of screen, with some padding
     int iconY = Renderer::RowToPixelY(LIST_START_ROW + 1);  // Below title
 
     if (ImageLoader::IsReady(title->titleId)) {
@@ -561,64 +623,10 @@ void handleEditModeInput(uint32_t pressed)
 }
 
 /**
- * Helper: Get color pointer by index for settings editing.
- */
-uint32_t* getColorByIndex(int index)
-{
-    auto& settings = Settings::Get();
-    switch (index) {
-        case 1: return &settings.bgColor;
-        case 2: return &settings.titleColor;
-        case 3: return &settings.highlightedTitleColor;
-        case 4: return &settings.favoriteColor;
-        case 5: return &settings.headerColor;
-        case 6: return &settings.categoryColor;
-        default: return nullptr;
-    }
-}
-
-/**
- * Helper: Get color name by index.
- */
-const char* getColorName(int index)
-{
-    switch (index) {
-        case 1: return "Background";
-        case 2: return "Title Text";
-        case 3: return "Highlighted";
-        case 4: return "Favorite";
-        case 5: return "Header";
-        case 6: return "Category";
-        default: return "Unknown";
-    }
-}
-
-/**
- * Helper: Get setting description by index.
- */
-const char* getSettingDescription(int index)
-{
-    switch (index) {
-        case 0: return "Show line numbers before\neach title in the list.";
-        case 1: return "Menu background color.\nRGBA hex format.";
-        case 2: return "Normal title text color.\nRGBA hex format.";
-        case 3: return "Selected title color.\nRGBA hex format.";
-        case 4: return "Favorite marker color.\nRGBA hex format.";
-        case 5: return "Header text color.\nRGBA hex format.";
-        case 6: return "Category tab color.\nRGBA hex format.";
-        case 7: return "Create, rename, or delete\ncustom categories.";
-        case 8: return "Open the pixel editor\nto create custom graphics.";
-        default: return "";
-    }
-}
-
-/**
  * Render the main settings list.
  */
 void renderSettingsMain()
 {
-    auto& settings = Settings::Get();
-
     // --- Header ---
     Renderer::DrawText(0, 0, "SETTINGS");
     Renderer::DrawText(0, HEADER_ROW, "------------------------------------------------------------");
@@ -626,63 +634,52 @@ void renderSettingsMain()
     // --- Divider ---
     drawDivider();
 
-    // --- Left side: Settings list ---
-    const char* cursor;
+    // --- Left side: Settings list (data-driven) ---
     int row = LIST_START_ROW;
 
-    // 0: Show Numbers
-    cursor = (sSettingsIndex == 0) ? ">" : " ";
-    Renderer::DrawTextF(0, row++, "%s Show Numbers: %s", cursor,
-                      settings.showNumbers ? "ON" : "OFF");
+    for (int i = 0; i < SETTINGS_ITEM_COUNT && row < FOOTER_ROW - 1; i++) {
+        const SettingItem& item = sSettingItems[i];
+        const char* cursor = (sSettingsIndex == i) ? ">" : " ";
 
-    // 1-6: Colors
-    for (int i = 1; i <= 6; i++) {
-        cursor = (sSettingsIndex == i) ? ">" : " ";
-        uint32_t* color = getColorByIndex(i);
-        Renderer::DrawTextF(0, row++, "%s %s: %08X", cursor,
-                          getColorName(i), *color);
+        switch (item.type) {
+            case SettingType::TOGGLE: {
+                bool value = *getTogglePtr(item.dataOffset);
+                Renderer::DrawTextF(0, row++, "%s %s: %s", cursor, item.name, value ? "ON" : "OFF");
+                break;
+            }
+            case SettingType::COLOR: {
+                uint32_t value = *getColorPtr(item.dataOffset);
+                Renderer::DrawTextF(0, row++, "%s %s: %08X", cursor, item.name, value);
+                break;
+            }
+            case SettingType::ACTION: {
+                if (item.dataOffset == ACTION_MANAGE_CATEGORIES) {
+                    Renderer::DrawTextF(0, row++, "%s %s (%d)", cursor, item.name, Settings::GetCategoryCount());
+                } else {
+                    Renderer::DrawTextF(0, row++, "%s %s", cursor, item.name);
+                }
+                break;
+            }
+        }
     }
-
-    // 7: Manage Categories
-    cursor = (sSettingsIndex == 7) ? ">" : " ";
-    Renderer::DrawTextF(0, row++, "%s Manage Categories (%d)",
-                      cursor, Settings::GetCategoryCount());
-
-    // 8: Pixel Editor
-    cursor = (sSettingsIndex == 8) ? ">" : " ";
-    Renderer::DrawTextF(0, row++, "%s Pixel Editor", cursor);
 
     // --- Right side: Description ---
     Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW, "Description:");
     Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 1, "------------");
 
     // Show description for selected item
-    const char* desc = getSettingDescription(sSettingsIndex);
+    const SettingItem& selected = sSettingItems[sSettingsIndex];
+    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 3, selected.descLine1);
+    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 4, selected.descLine2);
 
-    // Simple line splitting for description
-    char line1[32] = {0};
-    char line2[32] = {0};
-    const char* newline = strchr(desc, '\n');
-    if (newline) {
-        int len1 = newline - desc;
-        if (len1 > 30) len1 = 30;
-        strncpy(line1, desc, len1);
-        strncpy(line2, newline + 1, 30);
-    } else {
-        strncpy(line1, desc, 30);
+    // Show action hint based on type
+    const char* hint = "";
+    switch (selected.type) {
+        case SettingType::TOGGLE: hint = "Press A to toggle"; break;
+        case SettingType::COLOR:  hint = "Press A to edit"; break;
+        case SettingType::ACTION: hint = "Press A to open"; break;
     }
-
-    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 3, line1);
-    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 4, line2);
-
-    // Show current value preview for colors
-    if (sSettingsIndex >= 1 && sSettingsIndex <= 6) {
-        Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 6, "Press A to edit");
-    } else if (sSettingsIndex == 0) {
-        Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 6, "Press A to toggle");
-    } else if (sSettingsIndex == 7 || sSettingsIndex == 8) {
-        Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 6, "Press A to open");
-    }
+    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 6, hint);
 
     // --- Footer ---
     Renderer::DrawTextF(0, FOOTER_ROW, "%s:Edit %s:Back  [%d/%d]",
@@ -738,7 +735,13 @@ void renderManageCategories()
 
             // Selection index is offset by 1
             cursor = (sManageCatIndex == idx + 1) ? ">" : " ";
-            Renderer::DrawTextF(0, row + i, "%s %s", cursor, cat.name);
+
+            // Show hidden status
+            if (cat.hidden) {
+                Renderer::DrawTextF(0, row + i, "%s %s (hidden)", cursor, cat.name);
+            } else {
+                Renderer::DrawTextF(0, row + i, "%s %s", cursor, cat.name);
+            }
         }
     }
 
@@ -754,16 +757,29 @@ void renderManageCategories()
     } else if (sManageCatIndex <= catCount) {
         const Settings::Category& cat = categories[sManageCatIndex - 1];
         Renderer::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 3, "Category: %s", cat.name);
-        Renderer::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 5, "%s: Rename",
+
+        // Show visibility status
+        const char* visStatus = cat.hidden ? "Hidden" : "Visible";
+        Renderer::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 4, "Status: %s", visStatus);
+
+        // Action hints
+        Renderer::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 6, "%s: Rename",
                           Buttons::Actions::CONFIRM.label);
-        Renderer::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 6, "%s: Delete",
+        Renderer::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 7, "%s: Delete",
                           Buttons::Actions::EDIT.label);
+        Renderer::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 8, "%s: %s",
+                          Buttons::Actions::FAVORITE.label,
+                          cat.hidden ? "Show" : "Hide");
+        Renderer::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 10, "%s/%s: Move Up/Down",
+                          Buttons::Actions::NAV_PAGE_UP.label,
+                          Buttons::Actions::NAV_PAGE_DOWN.label);
     }
 
     // --- Footer ---
-    Renderer::DrawTextF(0, FOOTER_ROW, "%s:Select %s:Back  [%d/%d]",
+    Renderer::DrawTextF(0, FOOTER_ROW, "%s:Select %s:Back %s:Hide/Show L/R:Move  [%d/%d]",
                       Buttons::Actions::CONFIRM.label,
                       Buttons::Actions::CANCEL.label,
+                      Buttons::Actions::FAVORITE.label,
                       sManageCatIndex + 1, catCount + 1);
 }
 
@@ -775,7 +791,8 @@ void renderColorInput()
     Renderer::DrawText(0, 0, "EDIT COLOR");
     Renderer::DrawText(0, HEADER_ROW, "------------------------------------------------------------");
 
-    Renderer::DrawTextF(0, LIST_START_ROW, "Editing: %s Color", getColorName(sEditingColorIndex));
+    const char* colorName = (sEditingSettingIndex >= 0) ? sSettingItems[sEditingSettingIndex].name : "Unknown";
+    Renderer::DrawTextF(0, LIST_START_ROW, "Editing: %s", colorName);
     Renderer::DrawText(0, LIST_START_ROW + 2, "Enter RGBA hex value (8 digits):");
 
     // Render the input field
@@ -854,32 +871,37 @@ void handleSettingsMainInput(uint32_t pressed)
         if (sSettingsIndex < SETTINGS_ITEM_COUNT - 1) sSettingsIndex++;
     }
 
-    // Confirm/Edit
+    // Confirm/Edit - data-driven handling
     if (Buttons::Actions::CONFIRM.Pressed(pressed)) {
-        if (sSettingsIndex == 0) {
-            // Toggle showNumbers
-            Settings::Get().showNumbers = !Settings::Get().showNumbers;
-        } else if (sSettingsIndex >= 1 && sSettingsIndex <= 6) {
-            // Edit color - initialize input field with current value
-            sEditingColorIndex = sSettingsIndex;
-            uint32_t* color = getColorByIndex(sSettingsIndex);
-            char hexStr[16];
-            snprintf(hexStr, sizeof(hexStr), "%08X", *color);
-            sInputField.Init(8, TextInput::Library::HEX);
-            sInputField.SetValue(hexStr);
-            sSettingsSubMode = SettingsSubMode::COLOR_INPUT;
-        } else if (sSettingsIndex == 7) {
-            // Open manage categories
-            sManageCatIndex = 0;
-            sManageCatScroll = 0;
-            sSettingsSubMode = SettingsSubMode::MANAGE_CATS;
-        } else if (sSettingsIndex == 8) {
-            // Open pixel editor
-            PixelEditor::Config editorConfig;
-            editorConfig.width = 64;
-            editorConfig.height = 64;
-            editorConfig.savePath = "fs:/vol/external01/wiiu/titleswitcher/";
-            PixelEditor::Open(editorConfig);
+        const SettingItem& item = sSettingItems[sSettingsIndex];
+
+        switch (item.type) {
+            case SettingType::TOGGLE: {
+                // Toggle the boolean value
+                bool* value = getTogglePtr(item.dataOffset);
+                *value = !(*value);
+                break;
+            }
+            case SettingType::COLOR: {
+                // Edit color - initialize input field with current value
+                sEditingSettingIndex = sSettingsIndex;
+                uint32_t* color = getColorPtr(item.dataOffset);
+                char hexStr[16];
+                snprintf(hexStr, sizeof(hexStr), "%08X", *color);
+                sInputField.Init(8, TextInput::Library::HEX);
+                sInputField.SetValue(hexStr);
+                sSettingsSubMode = SettingsSubMode::COLOR_INPUT;
+                break;
+            }
+            case SettingType::ACTION: {
+                // Handle action based on action ID
+                if (item.dataOffset == ACTION_MANAGE_CATEGORIES) {
+                    sManageCatIndex = 0;
+                    sManageCatScroll = 0;
+                    sSettingsSubMode = SettingsSubMode::MANAGE_CATS;
+                }
+                break;
+            }
         }
     }
 
@@ -943,6 +965,38 @@ void handleManageCategoriesInput(uint32_t pressed)
         }
     }
 
+    // Favorite (Y) - Toggle visibility
+    if (Buttons::Actions::FAVORITE.Pressed(pressed)) {
+        if (sManageCatIndex > 0 && sManageCatIndex <= catCount) {
+            const auto& categories = Settings::Get().categories;
+            uint16_t catId = categories[sManageCatIndex - 1].id;
+            bool currentlyHidden = Settings::IsCategoryHidden(catId);
+            Settings::SetCategoryHidden(catId, !currentlyHidden);
+        }
+    }
+
+    // Move category up (L)
+    if (Buttons::Actions::NAV_PAGE_UP.Pressed(pressed)) {
+        if (sManageCatIndex > 1 && sManageCatIndex <= catCount) {
+            const auto& categories = Settings::Get().categories;
+            uint16_t catId = categories[sManageCatIndex - 1].id;
+            Settings::MoveCategoryUp(catId);
+            // Follow the moved category
+            sManageCatIndex--;
+        }
+    }
+
+    // Move category down (R)
+    if (Buttons::Actions::NAV_PAGE_DOWN.Pressed(pressed)) {
+        if (sManageCatIndex > 0 && sManageCatIndex < catCount) {
+            const auto& categories = Settings::Get().categories;
+            uint16_t catId = categories[sManageCatIndex - 1].id;
+            Settings::MoveCategoryDown(catId);
+            // Follow the moved category
+            sManageCatIndex++;
+        }
+    }
+
     // Back
     if (Buttons::Actions::CANCEL.Pressed(pressed)) {
         Settings::Save();
@@ -976,16 +1030,19 @@ void handleColorInputInput(uint32_t pressed, uint32_t held)
             }
         }
 
-        // Set the color
-        uint32_t* color = getColorByIndex(sEditingColorIndex);
-        if (color) {
-            *color = value;
+        // Set the color using the data-driven system
+        if (sEditingSettingIndex >= 0) {
+            const SettingItem& item = sSettingItems[sEditingSettingIndex];
+            if (item.type == SettingType::COLOR) {
+                uint32_t* color = getColorPtr(item.dataOffset);
+                *color = value;
+            }
         }
 
-        sEditingColorIndex = -1;
+        sEditingSettingIndex = -1;
         sSettingsSubMode = SettingsSubMode::MAIN;
     } else if (result == TextInput::Result::CANCELLED) {
-        sEditingColorIndex = -1;
+        sEditingSettingIndex = -1;
         sSettingsSubMode = SettingsSubMode::MAIN;
     }
 }

@@ -49,7 +49,8 @@ namespace Categories {
 // Built-in category indices (these are always present)
 constexpr int CATEGORY_ALL = 0;
 constexpr int CATEGORY_FAVORITES = 1;
-constexpr int FIRST_USER_CATEGORY = 2;  // User categories start here
+constexpr int CATEGORY_SYSTEM = 2;      // System apps (title ID 0x00050010...)
+constexpr int FIRST_USER_CATEGORY = 3;  // User categories start here
 
 // =============================================================================
 // Initialization
@@ -73,6 +74,21 @@ void Init();
  * @return Number of categories
  */
 int GetTotalCategoryCount();
+
+/**
+ * Get the number of visible categories (excludes hidden user categories).
+ *
+ * @return Number of visible categories
+ */
+int GetVisibleCategoryCount();
+
+/**
+ * Check if a category is visible (not hidden).
+ *
+ * @param index Category index
+ * @return true if visible, false if hidden
+ */
+bool IsCategoryVisible(int index);
 
 /**
  * Get the index of the currently selected category.

@@ -107,12 +107,22 @@ struct Category {
     // IDs are never reused even after deletion to maintain references
     uint16_t id;
 
+    // Display order (lower = earlier in list, 0 = default)
+    uint16_t order;
+
     // Display name for the category
     char name[MAX_CATEGORY_NAME];
 
+    // Whether this category is hidden from the main menu category bar
+    bool hidden;
+
+    // Padding for alignment
+    uint8_t _padding[3];
+
     // Default constructor
-    Category() : id(0) {
+    Category() : id(0), order(0), hidden(false) {
         name[0] = '\0';
+        _padding[0] = _padding[1] = _padding[2] = 0;
     }
 };
 
@@ -167,6 +177,10 @@ struct PluginSettings {
     // Default: false (off)
     bool showNumbers;
 
+    // Show favorite marker (*) next to titles in the list
+    // Default: true (on) - can be turned off since favorites category exists
+    bool showFavorites;
+
     // -------------------------------------------------------------------------
     // Colors
     // -------------------------------------------------------------------------
@@ -208,6 +222,7 @@ struct PluginSettings {
         lastIndex(0),
         lastCategoryIndex(0),
         showNumbers(false),
+        showFavorites(true),
         bgColor(DEFAULT_BG_COLOR),
         titleColor(DEFAULT_TITLE_COLOR),
         highlightedTitleColor(DEFAULT_HIGHLIGHTED_COLOR),
@@ -391,5 +406,50 @@ void RemoveTitleFromCategory(uint64_t titleId, uint16_t categoryId);
  * @return Number of categories the title belongs to
  */
 int GetCategoriesForTitle(uint64_t titleId, uint16_t* outIds, int maxIds);
+
+// =============================================================================
+// Category Visibility and Ordering
+// =============================================================================
+
+/**
+ * Set whether a category is hidden from the main menu.
+ *
+ * @param categoryId ID of the category
+ * @param hidden true to hide, false to show
+ */
+void SetCategoryHidden(uint16_t categoryId, bool hidden);
+
+/**
+ * Check if a category is hidden.
+ *
+ * @param categoryId ID of the category
+ * @return true if hidden, false if visible
+ */
+bool IsCategoryHidden(uint16_t categoryId);
+
+/**
+ * Move a category up in the display order.
+ *
+ * @param categoryId ID of the category to move
+ */
+void MoveCategoryUp(uint16_t categoryId);
+
+/**
+ * Move a category down in the display order.
+ *
+ * @param categoryId ID of the category to move
+ */
+void MoveCategoryDown(uint16_t categoryId);
+
+/**
+ * Get categories sorted by display order.
+ * Returns indices into the categories vector.
+ *
+ * @param outIndices Array to receive sorted indices
+ * @param maxCount Maximum number of indices to return
+ * @param includeHidden If true, include hidden categories
+ * @return Number of categories returned
+ */
+int GetSortedCategoryIndices(int* outIndices, int maxCount, bool includeHidden = true);
 
 } // namespace Settings

@@ -53,6 +53,7 @@ constexpr const char* KEY_VERSION          = "configVersion";
 constexpr const char* KEY_LAST_INDEX       = "lastIndex";
 constexpr const char* KEY_LAST_CATEGORY    = "lastCategory";
 constexpr const char* KEY_SHOW_NUMBERS     = "showNumbers";
+constexpr const char* KEY_SHOW_FAVORITES   = "showFavorites";
 constexpr const char* KEY_BG_COLOR         = "bgColor";
 constexpr const char* KEY_TITLE_COLOR      = "titleColor";
 constexpr const char* KEY_HIGHLIGHTED      = "highlightedColor";
@@ -107,6 +108,9 @@ void Load()
     int32_t tempBool;
     if (WUPSStorageAPI_GetInt(nullptr, KEY_SHOW_NUMBERS, &tempBool) == WUPS_STORAGE_ERROR_SUCCESS) {
         gSettings.showNumbers = (tempBool != 0);
+    }
+    if (WUPSStorageAPI_GetInt(nullptr, KEY_SHOW_FAVORITES, &tempBool) == WUPS_STORAGE_ERROR_SUCCESS) {
+        gSettings.showFavorites = (tempBool != 0);
     }
 
     // -------------------------------------------------------------------------
@@ -232,6 +236,7 @@ void Save()
     // Save boolean settings (stored as int: 0=false, 1=true)
     // -------------------------------------------------------------------------
     WUPSStorageAPI_StoreInt(nullptr, KEY_SHOW_NUMBERS, gSettings.showNumbers ? 1 : 0);
+    WUPSStorageAPI_StoreInt(nullptr, KEY_SHOW_FAVORITES, gSettings.showFavorites ? 1 : 0);
 
     // -------------------------------------------------------------------------
     // Save colors (cast to signed for storage)
@@ -461,6 +466,82 @@ int GetCategoriesForTitle(uint64_t titleId, uint16_t* outIds, int maxIds)
             outIds[count++] = tc.categoryId;
         }
     }
+    return count;
+}
+
+// =============================================================================
+// Category Visibility and Ordering Implementation
+// =============================================================================
+
+void SetCategoryHidden(uint16_t categoryId, bool hidden)
+{
+    for (auto& cat : gSettings.categories) {
+        if (cat.id == categoryId) {
+            cat.hidden = hidden;
+            return;
+        }
+    }
+}
+
+bool IsCategoryHidden(uint16_t categoryId)
+{
+    for (const auto& cat : gSettings.categories) {
+        if (cat.id == categoryId) {
+            return cat.hidden;
+        }
+    }
+    return false;
+}
+
+void MoveCategoryUp(uint16_t categoryId)
+{
+    auto& cats = gSettings.categories;
+
+    // Find the category
+    int idx = -1;
+    for (size_t i = 0; i < cats.size(); i++) {
+        if (cats[i].id == categoryId) {
+            idx = static_cast<int>(i);
+            break;
+        }
+    }
+
+    if (idx <= 0) return;  // Already at top or not found
+
+    // Swap with previous category
+    std::swap(cats[idx], cats[idx - 1]);
+}
+
+void MoveCategoryDown(uint16_t categoryId)
+{
+    auto& cats = gSettings.categories;
+
+    // Find the category
+    int idx = -1;
+    for (size_t i = 0; i < cats.size(); i++) {
+        if (cats[i].id == categoryId) {
+            idx = static_cast<int>(i);
+            break;
+        }
+    }
+
+    if (idx < 0 || idx >= static_cast<int>(cats.size()) - 1) return;  // At bottom or not found
+
+    // Swap with next category
+    std::swap(cats[idx], cats[idx + 1]);
+}
+
+int GetSortedCategoryIndices(int* outIndices, int maxCount, bool includeHidden)
+{
+    int count = 0;
+    const auto& cats = gSettings.categories;
+
+    for (size_t i = 0; i < cats.size() && count < maxCount; i++) {
+        if (includeHidden || !cats[i].hidden) {
+            outIndices[count++] = static_cast<int>(i);
+        }
+    }
+
     return count;
 }
 
