@@ -285,10 +285,9 @@ void drawDetailsPanel()
     Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW, title->name);
 
     // Draw icon below title (128x128 = 2x the original 64x64)
-    // Use absolute pixel position to ensure it's on the right side of screen
+    // Position aligned with details panel text
     constexpr int ICON_SIZE = 128;
-    int screenWidth = Renderer::GetScreenWidth();
-    int iconX = (screenWidth / 2) + 20;  // Right half of screen, with some padding
+    int iconX = Renderer::ColToPixelX(DETAILS_START_COL);  // Aligned with details panel
     int iconY = Renderer::RowToPixelY(LIST_START_ROW + 1);  // Below title
 
     if (ImageLoader::IsReady(title->titleId)) {

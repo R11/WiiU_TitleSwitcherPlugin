@@ -6,13 +6,13 @@
 │[All]  Favorites   System   Games   Apps                                                                                                                        │
 │----------------------------------------------------------------------------------------------------------------------------------------------------------------│
 │  * Super Mario 3D World                        | Mario Kart 8                                                                                                  │
-│> * Mario Kart 8                                | ░░░░░░░░░░░░░░░░                                                                                              │
-│    Splatoon                                    | ░░░░░░░░░░░░░░░░                                                                                              │
-│  * Super Smash Bros. for Wii U                 | ░░░░░░░░░░░░░░░░                                                                                              │
-│    The Legend of Zelda: Breath of the Wild     | ░░░░░░░░░░░░░░░░                                                                                              │
-│    Bayonetta 2                                 | ░░░░░░░░░░░░░░░░                                                                                              │
-│    Pikmin 3                                    | ░░░░░░░░░░░░░░░░                                                                                              │
-│    Xenoblade Chronicles X                      | ░░░░░░░░░░░░░░░░                                                                                              │
+│> * Mario Kart 8                ░░░░░░░░░░░░░░░░|                                                                                                               │
+│    Splatoon                    ░░░░░░░░░░░░░░░░|                                                                                                               │
+│  * Super Smash Bros. for Wii U ░░░░░░░░░░░░░░░░|                                                                                                               │
+│    The Legend of Zelda: Breath ░░░░░░░░░░░░░░░░|                                                                                                               │
+│    Bayonetta 2                 ░░░░░░░░░░░░░░░░|                                                                                                               │
+│    Pikmin 3                    ░░░░░░░░░░░░░░░░|                                                                                                               │
+│    Xenoblade Chronicles X      ░░░░░░░░░░░░░░░░|                                                                                                               │
 │    Hyrule Warriors                             | ID: 000500001010EC00                                                                                          │
 │    Donkey Kong Country: Tropical Freeze        | Favorite: Yes                                                                                                 │
 │    Captain Toad: Treasure Tracker              |                                                                                                               │

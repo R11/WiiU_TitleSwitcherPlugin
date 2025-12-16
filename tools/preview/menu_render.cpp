@@ -40,6 +40,9 @@ constexpr int HEADER_ROW = 1;
 constexpr int LIST_START_ROW = 2;
 constexpr int LIST_START_COL = 0;
 
+// These match src/menu/menu.h constants
+constexpr int DETAILS_START_COL = 32;
+
 // =============================================================================
 // Dynamic Layout Helpers
 // =============================================================================
@@ -212,10 +215,10 @@ void drawDetailsPanel() {
     titleName[std::min(panelWidth, (int)sizeof(titleName) - 1)] = '\0';
     Renderer::DrawText(detailsCol, LIST_START_ROW, titleName);
 
-    // Draw icon - position calculated by Renderer based on screen size
+    // Draw icon below title - matches src/menu/menu.cpp logic
     int iconSize = getIconSize();
-    int iconX = Renderer::GetIconX();
-    int iconY = Renderer::GetIconY();
+    int iconX = Renderer::ColToPixelX(DETAILS_START_COL);  // Aligned with details panel
+    int iconY = Renderer::RowToPixelY(LIST_START_ROW + 1);  // Below title
 
     if (ImageLoader::IsReady(title->titleId)) {
         Renderer::ImageHandle icon = ImageLoader::Get(title->titleId);
