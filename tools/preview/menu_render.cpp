@@ -35,25 +35,14 @@ namespace MenuRender {
 // Fixed Layout Constants
 // =============================================================================
 
+// Row positions (fixed across all screen sizes - matches menu.h)
 constexpr int CATEGORY_ROW = 0;
 constexpr int HEADER_ROW = 1;
 constexpr int LIST_START_ROW = 2;
 constexpr int LIST_START_COL = 0;
 
-// These match src/menu/menu.h constants
-constexpr int DETAILS_START_COL = 32;
-
-// =============================================================================
-// Dynamic Layout Helpers
-// =============================================================================
-
-// These wrap Renderer functions for convenience
-inline int getDividerCol() { return Renderer::GetDividerCol(); }
-inline int getDetailsPanelCol() { return Renderer::GetDetailsPanelCol(); }
-inline int getVisibleRows() { return Renderer::GetVisibleRows(); }
-inline int getFooterRow() { return Renderer::GetFooterRow(); }
-inline int getTitleNameWidth(bool showNumbers) { return Renderer::GetTitleNameWidth(showNumbers); }
-inline int getIconSize() { return Renderer::GetIconSize(); }
+// All column/width values use dynamic Renderer:: functions to support
+// different screen sizes. See Renderer::GetDividerCol(), GetDetailsPanelCol(), etc.
 
 // =============================================================================
 // Rendering State (mirrors menu.cpp state)
@@ -80,7 +69,7 @@ int GetScrollOffset() { return sScrollOffset; }
 
 void clampSelection() {
     int count = Categories::GetFilteredCount();
-    int visibleRows = getVisibleRows();
+    int visibleRows = Renderer::GetVisibleRows();
 
     if (sSelectedIndex < 0) sSelectedIndex = 0;
     if (sSelectedIndex >= count) sSelectedIndex = count > 0 ? count - 1 : 0;
@@ -127,8 +116,8 @@ void drawCategoryBar() {
 }
 
 void drawDivider() {
-    int dividerCol = getDividerCol();
-    int footerRow = getFooterRow();
+    int dividerCol = Renderer::GetDividerCol();
+    int footerRow = Renderer::GetFooterRow();
 
     for (int row = LIST_START_ROW; row < footerRow; row++) {
         Renderer::DrawText(dividerCol, row, "|");
@@ -137,8 +126,8 @@ void drawDivider() {
 
 void drawTitleList() {
     int count = Categories::GetFilteredCount();
-    int visibleRows = getVisibleRows();
-    int dividerCol = getDividerCol();
+    int visibleRows = Renderer::GetVisibleRows();
+    int dividerCol = Renderer::GetDividerCol();
 
     if (count == 0) {
         Renderer::DrawText(2, LIST_START_ROW + 2, "No titles in this category");
@@ -146,7 +135,7 @@ void drawTitleList() {
     }
 
     bool showNums = Settings::Get().showNumbers;
-    int maxNameLen = getTitleNameWidth(showNums);
+    int maxNameLen = Renderer::GetTitleNameWidth(showNums);
 
     for (int i = 0; i < visibleRows && (sScrollOffset + i) < count; i++) {
         int idx = sScrollOffset + i;
@@ -202,8 +191,8 @@ void drawDetailsPanel() {
     const Titles::TitleInfo* title = Categories::GetFilteredTitle(sSelectedIndex);
     if (!title) return;
 
-    int detailsCol = getDetailsPanelCol();
-    int footerRow = getFooterRow();
+    int detailsCol = Renderer::GetDetailsPanelCol();
+    int footerRow = Renderer::GetFooterRow();
 
     // Request icon loading
     ImageLoader::Request(title->titleId, ImageLoader::Priority::HIGH);
@@ -216,8 +205,8 @@ void drawDetailsPanel() {
     Renderer::DrawText(detailsCol, LIST_START_ROW, titleName);
 
     // Draw icon below title - matches src/menu/menu.cpp logic
-    int iconSize = getIconSize();
-    int iconX = Renderer::ColToPixelX(DETAILS_START_COL);  // Aligned with details panel
+    int iconSize = Renderer::GetIconSize();
+    int iconX = Renderer::ColToPixelX(Renderer::GetDetailsPanelCol());  // Aligned with details panel
     int iconY = Renderer::RowToPixelY(LIST_START_ROW + 1);  // Below title
 
     if (ImageLoader::IsReady(title->titleId)) {
@@ -270,7 +259,7 @@ void drawDetailsPanel() {
 
 void drawFooter() {
     int count = Categories::GetFilteredCount();
-    int footerRow = getFooterRow();
+    int footerRow = Renderer::GetFooterRow();
 
     char footer[128];
     snprintf(footer, sizeof(footer),

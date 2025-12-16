@@ -491,4 +491,43 @@ int GetGridHeight()
     return OS_SCREEN_ROWS;
 }
 
+int GetDividerCol()
+{
+    // 30% of grid width for title list
+    return (GetGridWidth() * 30) / 100;
+}
+
+int GetDetailsPanelCol()
+{
+    // 2 columns after divider
+    return GetDividerCol() + 2;
+}
+
+int GetListWidth()
+{
+    return GetDividerCol();
+}
+
+int GetVisibleRows()
+{
+    // Reserve: 1 row category bar, 1 row header, 1 row footer
+    return GetGridHeight() - 3;
+}
+
+int GetFooterRow()
+{
+    return GetGridHeight() - 1;
+}
+
+int GetTitleNameWidth(bool showNumbers)
+{
+    // List width minus prefix chars ("> * " = 4) and margin
+    int baseWidth = GetListWidth() - 6;
+    if (showNumbers) {
+        // Reserve 3 chars for line numbers (e.g., "12.")
+        baseWidth -= 3;
+    }
+    return baseWidth > 0 ? baseWidth : 10;
+}
+
 } // namespace Renderer

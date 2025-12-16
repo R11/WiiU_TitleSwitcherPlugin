@@ -351,6 +351,11 @@ inline int GetDetailsPanelCol() {
     return GetDividerCol() + 2;
 }
 
+// Get list width (same as divider column)
+inline int GetListWidth() {
+    return GetDividerCol();
+}
+
 // Get number of visible rows for title list based on screen height
 // Reserve 3 rows for header/footer
 inline int GetVisibleRows() {
@@ -359,9 +364,13 @@ inline int GetVisibleRows() {
 
 // Get maximum title name width for list
 inline int GetTitleNameWidth(bool showNumbers) {
-    int listWidth = GetDividerCol() - 2;  // Account for cursor and spacing
-    if (showNumbers) listWidth -= 5;       // "999. " prefix
-    return listWidth > 0 ? listWidth : 10;
+    // List width minus prefix chars ("> * " = 4) and margin
+    int baseWidth = GetListWidth() - 6;
+    if (showNumbers) {
+        // Reserve 3 chars for line numbers (e.g., "12.")
+        baseWidth -= 3;
+    }
+    return baseWidth > 0 ? baseWidth : 10;
 }
 
 // Get footer row

@@ -245,4 +245,57 @@ int GetGridWidth();
  */
 int GetGridHeight();
 
+// =============================================================================
+// Dynamic Layout Helpers
+// =============================================================================
+// These functions calculate layout positions based on current screen dimensions,
+// allowing the same menu code to render correctly on both DRC and TV screens.
+
+/**
+ * Get the column position for the vertical divider.
+ * Calculated as 30% of grid width.
+ *
+ * @return Divider column position
+ */
+int GetDividerCol();
+
+/**
+ * Get the starting column for the details panel.
+ * Positioned 2 columns after the divider.
+ *
+ * @return Details panel start column
+ */
+int GetDetailsPanelCol();
+
+/**
+ * Get the width of the title list area (in columns).
+ * Same as the divider column position.
+ *
+ * @return List width in columns
+ */
+int GetListWidth();
+
+/**
+ * Get the number of visible rows for the title list.
+ * Reserves space for header (2 rows) and footer (1 row).
+ *
+ * @return Number of visible title rows
+ */
+int GetVisibleRows();
+
+/**
+ * Get the row position for the footer.
+ *
+ * @return Footer row position
+ */
+int GetFooterRow();
+
+/**
+ * Get the maximum width for title names in the list.
+ *
+ * @param showNumbers If true, reserves space for line numbers
+ * @return Maximum title name width in characters
+ */
+int GetTitleNameWidth(bool showNumbers);
+
 } // namespace Renderer

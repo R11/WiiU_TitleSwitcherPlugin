@@ -5,18 +5,18 @@
 ┌────────────────────────────────────────────────────────────────────────────────┐
 │[All]  Favorites   System   Games   Apps                                        │
 │--------------------------------------------------------------------------------│
-│  * Super Mario 3D Worl | Mario Kart 8                                          │
-│> * Mario Kart 8        |       ░░░░░░░░░░░░                                    │
-│    Splatoon            |       ░░░░░░░░░░░░                                    │
-│  * Super Smash Bros. f |       ░░░░░░░░░░░░                                    │
-│    The Legend of Zelda |       ░░░░░░░░░░░░                                    │
+│  * Super Mario 3D Wor  | Mario Kart 8                                          │
+│> * Mario Kart 8        | ░░░░░░░░░░░░                                          │
+│    Splatoon            | ░░░░░░░░░░░░                                          │
+│  * Super Smash Bros.   | ░░░░░░░░░░░░                                          │
+│    The Legend of Zeld  | ░░░░░░░░░░░░                                          │
 │    Bayonetta 2         |                                                       │
 │    Pikmin 3            | ID: 000500001010EC00                                  │
-│    Xenoblade Chronicle | Favorite: Yes                                         │
+│    Xenoblade Chronicl  | Favorite: Yes                                         │
 │    Hyrule Warriors     |                                                       │
-│    Donkey Kong Country | Categories:                                           │
-│    Captain Toad: Treas |   - Games                                             │
-│    Yoshi's Woolly Worl |                                                       │
+│    Donkey Kong Countr  | Categories:                                           │
+│    Captain Toad: Trea  |   - Games                                             │
+│    Yoshi's Woolly Wor  |                                                       │
 │    Star Fox Zero       |                                                       │
 │    NES Remix Pack      |                                                       │
 │    Mii Verse           |                                                       │
