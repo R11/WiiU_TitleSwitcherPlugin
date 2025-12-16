@@ -64,26 +64,23 @@ enum class Mode {
 // =============================================================================
 // Display Constants
 // =============================================================================
+// NOTE: Column/width values are now calculated dynamically by Renderer::
+// functions to support different screen sizes. These constants are kept
+// for reference and for row positions which remain fixed.
 
-// Number of title rows visible in the list
-// Adjust based on screen layout and font size
-constexpr int VISIBLE_ROWS = 15;
-
-// Column positions for the split layout (OSScreen DRC is ~100 cols)
-constexpr int LIST_START_COL = 0;     // Title list starts here
-constexpr int LIST_WIDTH = 30;        // Width of title list area
-constexpr int DIVIDER_COL = 30;       // Vertical divider column
-constexpr int DETAILS_START_COL = 32; // Details panel starts here
-
-// Title display settings
-constexpr int TITLE_NAME_WIDTH = 24;       // Max chars for title name (no numbers)
-constexpr int TITLE_NAME_WIDTH_NUM = 21;   // Max chars when numbers shown (3 less)
-
-// Row positions
+// Row positions (fixed across all screen sizes)
 constexpr int CATEGORY_ROW = 0;       // Category bar row
 constexpr int HEADER_ROW = 1;         // Header/divider row
 constexpr int LIST_START_ROW = 2;     // First row of title list
-constexpr int FOOTER_ROW = 17;        // Footer row (DRC has ~18 rows)
+constexpr int LIST_START_COL = 0;     // Title list starts at column 0
+
+// Dynamic layout values - use Renderer:: functions instead:
+// - Renderer::GetDividerCol()       - Divider column (30% of screen width)
+// - Renderer::GetDetailsPanelCol()  - Details panel start column
+// - Renderer::GetListWidth()        - Title list width in columns
+// - Renderer::GetVisibleRows()      - Number of visible title rows
+// - Renderer::GetFooterRow()        - Footer row position
+// - Renderer::GetTitleNameWidth()   - Max title name characters
 
 // =============================================================================
 // Lifecycle Functions
