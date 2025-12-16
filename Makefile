@@ -22,9 +22,9 @@ WUMS_ROOT := $(DEVKITPRO)/wums
 #-------------------------------------------------------------------------------
 TARGET		:=	TitleSwitcherPlugin
 BUILD		:=	build
-SOURCES		:=	src src/input src/render src/titles src/storage src/menu src/utils
+SOURCES		:=	src src/input src/render src/titles src/storage src/menu src/utils src/editor
 DATA		:=	data
-INCLUDES	:=	src src/input src/render src/titles src/storage src/menu src/utils
+INCLUDES	:=	src src/input src/render src/titles src/storage src/menu src/utils src/editor
 
 #-------------------------------------------------------------------------------
 # options for code generation
@@ -44,7 +44,7 @@ CXXFLAGS += -DDEBUG -g
 CFLAGS += -DDEBUG -g
 endif
 
-LIBS	:= -lnotifications -lmappedmemory -lwups -lwut
+LIBS	:= -lnotifications -lmappedmemory -lgd -lpng -ljpeg -lz -lwups -lwut
 
 #-------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level

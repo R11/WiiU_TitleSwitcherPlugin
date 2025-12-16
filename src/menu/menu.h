@@ -71,13 +71,13 @@ constexpr int VISIBLE_ROWS = 15;
 
 // Column positions for the split layout (OSScreen DRC is ~100 cols)
 constexpr int LIST_START_COL = 0;     // Title list starts here
-constexpr int LIST_WIDTH = 32;        // Width of title list area
-constexpr int DIVIDER_COL = 32;       // Vertical divider column
-constexpr int DETAILS_START_COL = 34; // Details panel starts here
+constexpr int LIST_WIDTH = 30;        // Width of title list area
+constexpr int DIVIDER_COL = 30;       // Vertical divider column
+constexpr int DETAILS_START_COL = 32; // Details panel starts here
 
 // Title display settings
-constexpr int TITLE_NAME_WIDTH = 26;       // Max chars for title name (no numbers)
-constexpr int TITLE_NAME_WIDTH_NUM = 23;   // Max chars when numbers shown (3 less)
+constexpr int TITLE_NAME_WIDTH = 24;       // Max chars for title name (no numbers)
+constexpr int TITLE_NAME_WIDTH_NUM = 21;   // Max chars when numbers shown (3 less)
 
 // Row positions
 constexpr int CATEGORY_ROW = 0;       // Category bar row

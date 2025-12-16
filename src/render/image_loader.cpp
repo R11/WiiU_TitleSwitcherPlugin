@@ -1,11 +1,8 @@
 /**
  * Image Loader Implementation
  *
- * This is currently a stub implementation. Full async loading, caching,
- * and priority queue will be implemented when the GX2 renderer is ready.
- *
- * For now, all requests return Status::FAILED since OSScreen cannot
- * display images.
+ * Loads title icons using libgd for image parsing.
+ * Icons are loaded from each title's meta directory (iconTex.tga).
  */
 
 #include "image_loader.h"
@@ -14,6 +11,15 @@
 #include <map>
 #include <vector>
 #include <algorithm>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+
+// libgd for image loading
+#include <gd.h>
+
+// Wii U SDK for title meta directory
+#include <nn/acp.h>
 
 namespace ImageLoader {
 
@@ -76,6 +82,19 @@ void touchCache(uint64_t titleId)
 }
 
 /**
+ * Free an image and its associated memory.
+ */
+void freeImage(Renderer::ImageHandle handle)
+{
+    if (handle) {
+        if (handle->pixels) {
+            free(handle->pixels);
+        }
+        delete handle;
+    }
+}
+
+/**
  * Evict the least recently used cache entry if at capacity.
  */
 void evictIfNeeded()
@@ -86,8 +105,8 @@ void evictIfNeeded()
 
         auto it = sRequests.find(oldest);
         if (it != sRequests.end() && it->second.status == Status::READY) {
-            // TODO: Free the image handle when GX2 is implemented
-            // For now, just mark as not requested
+            // Free the image memory
+            freeImage(it->second.handle);
             it->second.status = Status::NOT_REQUESTED;
             it->second.handle = Renderer::INVALID_IMAGE;
         }
@@ -95,11 +114,110 @@ void evictIfNeeded()
 }
 
 /**
- * Actually load an image (placeholder for future implementation).
+ * Load an image from file into RGBA pixel data.
+ */
+bool loadImageFromFile(const char* path, Renderer::ImageHandle& outHandle)
+{
+    outHandle = Renderer::INVALID_IMAGE;
+
+    // Open file
+    FILE* file = fopen(path, "rb");
+    if (!file) {
+        return false;
+    }
+
+    // Get file size
+    fseek(file, 0, SEEK_END);
+    long fileSize = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    if (fileSize <= 8) {
+        fclose(file);
+        return false;
+    }
+
+    // Read file into memory
+    uint8_t* buffer = (uint8_t*)malloc(fileSize);
+    if (!buffer) {
+        fclose(file);
+        return false;
+    }
+
+    if (fread(buffer, 1, fileSize, file) != (size_t)fileSize) {
+        free(buffer);
+        fclose(file);
+        return false;
+    }
+    fclose(file);
+
+    // Detect format and load with libgd
+    gdImagePtr gdImg = nullptr;
+
+    if (buffer[0] == 0x89 && buffer[1] == 'P' && buffer[2] == 'N' && buffer[3] == 'G') {
+        // PNG
+        gdImg = gdImageCreateFromPngPtr(fileSize, buffer);
+    } else if (buffer[0] == 0xFF && buffer[1] == 0xD8) {
+        // JPEG
+        gdImg = gdImageCreateFromJpegPtr(fileSize, buffer);
+    } else if (buffer[0] == 'B' && buffer[1] == 'M') {
+        // BMP
+        gdImg = gdImageCreateFromBmpPtr(fileSize, buffer);
+    } else if (buffer[0] == 0x00) {
+        // TGA (usually starts with 0x00)
+        gdImg = gdImageCreateFromTgaPtr(fileSize, buffer);
+    }
+
+    free(buffer);
+
+    if (!gdImg) {
+        return false;
+    }
+
+    // Get dimensions
+    int width = gdImageSX(gdImg);
+    int height = gdImageSY(gdImg);
+
+    // Allocate pixel buffer
+    uint32_t* pixels = (uint32_t*)malloc(width * height * sizeof(uint32_t));
+    if (!pixels) {
+        gdImageDestroy(gdImg);
+        return false;
+    }
+
+    // Convert to RGBA
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            int pixel = gdImageGetPixel(gdImg, x, y);
+
+            uint8_t r = gdImageRed(gdImg, pixel);
+            uint8_t g = gdImageGreen(gdImg, pixel);
+            uint8_t b = gdImageBlue(gdImg, pixel);
+            // libgd alpha is 0-127 where 0=opaque, 127=transparent
+            // Convert to 0-255 where 255=opaque
+            uint8_t a = 255 - (gdImageAlpha(gdImg, pixel) * 2);
+
+            // Store as RGBA (0xRRGGBBAA)
+            pixels[y * width + x] = (r << 24) | (g << 16) | (b << 8) | a;
+        }
+    }
+
+    gdImageDestroy(gdImg);
+
+    // Create ImageData
+    Renderer::ImageData* imageData = new Renderer::ImageData();
+    imageData->pixels = pixels;
+    imageData->width = width;
+    imageData->height = height;
+
+    outHandle = imageData;
+    return true;
+}
+
+/**
+ * Load icon for a title using ACPGetTitleMetaDir.
  */
 bool loadImage(uint64_t titleId, Renderer::ImageHandle& outHandle)
 {
-    (void)titleId;
     outHandle = Renderer::INVALID_IMAGE;
 
     // Cannot load images if renderer doesn't support them
@@ -107,14 +225,20 @@ bool loadImage(uint64_t titleId, Renderer::ImageHandle& outHandle)
         return false;
     }
 
-    // TODO: Implement actual loading when GX2 is ready:
-    // 1. Get meta directory path using ACPGetTitleMetaDir()
-    // 2. Construct path to iconTex.tga
-    // 3. Load and parse TGA file
-    // 4. Convert to GX2 texture format
-    // 5. Return handle
+    // Get meta directory for this title
+    char metaPath[256];
 
-    return false;
+    ACPResult result = ACPGetTitleMetaDir(titleId, metaPath, sizeof(metaPath));
+    if (result != ACP_RESULT_SUCCESS) {
+        return false;
+    }
+
+    // Construct path to icon
+    char iconPath[280];
+    snprintf(iconPath, sizeof(iconPath), "%s/iconTex.tga", metaPath);
+
+    // Load the image
+    return loadImageFromFile(iconPath, outHandle);
 }
 
 } // anonymous namespace
@@ -144,7 +268,13 @@ void Shutdown()
         return;
     }
 
-    // TODO: Free all image handles when GX2 is implemented
+    // Free all loaded images
+    for (auto& pair : sRequests) {
+        if (pair.second.handle) {
+            freeImage(pair.second.handle);
+            pair.second.handle = Renderer::INVALID_IMAGE;
+        }
+    }
 
     sRequests.clear();
     sLoadQueue.clear();
@@ -287,7 +417,12 @@ void ClearCache()
         return;
     }
 
-    // TODO: Free all image handles when GX2 is implemented
+    // Free all loaded images
+    for (auto& pair : sRequests) {
+        if (pair.second.handle) {
+            freeImage(pair.second.handle);
+        }
+    }
 
     sRequests.clear();
     sLoadQueue.clear();
@@ -302,7 +437,10 @@ void Evict(uint64_t titleId)
 
     auto it = sRequests.find(titleId);
     if (it != sRequests.end()) {
-        // TODO: Free image handle when GX2 is implemented
+        // Free the image memory
+        if (it->second.handle) {
+            freeImage(it->second.handle);
+        }
         sRequests.erase(it);
     }
 

@@ -168,6 +168,51 @@ void drawTextOSScreen(int col, int row, const char* text, uint32_t color)
     OSScreenPutFontEx(SCREEN_DRC, col, row, text);
 }
 
+void drawImageOSScreen(int x, int y, ImageHandle image, int width, int height)
+{
+    if (!image || !image->pixels) {
+        return;
+    }
+
+    // Use original dimensions if not specified
+    int srcW = image->width;
+    int srcH = image->height;
+    int dstW = (width > 0) ? width : srcW;
+    int dstH = (height > 0) ? height : srcH;
+
+    // Draw pixel by pixel
+    // Simple nearest-neighbor scaling
+    for (int dy = 0; dy < dstH; dy++) {
+        int sy = (dy * srcH) / dstH;
+        for (int dx = 0; dx < dstW; dx++) {
+            int sx = (dx * srcW) / dstW;
+
+            uint32_t pixel = image->pixels[sy * srcW + sx];
+
+            // Convert from RGBA (0xRRGGBBAA) to RGBX (0xRRGGBBXX)
+            // OSScreenPutPixelEx uses RGBX format
+            uint32_t rgbx = pixel & 0xFFFFFF00;
+
+            // Draw to both screens
+            OSScreenPutPixelEx(SCREEN_TV, x + dx, y + dy, rgbx);
+            OSScreenPutPixelEx(SCREEN_DRC, x + dx, y + dy, rgbx);
+        }
+    }
+}
+
+void drawPlaceholderOSScreen(int x, int y, int width, int height, uint32_t color)
+{
+    // Draw a filled rectangle using pixels
+    uint32_t rgbx = color & 0xFFFFFF00;
+
+    for (int dy = 0; dy < height; dy++) {
+        for (int dx = 0; dx < width; dx++) {
+            OSScreenPutPixelEx(SCREEN_TV, x + dx, y + dy, rgbx);
+            OSScreenPutPixelEx(SCREEN_DRC, x + dx, y + dy, rgbx);
+        }
+    }
+}
+
 // =============================================================================
 // GX2 Backend Implementation (Placeholder)
 // =============================================================================
@@ -362,7 +407,7 @@ bool SupportsImages()
 {
     switch (sBackend) {
         case Backend::OS_SCREEN:
-            return false;  // OSScreen is text-only
+            return true;   // OSScreen now supports images via OSScreenPutPixelEx
         case Backend::GX2:
             return true;   // GX2 supports images
         default:
@@ -372,15 +417,16 @@ bool SupportsImages()
 
 void DrawImage(int x, int y, ImageHandle image, int width, int height)
 {
-    if (!sInitialized || !SupportsImages()) {
+    if (!sInitialized || !SupportsImages() || !image) {
         return;
     }
 
     switch (sBackend) {
+        case Backend::OS_SCREEN:
+            drawImageOSScreen(x, y, image, width, height);
+            break;
         case Backend::GX2:
             drawImageGX2(x, y, image, width, height);
-            break;
-        default:
             break;
     }
 }
@@ -391,16 +437,9 @@ void DrawPlaceholder(int x, int y, int width, int height, uint32_t color)
         return;
     }
 
-    // For OSScreen, we can't draw rectangles, so just skip
-    // For GX2, this would draw a colored rectangle
     switch (sBackend) {
         case Backend::OS_SCREEN:
-            // Cannot draw rectangles in OSScreen
-            (void)x;
-            (void)y;
-            (void)width;
-            (void)height;
-            (void)color;
+            drawPlaceholderOSScreen(x, y, width, height, color);
             break;
         case Backend::GX2:
             // TODO: Draw colored rectangle

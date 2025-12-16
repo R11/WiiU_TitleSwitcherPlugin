@@ -66,10 +66,19 @@ Backend GetBackend();
 // =============================================================================
 
 /**
- * Opaque handle to a loaded image.
- * The actual data depends on the backend implementation.
+ * Image data structure holding RGBA pixel data.
  */
-using ImageHandle = void*;
+struct ImageData {
+    uint32_t* pixels;   // RGBA pixels (0xRRGGBBAA format)
+    int width;          // Image width in pixels
+    int height;         // Image height in pixels
+};
+
+/**
+ * Opaque handle to a loaded image.
+ * Points to an ImageData structure.
+ */
+using ImageHandle = ImageData*;
 
 /**
  * Invalid/null image handle constant.

@@ -7,10 +7,12 @@
 #include "menu.h"
 #include "categories.h"
 #include "../render/renderer.h"
+#include "../render/image_loader.h"
 #include "../input/buttons.h"
 #include "../input/text_input.h"
 #include "../titles/titles.h"
 #include "../storage/settings.h"
+#include "../editor/pixel_editor.h"
 
 // Wii U SDK headers
 #include <vpad/input.h>           // VPADRead, VPADStatus
@@ -51,7 +53,7 @@ enum class SettingsSubMode {
     NAME_INPUT      // Editing a category name
 };
 
-constexpr int SETTINGS_ITEM_COUNT = 8;  // Number of settings items
+constexpr int SETTINGS_ITEM_COUNT = 9;  // Number of settings items
 
 int sSettingsIndex = 0;              // Currently selected setting
 SettingsSubMode sSettingsSubMode = SettingsSubMode::MAIN;
@@ -116,7 +118,7 @@ void drawCategoryBar()
     int catCount = Categories::GetTotalCategoryCount();
     int currentCat = Categories::GetCurrentCategoryIndex();
 
-    for (int i = 0; i < catCount && col < 50; i++) {
+    for (int i = 0; i < catCount && col < 60; i++) {
         const char* name = Categories::GetCategoryName(i);
 
         if (i == currentCat) {
@@ -129,9 +131,6 @@ void drawCategoryBar()
         Renderer::DrawText(col, CATEGORY_ROW, line);
         col += strlen(line);
     }
-
-    // Draw category navigation hint on the right
-    Renderer::DrawText(50, CATEGORY_ROW, "ZL/ZR: Categories");
 }
 
 /**
@@ -219,33 +218,49 @@ void drawDetailsPanel()
     const Titles::TitleInfo* title = Categories::GetFilteredTitle(sSelectedIndex);
     if (!title) return;
 
-    // Title name (full, may wrap)
+    // Request icon loading (will be cached if already loaded)
+    ImageLoader::Request(title->titleId, ImageLoader::Priority::HIGH);
+
+    // Title name (left-aligned with details panel)
     Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW, title->name);
 
-    // Divider
-    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 1, "------------------------");
+    // Draw icon below title (128x128 = 2x the original 64x64)
+    constexpr int ICON_SIZE = 128;
+    int iconX = Renderer::ColToPixelX(DETAILS_START_COL);
+    int iconY = Renderer::RowToPixelY(LIST_START_ROW + 1);  // Below title
+
+    if (ImageLoader::IsReady(title->titleId)) {
+        Renderer::ImageHandle icon = ImageLoader::Get(title->titleId);
+        Renderer::DrawImage(iconX, iconY, icon, ICON_SIZE, ICON_SIZE);
+    } else {
+        // Draw placeholder while loading
+        Renderer::DrawPlaceholder(iconX, iconY, ICON_SIZE, ICON_SIZE, 0x333333FF);
+    }
+
+    // Info starts after icon (icon is ~5-6 rows at 24px/row)
+    constexpr int INFO_START_ROW = LIST_START_ROW + 7;
 
     // Title ID
     char idStr[32];
     snprintf(idStr, sizeof(idStr), "ID: %016llX",
              static_cast<unsigned long long>(title->titleId));
-    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 3, idStr);
+    Renderer::DrawText(DETAILS_START_COL, INFO_START_ROW, idStr);
 
     // Favorite status
     const char* favStatus = Settings::IsFavorite(title->titleId) ? "Yes" : "No";
-    Renderer::DrawTextF(DETAILS_START_COL, LIST_START_ROW + 4, "Favorite: %s", favStatus);
+    Renderer::DrawTextF(DETAILS_START_COL, INFO_START_ROW + 1, "Favorite: %s", favStatus);
 
     // Categories this title belongs to
-    Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 6, "Categories:");
+    Renderer::DrawText(DETAILS_START_COL, INFO_START_ROW + 3, "Categories:");
 
     uint16_t catIds[Settings::MAX_CATEGORIES];
     int catCount = Settings::GetCategoriesForTitle(title->titleId, catIds, Settings::MAX_CATEGORIES);
 
     if (catCount == 0) {
-        Renderer::DrawText(DETAILS_START_COL + 2, LIST_START_ROW + 7, "(none)");
+        Renderer::DrawText(DETAILS_START_COL + 2, INFO_START_ROW + 4, "(none)");
     } else {
-        int row = LIST_START_ROW + 7;
-        for (int i = 0; i < catCount && row < FOOTER_ROW - 2; i++) {
+        int row = INFO_START_ROW + 4;
+        for (int i = 0; i < catCount && row < FOOTER_ROW - 1; i++) {
             const Settings::Category* cat = Settings::GetCategory(catIds[i]);
             if (cat) {
                 Renderer::DrawTextF(DETAILS_START_COL + 2, row, "- %s", cat->name);
@@ -253,9 +268,6 @@ void drawDetailsPanel()
             }
         }
     }
-
-    // Action hints
-    Renderer::DrawText(DETAILS_START_COL, FOOTER_ROW - 2, "X: Edit Title");
 }
 
 /**
@@ -265,9 +277,10 @@ void drawFooter()
 {
     int count = Categories::GetFilteredCount();
 
-    char footer[80];
+    // Bottom row: main controls with customizable button labels
+    char footer[100];
     snprintf(footer, sizeof(footer),
-             "%s:Go %s:Close %s:Fav %s:Edit %s:Settings  [%d/%d]",
+             "%s:Go %s:Close %s:Fav %s:Edit %s:Settings ZL/ZR:Cat [%d/%d]",
              Buttons::Actions::CONFIRM.label,
              Buttons::Actions::CANCEL.label,
              Buttons::Actions::FAVORITE.label,
@@ -594,6 +607,7 @@ const char* getSettingDescription(int index)
         case 5: return "Header text color.\nRGBA hex format.";
         case 6: return "Category tab color.\nRGBA hex format.";
         case 7: return "Create, rename, or delete\ncustom categories.";
+        case 8: return "Open the pixel editor\nto create custom graphics.";
         default: return "";
     }
 }
@@ -634,6 +648,10 @@ void renderSettingsMain()
     Renderer::DrawTextF(0, row++, "%s Manage Categories (%d)",
                       cursor, Settings::GetCategoryCount());
 
+    // 8: Pixel Editor
+    cursor = (sSettingsIndex == 8) ? ">" : " ";
+    Renderer::DrawTextF(0, row++, "%s Pixel Editor", cursor);
+
     // --- Right side: Description ---
     Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW, "Description:");
     Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 1, "------------");
@@ -662,7 +680,7 @@ void renderSettingsMain()
         Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 6, "Press A to edit");
     } else if (sSettingsIndex == 0) {
         Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 6, "Press A to toggle");
-    } else if (sSettingsIndex == 7) {
+    } else if (sSettingsIndex == 7 || sSettingsIndex == 8) {
         Renderer::DrawText(DETAILS_START_COL, LIST_START_ROW + 6, "Press A to open");
     }
 
@@ -855,6 +873,13 @@ void handleSettingsMainInput(uint32_t pressed)
             sManageCatIndex = 0;
             sManageCatScroll = 0;
             sSettingsSubMode = SettingsSubMode::MANAGE_CATS;
+        } else if (sSettingsIndex == 8) {
+            // Open pixel editor
+            PixelEditor::Config editorConfig;
+            editorConfig.width = 64;
+            editorConfig.height = 64;
+            editorConfig.savePath = "fs:/vol/external01/wiiu/titleswitcher/";
+            PixelEditor::Open(editorConfig);
         }
     }
 
@@ -1048,6 +1073,9 @@ uint64_t runMenuLoop()
                 break;
         }
 
+        // Process image loading queue
+        ImageLoader::Update();
+
         // End frame (flush and flip)
         Renderer::EndFrame();
 
@@ -1148,6 +1176,9 @@ void Open()
         return;
     }
 
+    // Initialize image loader for title icons
+    ImageLoader::Init();
+
     // Ensure titles are loaded
     Titles::Load();
 
@@ -1171,6 +1202,7 @@ void Open()
 
     // Cleanup
     sIsOpen = false;
+    ImageLoader::Shutdown();
     Renderer::Shutdown();
 
     // Launch selected title if any
