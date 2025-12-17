@@ -18,6 +18,12 @@ void SetSelection(int selectedIndex, int scrollOffset);
 int GetSelectedIndex();
 int GetScrollOffset();
 
+// Set settings mode state
+void SetSettingsIndex(int index);
+void SetSystemAppIndex(int index);
+int GetSettingsIndex();
+int GetSystemAppIndex();
+
 // Render a complete browse mode frame
 void renderFrame(uint32_t bgColor);
 
@@ -28,5 +34,9 @@ void drawDivider();
 void drawTitleList();
 void drawDetailsPanel();
 void drawFooter();
+
+// Settings mode rendering
+void renderSettingsMain();
+void renderSystemApps();
 
 } // namespace MenuRender

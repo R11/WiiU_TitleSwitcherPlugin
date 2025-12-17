@@ -3,22 +3,20 @@
 ================================================================================
 
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ All   Favorites   System  [Games]  Apps                                                            │
+│SETTINGS                                                                                            │
 │----------------------------------------------------------------------------------------------------│
-│> * Super Mario 3D World      | Sup░░░░░░░░░░░░World                                                │
-│  * Mario Kart 8              |    ░░░░░░░░░░░░                                                     │
-│                              |    ░░░░░░░░░░░░                                                     │
-│                              |    ░░░░░░░░░░░░                                                     │
-│                              |                                                                     │
-│                              | ID: 0005000010145D00                                                │
-│                              | Favorite: Yes                                                       │
-│                              |                                                                     │
-│                              | Categories:                                                         │
-│                              |   - Games                                                           │
-│                              |                                                                     │
-│                              |                                                                     │
-│                              |                                                                     │
-│                              |                                                                     │
+│> Gamepad Brightness: [===--] 3 Description:                                                        │
+│  System Apps                 | ------------                                                        │
+│  Show Numbers: OFF           |                                                                     │
+│  Show Favorites: ON          | Adjust Gamepad screen                                               │
+│  Background: 1E1E2EFF        | brightness (1-5).                                                   │
+│  Title Text: 1E1E2EFF        |                                                                     │
+│  Highlighted: 1E1E2EFF       | Left/Right to adjust                                                │
+│  Favorite: 1E1E2EFF          |                                                                     │
+│  Header: 1E1E2EFF            |                                                                     │
+│  Category: 1E1E2EFF          |                                                                     │
+│  Manage Categories (2)       |                                                                     │
+│  Debug Grid                  |                                                                     │
 │                              |                                                                     │
 │                              |                                                                     │
 │                              |                                                                     │
@@ -30,7 +28,9 @@
 │                              |                                                                     │
 │                              |                                                                     │
 │                              |                                                                     │
-│A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [1/2]                                                │
+│                              |                                                                     │
+│                              |                                                                     │
+│A:Edit B:Back  [1/12]                                                                               │
 └────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
 
@@ -39,22 +39,20 @@
 ================================================================================
 
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ All   Favorites   System  [Games]  Apps                                                                                                                        │
+│SETTINGS                                                                                                                                                        │
 │----------------------------------------------------------------------------------------------------------------------------------------------------------------│
-│> * Super Mario 3D World                        | Super Mario 3D World                                                                                          │
-│  * Mario Kart 8                                | ░░░░░░░░░░░░░░░░                                                                                              │
-│                                                | ░░░░░░░░░░░░░░░░                                                                                              │
-│                                                | ░░░░░░░░░░░░░░░░                                                                                              │
-│                                                | ░░░░░░░░░░░░░░░░                                                                                              │
-│                                                | ░░░░░░░░░░░░░░░░                                                                                              │
-│                                                | ░░░░░░░░░░░░░░░░                                                                                              │
-│                                                |                                                                                                               │
-│                                                | ID: 0005000010145D00                                                                                          │
-│                                                | Favorite: Yes                                                                                                 │
-│                                                |                                                                                                               │
-│                                                | Categories:                                                                                                   │
-│                                                |   - Games                                                                                                     │
-│                                                |                                                                                                               │
+│> Gamepad Brightness: [===--] 3                 | Description:                                                                                                  │
+│  System Apps                                   | ------------                                                                                                  │
+│  Show Numbers: OFF                             |                                                                                                               │
+│  Show Favorites: ON                            | Adjust Gamepad screen                                                                                         │
+│  Background: 1E1E2EFF                          | brightness (1-5).                                                                                             │
+│  Title Text: 1E1E2EFF                          |                                                                                                               │
+│  Highlighted: 1E1E2EFF                         | Left/Right to adjust                                                                                          │
+│  Favorite: 1E1E2EFF                            |                                                                                                               │
+│  Header: 1E1E2EFF                              |                                                                                                               │
+│  Category: 1E1E2EFF                            |                                                                                                               │
+│  Manage Categories (2)                         |                                                                                                               │
+│  Debug Grid                                    |                                                                                                               │
 │                                                |                                                                                                               │
 │                                                |                                                                                                               │
 │                                                |                                                                                                               │
@@ -83,7 +81,9 @@
 │                                                |                                                                                                               │
 │                                                |                                                                                                               │
 │                                                |                                                                                                               │
-│A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [1/2]                                                                                                            │
+│                                                |                                                                                                               │
+│                                                |                                                                                                               │
+│A:Edit B:Back  [1/12]                                                                                                                                           │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
 
@@ -92,22 +92,20 @@
 ================================================================================
 
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ All   Favorites   System  [Games]  Apps                                                                                │
+│SETTINGS                                                                                                                │
 │------------------------------------------------------------------------------------------------------------------------│
-│> * Super Mario 3D World            | Super Mario 3D World                                                              │
-│  * Mario Kart 8                    |    ░░░░░░░░░░░░░                                                                  │
-│                                    |    ░░░░░░░░░░░░░                                                                  │
-│                                    |    ░░░░░░░░░░░░░                                                                  │
-│                                    |    ░░░░░░░░░░░░░                                                                  │
-│                                    |    ░░░░░░░░░░░░░                                                                  │
-│                                    | ID: 0005000010145D00                                                              │
-│                                    | Favorite: Yes                                                                     │
-│                                    |                                                                                   │
-│                                    | Categories:                                                                       │
-│                                    |   - Games                                                                         │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
+│> Gamepad Brightness: [===--] 3     | Description:                                                                      │
+│  System Apps                       | ------------                                                                      │
+│  Show Numbers: OFF                 |                                                                                   │
+│  Show Favorites: ON                | Adjust Gamepad screen                                                             │
+│  Background: 1E1E2EFF              | brightness (1-5).                                                                 │
+│  Title Text: 1E1E2EFF              |                                                                                   │
+│  Highlighted: 1E1E2EFF             | Left/Right to adjust                                                              │
+│  Favorite: 1E1E2EFF                |                                                                                   │
+│  Header: 1E1E2EFF                  |                                                                                   │
+│  Category: 1E1E2EFF                |                                                                                   │
+│  Manage Categories (2)             |                                                                                   │
+│  Debug Grid                        |                                                                                   │
 │                                    |                                                                                   │
 │                                    |                                                                                   │
 │                                    |                                                                                   │
@@ -125,7 +123,9 @@
 │                                    |                                                                                   │
 │                                    |                                                                                   │
 │                                    |                                                                                   │
-│A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [1/2]                                                                    │
+│                                    |                                                                                   │
+│                                    |                                                                                   │
+│A:Edit B:Back  [1/12]                                                                                                   │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
 
@@ -134,23 +134,20 @@
 ================================================================================
 
 ┌────────────────────────────────────────────────────────────────────────────────┐
-│ All   Favorites   System  [Games]  Apps                                        │
+│SETTINGS                                                                        │
 │--------------------------------------------------------------------------------│
-│> * Super Mario 3D Wor  | ░░░░░░░░░░░░3D World                                  │
-│  * Mario Kart 8        | ░░░░░░░░░░░░                                          │
-│                        | ░░░░░░░░░░░░                                          │
-│                        | ░░░░░░░░░░░░                                          │
-│                        |                                                       │
-│                        |                                                       │
-│                        | ID: 0005000010145D00                                  │
-│                        | Favorite: Yes                                         │
-│                        |                                                       │
-│                        | Categories:                                           │
-│                        |   - Games                                             │
-│                        |                                                       │
-│                        |                                                       │
-│                        |                                                       │
-│                        |                                                       │
+│> Gamepad Brightness: [===Description:                                          │
+│  System Apps           | ------------                                          │
+│  Show Numbers: OFF     |                                                       │
+│  Show Favorites: ON    | Adjust Gamepad screen                                 │
+│  Background: 1E1E2EFF  | brightness (1-5).                                     │
+│  Title Text: 1E1E2EFF  |                                                       │
+│  Highlighted: 1E1E2EFF | Left/Right to adjust                                  │
+│  Favorite: 1E1E2EFF    |                                                       │
+│  Header: 1E1E2EFF      |                                                       │
+│  Category: 1E1E2EFF    |                                                       │
+│  Manage Categories (2) |                                                       │
+│  Debug Grid            |                                                       │
 │                        |                                                       │
 │                        |                                                       │
 │                        |                                                       │
@@ -163,5 +160,8 @@
 │                        |                                                       │
 │                        |                                                       │
 │                        |                                                       │
-│A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [1/2]                            │
+│                        |                                                       │
+│                        |                                                       │
+│                        |                                                       │
+│A:Edit B:Back  [1/12]                                                           │
 └────────────────────────────────────────────────────────────────────────────────┘
