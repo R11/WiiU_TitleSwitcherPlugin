@@ -53,6 +53,7 @@
 #include "input/buttons.h"            // Button mapping
 #include "titles/titles.h"            // Title management
 #include "storage/settings.h"         // Persistent settings
+#include "presets/title_presets.h"    // GameTDB preset metadata
 
 // =============================================================================
 // Plugin Metadata
@@ -114,6 +115,10 @@ INITIALIZE_PLUGIN()
     // Preload title list in background
     // This takes a few seconds but happens at boot, not when opening the menu
     Titles::Load();
+
+    // Load preset metadata from SD card (GameTDB data)
+    // This provides publisher/developer/genre info for installed titles
+    TitlePresets::Load();
 
     // Show startup notification
     notify("Title Switcher ready");
