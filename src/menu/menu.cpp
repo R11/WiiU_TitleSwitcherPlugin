@@ -146,10 +146,9 @@ static const SettingItem sSettingItems[] = {
 
 static constexpr int SETTINGS_ITEM_COUNT = sizeof(sSettingItems) / sizeof(sSettingItems[0]);
 
-int sSettingsIndex = 0;              // Currently selected setting
+UI::ListView::State sSettingsListState;  // Settings list state
 SettingsSubMode sSettingsSubMode = SettingsSubMode::MAIN;
-int sManageCatIndex = 0;             // Selected category in manage mode
-int sManageCatScroll = 0;            // Scroll offset in manage mode
+UI::ListView::State sManageCatsListState;  // Manage categories list state
 int sEditingSettingIndex = -1;       // Which setting is being edited (-1 = none)
 int sEditingCategoryId = -1;         // Which category is being renamed (-1 = new)
 TextInput::Field sInputField;        // Reusable text input field
@@ -563,7 +562,7 @@ uint64_t handleBrowseModeInput(uint32_t pressed)
     // Settings (Plus)
     if (Buttons::Actions::SETTINGS.Pressed(pressed)) {
         // Reset settings mode state
-        sSettingsIndex = 0;
+        sSettingsListState = UI::ListView::State();  // Reset list state
         sSettingsSubMode = SettingsSubMode::MAIN;
         sCurrentMode = Mode::SETTINGS;
     }
@@ -759,69 +758,81 @@ void renderSettingsMain()
     // --- Divider ---
     drawDivider();
 
-    // --- Left side: Settings list (data-driven) ---
-    int row = LIST_START_ROW;
+    // --- Left side: Settings list using ListView ---
+    UI::ListView::Config listConfig;
+    listConfig.col = LIST_START_COL;
+    listConfig.row = LIST_START_ROW;
+    listConfig.width = Renderer::GetDividerCol() - 1;
+    listConfig.visibleRows = Renderer::GetFooterRow() - LIST_START_ROW - 1;
+    listConfig.showScrollIndicators = true;
 
-    for (int i = 0; i < SETTINGS_ITEM_COUNT && row < Renderer::GetFooterRow() - 1; i++) {
-        const SettingItem& item = sSettingItems[i];
-        const char* cursor = (sSettingsIndex == i) ? ">" : " ";
+    sSettingsListState.itemCount = SETTINGS_ITEM_COUNT;
 
+    UI::ListView::Render(sSettingsListState, listConfig, [](int index, bool isSelected) {
+        UI::ListView::ItemView view;
+        const SettingItem& item = sSettingItems[index];
+        view.prefix = isSelected ? "> " : "  ";
+
+        // Build text based on setting type
+        static char textBuf[64];
         switch (item.type) {
             case SettingType::TOGGLE: {
                 bool value = *getTogglePtr(item.dataOffset);
-                Renderer::DrawTextF(0, row++, "%s %s: %s", cursor, item.name, value ? "ON" : "OFF");
+                snprintf(textBuf, sizeof(textBuf), "%s: %s", item.name, value ? "ON" : "OFF");
                 break;
             }
             case SettingType::COLOR: {
                 uint32_t value = *getColorPtr(item.dataOffset);
-                Renderer::DrawTextF(0, row++, "%s %s: %08X", cursor, item.name, value);
+                snprintf(textBuf, sizeof(textBuf), "%s: %08X", item.name, value);
                 break;
             }
             case SettingType::BRIGHTNESS: {
                 int brightness = getCurrentBrightness();
-                // Draw brightness bar: [===--] for level 3
                 char bar[8] = "-----";
-                for (int b = 0; b < brightness && b < 5; b++) {
-                    bar[b] = '=';
-                }
-                Renderer::DrawTextF(0, row++, "%s %s: [%s] %d", cursor, item.name, bar, brightness);
+                for (int b = 0; b < brightness && b < 5; b++) bar[b] = '=';
+                snprintf(textBuf, sizeof(textBuf), "%s: [%s] %d", item.name, bar, brightness);
                 break;
             }
             case SettingType::ACTION: {
                 if (item.dataOffset == ACTION_MANAGE_CATEGORIES) {
-                    Renderer::DrawTextF(0, row++, "%s %s (%d)", cursor, item.name, Settings::GetCategoryCount());
+                    snprintf(textBuf, sizeof(textBuf), "%s (%d)", item.name, Settings::GetCategoryCount());
                 } else {
-                    Renderer::DrawTextF(0, row++, "%s %s", cursor, item.name);
+                    snprintf(textBuf, sizeof(textBuf), "%s", item.name);
                 }
                 break;
             }
         }
-    }
+        view.text = textBuf;
+        return view;
+    });
 
     // --- Right side: Description ---
     Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW, "Description:");
     Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 1, "------------");
 
     // Show description for selected item
-    const SettingItem& selected = sSettingItems[sSettingsIndex];
-    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 3, selected.descLine1);
-    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 4, selected.descLine2);
+    int selectedIdx = UI::ListView::GetSelectedIndex(sSettingsListState);
+    if (selectedIdx >= 0 && selectedIdx < SETTINGS_ITEM_COUNT) {
+        const SettingItem& selected = sSettingItems[selectedIdx];
+        Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 3, selected.descLine1);
+        Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 4, selected.descLine2);
 
-    // Show action hint based on type
-    const char* hint = "";
-    switch (selected.type) {
-        case SettingType::TOGGLE:     hint = "Press A to toggle"; break;
-        case SettingType::COLOR:      hint = "Press A to edit"; break;
-        case SettingType::BRIGHTNESS: hint = "Left/Right to adjust"; break;
-        case SettingType::ACTION:     hint = "Press A to open"; break;
+        // Show action hint based on type
+        const char* hint = "";
+        switch (selected.type) {
+            case SettingType::TOGGLE:     hint = "Press A to toggle"; break;
+            case SettingType::COLOR:      hint = "Press A to edit"; break;
+            case SettingType::BRIGHTNESS: hint = "Left/Right to adjust"; break;
+            case SettingType::ACTION:     hint = "Press A to open"; break;
+        }
+        Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 6, hint);
     }
-    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 6, hint);
 
     // --- Footer ---
     Renderer::DrawTextF(0, Renderer::GetFooterRow(), "%s:Edit %s:Back  [%d/%d]",
                       Buttons::Actions::CONFIRM.label,
                       Buttons::Actions::CANCEL.label,
-                      sSettingsIndex + 1, SETTINGS_ITEM_COUNT);
+                      selectedIdx + 1, SETTINGS_ITEM_COUNT);
 }
 
 /**
@@ -839,42 +850,43 @@ void renderManageCategories()
     int catCount = Settings::GetCategoryCount();
     const auto& categories = Settings::Get().categories;
 
-    // --- Left side: Category list ---
-    int row = LIST_START_ROW;
+    // --- Left side: Category list using ListView ---
+    UI::ListView::Config listConfig;
+    listConfig.col = LIST_START_COL;
+    listConfig.row = LIST_START_ROW;
+    listConfig.width = Renderer::GetDividerCol() - 1;
+    listConfig.visibleRows = CATEGORY_MANAGE_VISIBLE_ROWS;
+    listConfig.showScrollIndicators = true;
+    listConfig.canReorder = true;
+    listConfig.canDelete = true;
+
+    sManageCatsListState.itemCount = catCount;
 
     if (catCount == 0) {
-        Renderer::DrawText(2, row, "(No categories)");
-        Renderer::DrawTextF(2, row + 2, "Press %s to create one", Buttons::Actions::SETTINGS.label);
+        Renderer::DrawText(2, LIST_START_ROW, "(No categories)");
+        Renderer::DrawTextF(2, LIST_START_ROW + 2, "Press %s to create one", Buttons::Actions::SETTINGS.label);
     } else {
-        // Clamp selection and scroll
-        clampScrollableList(sManageCatIndex, sManageCatScroll, catCount, CATEGORY_MANAGE_VISIBLE_ROWS);
-
-        // Draw categories
-        for (int i = 0; i < CATEGORY_MANAGE_VISIBLE_ROWS && (sManageCatScroll + i) < catCount; i++) {
-            int idx = sManageCatScroll + i;
-            const Settings::Category& cat = categories[idx];
-
-            const char* cursor = (sManageCatIndex == idx) ? ">" : " ";
-
-            // Show hidden status
-            if (cat.hidden) {
-                Renderer::DrawTextF(0, row + i, "%s %s (hidden)", cursor, cat.name);
-            } else {
-                Renderer::DrawTextF(0, row + i, "%s %s", cursor, cat.name);
-            }
-        }
+        UI::ListView::Render(sManageCatsListState, listConfig, [&categories](int index, bool isSelected) {
+            UI::ListView::ItemView view;
+            const Settings::Category& cat = categories[index];
+            view.text = cat.name;
+            view.prefix = isSelected ? "> " : "  ";
+            view.suffix = cat.hidden ? " (hidden)" : "";
+            return view;
+        });
     }
 
     // --- Right side: Actions ---
     Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW, "Actions:");
     Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 1, "--------");
 
+    int selectedIdx = UI::ListView::GetSelectedIndex(sManageCatsListState);
     if (catCount == 0) {
         Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 3, "No categories yet.");
         Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 5, "%s: Add New",
                           Buttons::Actions::SETTINGS.label);
-    } else if (sManageCatIndex >= 0 && sManageCatIndex < catCount) {
-        const Settings::Category& cat = categories[sManageCatIndex];
+    } else if (selectedIdx >= 0 && selectedIdx < catCount) {
+        const Settings::Category& cat = categories[selectedIdx];
         Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 3, "Category: %s", cat.name);
 
         // Show visibility status
@@ -902,7 +914,7 @@ void renderManageCategories()
                       Buttons::Actions::CANCEL.label,
                       Buttons::Actions::FAVORITE.label,
                       Buttons::Actions::SETTINGS.label,
-                      catCount > 0 ? sManageCatIndex + 1 : 0, catCount);
+                      catCount > 0 ? selectedIdx + 1 : 0, catCount);
 }
 
 /**
@@ -1040,35 +1052,44 @@ void renderSettingsMode()
  */
 void handleSettingsMainInput(uint32_t pressed)
 {
-    // Navigation
-    if (Buttons::Actions::NAV_UP.Pressed(pressed)) {
-        if (sSettingsIndex > 0) sSettingsIndex--;
-    }
-    if (Buttons::Actions::NAV_DOWN.Pressed(pressed)) {
-        if (sSettingsIndex < SETTINGS_ITEM_COUNT - 1) sSettingsIndex++;
-    }
+    // Configure ListView for navigation
+    UI::ListView::Config listConfig;
+    listConfig.visibleRows = Renderer::GetFooterRow() - LIST_START_ROW - 1;
+    listConfig.canConfirm = true;
+    listConfig.canCancel = true;
+    // Disable skip navigation - we use Left/Right for brightness adjustment
+    listConfig.smallSkip = 1;  // Make Left/Right act like Up/Down
+
+    sSettingsListState.itemCount = SETTINGS_ITEM_COUNT;
+
+    // Handle navigation
+    UI::ListView::HandleInput(sSettingsListState, pressed, listConfig);
+    int selectedIdx = UI::ListView::GetSelectedIndex(sSettingsListState);
 
     // Check if current setting is brightness for left/right handling
-    const SettingItem& currentItem = sSettingItems[sSettingsIndex];
-    if (currentItem.type == SettingType::BRIGHTNESS) {
-        // Left/Right to adjust brightness
-        if (Buttons::Actions::NAV_SKIP_UP.Pressed(pressed)) {
-            int brightness = getCurrentBrightness();
-            if (brightness > 1) {
-                setBrightness(brightness - 1);
+    if (selectedIdx >= 0 && selectedIdx < SETTINGS_ITEM_COUNT) {
+        const SettingItem& currentItem = sSettingItems[selectedIdx];
+        if (currentItem.type == SettingType::BRIGHTNESS) {
+            // Left/Right to adjust brightness (handled separately from navigation)
+            if (Buttons::Actions::NAV_SKIP_UP.Pressed(pressed)) {
+                int brightness = getCurrentBrightness();
+                if (brightness > 1) {
+                    setBrightness(brightness - 1);
+                }
             }
-        }
-        if (Buttons::Actions::NAV_SKIP_DOWN.Pressed(pressed)) {
-            int brightness = getCurrentBrightness();
-            if (brightness < 5) {
-                setBrightness(brightness + 1);
+            if (Buttons::Actions::NAV_SKIP_DOWN.Pressed(pressed)) {
+                int brightness = getCurrentBrightness();
+                if (brightness < 5) {
+                    setBrightness(brightness + 1);
+                }
             }
         }
     }
 
-    // Confirm/Edit - data-driven handling
-    if (Buttons::Actions::CONFIRM.Pressed(pressed)) {
-        const SettingItem& item = sSettingItems[sSettingsIndex];
+    // Handle actions
+    UI::ListView::Action action = UI::ListView::GetAction(pressed, listConfig);
+    if (action == UI::ListView::Action::CONFIRM && selectedIdx >= 0) {
+        const SettingItem& item = sSettingItems[selectedIdx];
 
         switch (item.type) {
             case SettingType::TOGGLE: {
@@ -1079,7 +1100,7 @@ void handleSettingsMainInput(uint32_t pressed)
             }
             case SettingType::COLOR: {
                 // Edit color - initialize input field with current value
-                sEditingSettingIndex = sSettingsIndex;
+                sEditingSettingIndex = selectedIdx;
                 uint32_t* color = getColorPtr(item.dataOffset);
                 char hexStr[16];
                 snprintf(hexStr, sizeof(hexStr), "%08X", *color);
@@ -1097,8 +1118,7 @@ void handleSettingsMainInput(uint32_t pressed)
             case SettingType::ACTION: {
                 // Handle action based on action ID
                 if (item.dataOffset == ACTION_MANAGE_CATEGORIES) {
-                    sManageCatIndex = 0;
-                    sManageCatScroll = 0;
+                    sManageCatsListState = UI::ListView::State();  // Reset list state
                     sSettingsSubMode = SettingsSubMode::MANAGE_CATS;
                 } else if (item.dataOffset == ACTION_SYSTEM_APPS) {
                     sSystemAppsListState = UI::ListView::State();  // Reset state
@@ -1112,7 +1132,7 @@ void handleSettingsMainInput(uint32_t pressed)
     }
 
     // Back
-    if (Buttons::Actions::CANCEL.Pressed(pressed)) {
+    if (action == UI::ListView::Action::CANCEL) {
         Settings::Save();
         sCurrentMode = Mode::BROWSE;
     }
@@ -1126,83 +1146,91 @@ void handleManageCategoriesInput(uint32_t pressed)
     int catCount = Settings::GetCategoryCount();
     const auto& categories = Settings::Get().categories;
 
-    // Navigation (0-indexed into category array)
-    if (Buttons::Actions::NAV_UP.Pressed(pressed)) {
-        if (sManageCatIndex > 0) sManageCatIndex--;
-    }
-    if (Buttons::Actions::NAV_DOWN.Pressed(pressed)) {
-        if (sManageCatIndex < catCount - 1) sManageCatIndex++;
-    }
+    // Configure ListView
+    UI::ListView::Config listConfig;
+    listConfig.visibleRows = CATEGORY_MANAGE_VISIBLE_ROWS;
+    listConfig.canConfirm = true;
+    listConfig.canCancel = true;
+    listConfig.canReorder = true;
+    listConfig.canDelete = true;
+    listConfig.canFavorite = true;  // Y for toggle visibility
 
-    // Add new category (+)
+    sManageCatsListState.itemCount = catCount;
+
+    // Handle navigation
+    UI::ListView::HandleInput(sManageCatsListState, pressed, listConfig);
+    int selectedIdx = UI::ListView::GetSelectedIndex(sManageCatsListState);
+
+    // Add new category (+) - handled separately
     if (Buttons::Actions::SETTINGS.Pressed(pressed)) {
         sEditingCategoryId = -1;  // -1 = new
         sInputField.Init(Settings::MAX_CATEGORY_NAME - 1, TextInput::Library::ALPHA_NUMERIC);
         sInputField.Clear();
         sSettingsSubMode = SettingsSubMode::NAME_INPUT;
+        return;
     }
 
-    // Confirm (A) - Rename selected category
-    if (Buttons::Actions::CONFIRM.Pressed(pressed)) {
-        if (catCount > 0 && sManageCatIndex >= 0 && sManageCatIndex < catCount) {
-            const Settings::Category& cat = categories[sManageCatIndex];
-            sEditingCategoryId = cat.id;
-            sInputField.Init(Settings::MAX_CATEGORY_NAME - 1, TextInput::Library::ALPHA_NUMERIC);
-            sInputField.SetValue(cat.name);
-            sSettingsSubMode = SettingsSubMode::NAME_INPUT;
-        }
-    }
-
-    // Edit (X) - Delete category
-    if (Buttons::Actions::EDIT.Pressed(pressed)) {
-        if (catCount > 0 && sManageCatIndex >= 0 && sManageCatIndex < catCount) {
-            uint16_t catId = categories[sManageCatIndex].id;
-            Settings::DeleteCategory(catId);
-
-            // Adjust selection if needed
-            int newCount = Settings::GetCategoryCount();
-            if (sManageCatIndex >= newCount && newCount > 0) {
-                sManageCatIndex = newCount - 1;
+    // Handle actions
+    UI::ListView::Action action = UI::ListView::GetAction(pressed, listConfig);
+    switch (action) {
+        case UI::ListView::Action::CONFIRM:
+            // Rename selected category
+            if (catCount > 0 && selectedIdx >= 0 && selectedIdx < catCount) {
+                const Settings::Category& cat = categories[selectedIdx];
+                sEditingCategoryId = cat.id;
+                sInputField.Init(Settings::MAX_CATEGORY_NAME - 1, TextInput::Library::ALPHA_NUMERIC);
+                sInputField.SetValue(cat.name);
+                sSettingsSubMode = SettingsSubMode::NAME_INPUT;
             }
+            break;
 
-            // Refresh category filter
-            Categories::RefreshFilter();
-        }
-    }
+        case UI::ListView::Action::DELETE:
+            // Delete category
+            if (catCount > 0 && selectedIdx >= 0 && selectedIdx < catCount) {
+                uint16_t catId = categories[selectedIdx].id;
+                Settings::DeleteCategory(catId);
+                // Update item count and clamp selection
+                sManageCatsListState.SetItemCount(Settings::GetCategoryCount(), listConfig.visibleRows);
+                Categories::RefreshFilter();
+            }
+            break;
 
-    // Favorite (Y) - Toggle visibility
-    if (Buttons::Actions::FAVORITE.Pressed(pressed)) {
-        if (catCount > 0 && sManageCatIndex >= 0 && sManageCatIndex < catCount) {
-            uint16_t catId = categories[sManageCatIndex].id;
-            bool currentlyHidden = Settings::IsCategoryHidden(catId);
-            Settings::SetCategoryHidden(catId, !currentlyHidden);
-        }
-    }
+        case UI::ListView::Action::FAVORITE:
+            // Toggle visibility
+            if (catCount > 0 && selectedIdx >= 0 && selectedIdx < catCount) {
+                uint16_t catId = categories[selectedIdx].id;
+                bool currentlyHidden = Settings::IsCategoryHidden(catId);
+                Settings::SetCategoryHidden(catId, !currentlyHidden);
+            }
+            break;
 
-    // Move category up (L)
-    if (Buttons::Actions::NAV_PAGE_UP.Pressed(pressed)) {
-        if (catCount > 0 && sManageCatIndex > 0 && sManageCatIndex < catCount) {
-            uint16_t catId = categories[sManageCatIndex].id;
-            Settings::MoveCategoryUp(catId);
-            // Follow the moved category
-            sManageCatIndex--;
-        }
-    }
+        case UI::ListView::Action::MOVE_UP:
+            // Move category up
+            if (catCount > 0 && selectedIdx > 0 && selectedIdx < catCount) {
+                uint16_t catId = categories[selectedIdx].id;
+                Settings::MoveCategoryUp(catId);
+                // Follow the moved category
+                sManageCatsListState.selectedIndex--;
+            }
+            break;
 
-    // Move category down (R)
-    if (Buttons::Actions::NAV_PAGE_DOWN.Pressed(pressed)) {
-        if (catCount > 0 && sManageCatIndex >= 0 && sManageCatIndex < catCount - 1) {
-            uint16_t catId = categories[sManageCatIndex].id;
-            Settings::MoveCategoryDown(catId);
-            // Follow the moved category
-            sManageCatIndex++;
-        }
-    }
+        case UI::ListView::Action::MOVE_DOWN:
+            // Move category down
+            if (catCount > 0 && selectedIdx >= 0 && selectedIdx < catCount - 1) {
+                uint16_t catId = categories[selectedIdx].id;
+                Settings::MoveCategoryDown(catId);
+                // Follow the moved category
+                sManageCatsListState.selectedIndex++;
+            }
+            break;
 
-    // Back
-    if (Buttons::Actions::CANCEL.Pressed(pressed)) {
-        Settings::Save();
-        sSettingsSubMode = SettingsSubMode::MAIN;
+        case UI::ListView::Action::CANCEL:
+            // Back
+            sSettingsSubMode = SettingsSubMode::MAIN;
+            break;
+
+        default:
+            break;
     }
 }
 
