@@ -8,13 +8,13 @@
 │                              |    ░░░░░░░░░░░░        │
 │                              | ID: 0005000010145D00   │
 │                              | Favorite: Yes          │
+│                              | Game ID: ARDP01        │
+│                              |                        │
+│                              | Pub: Nintendo          │
+│                              | Dev: Nintendo EAD Tokyo│
+│                              | Released: 2013-11-22   │
 │                              |                        │
 │                              | Categories:            │
-│                              |   - Games              │
-│                              |                        │
-│                              |                        │
-│                              |                        │
-│                              |                        │
 │                              |                        │
 │A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [1/3]   │
 └───────────────────────────────────────────────────────┘

@@ -8,10 +8,10 @@
 │    Donkey Kong Country: Tro  |    ░░░░░░░░░░░░        │
 │>   Captain Toad: Treasure T  | ID: 0005000010175B00   │
 │    Yoshi's Woolly World      | Favorite: No           │
-│    Star Fox Zero             |                        │
-│    NES Remix Pack            | Categories:            │
-│    Mii Verse                 |   (none)               │
-│    Nintendo eShop            |                        │
+│    Star Fox Zero             | Game ID: AKBP01        │
+│    NES Remix Pack            |                        │
+│    Mii Verse                 | Categories:            │
+│    Nintendo eShop            |   (none)               │
 │    Internet Browser          |                        │
 │    Tokyo Mirage Sessions FE  |                        │
 │    Pokken Tournament         |                        │

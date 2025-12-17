@@ -8,13 +8,13 @@
 │   5.   The Legend of Zelda:  |    ░░░░░░░░░░░░        │
 │   6.   Bayonetta 2           | ID: 000500001010EC00   │
 │   7.   Pikmin 3              | Favorite: Yes          │
-│   8.   Xenoblade Chronicles  |                        │
-│   9.   Hyrule Warriors       | Categories:            │
-│  10.   Donkey Kong Country:  |   - Games              │
-│  11.   Captain Toad: Treasur |                        │
-│  12.   Yoshi's Woolly World  |                        │
+│   8.   Xenoblade Chronicles  | Game ID: AMKP01        │
+│   9.   Hyrule Warriors       |                        │
+│  10.   Donkey Kong Country:  | Pub: Nintendo          │
+│  11.   Captain Toad: Treasur | Dev: Nintendo EAD      │
+│  12.   Yoshi's Woolly World  | Released: 2014-05-30   │
 │  13.   Star Fox Zero         |                        │
-│  14.   NES Remix Pack        |                        │
+│  14.   NES Remix Pack        | Categories:            │
 │  15.   Mii Verse      [DOWN] |                        │
 │A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [2/20]  │
 └───────────────────────────────────────────────────────┘

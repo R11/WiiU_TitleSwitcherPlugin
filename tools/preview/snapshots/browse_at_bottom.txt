@@ -8,10 +8,10 @@
 │    Mii Verse                 |    ░░░░░░░░░░░░        │
 │    Nintendo eShop            | ID: 0005000010162B00   │
 │    Internet Browser          | Favorite: No           │
-│    Tokyo Mirage Sessions FE  |                        │
-│    Pokken Tournament         | Categories:            │
-│>   Super Mario Maker         |   (none)               │
-│                              |                        │
+│    Tokyo Mirage Sessions FE  | Game ID: AMFP01        │
+│    Pokken Tournament         |                        │
+│>   Super Mario Maker         | Categories:            │
+│                              |   (none)               │
 │                              |                        │
 │                              |                        │
 │                              |                        │
