@@ -46,8 +46,7 @@ int sSelectedIndex = 0;     // Currently selected title index
 int sScrollOffset = 0;      // First visible title index
 
 // Edit mode state
-int sEditCategoryIndex = 0;      // Currently selected category in edit mode
-int sEditCategoryScroll = 0;     // Scroll offset for category list
+UI::ListView::State sEditCatsListState;  // Category edit list state
 
 // Settings mode state
 enum class SettingsSubMode {
@@ -554,8 +553,7 @@ uint64_t handleBrowseModeInput(uint32_t pressed)
     // Edit mode (X)
     if (Buttons::Actions::EDIT.Pressed(pressed)) {
         // Reset edit mode state
-        sEditCategoryIndex = 0;
-        sEditCategoryScroll = 0;
+        sEditCatsListState = UI::ListView::State();  // Reset list state
         sCurrentMode = Mode::EDIT;
     }
 
@@ -616,13 +614,14 @@ void renderEditMode()
     // --- Divider ---
     drawDivider();
 
-    // --- Right side: Category checkboxes ---
+    // --- Right side: Category checkboxes using ListView ---
     Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW, "Categories:");
     Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 1, "------------");
 
     // Get user-defined categories
     int catCount = Settings::GetCategoryCount();
     const auto& categories = Settings::Get().categories;
+    uint64_t titleId = title->titleId;
 
     if (catCount == 0) {
         Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 3,
@@ -630,43 +629,40 @@ void renderEditMode()
         Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 4,
                          "Create in Settings (+)");
     } else {
-        int startRow = LIST_START_ROW + 3;
+        UI::ListView::Config listConfig;
+        listConfig.col = Renderer::GetDetailsPanelCol();
+        listConfig.row = LIST_START_ROW + 3;
+        listConfig.width = Renderer::GetGridWidth() - Renderer::GetDetailsPanelCol() - 1;
+        listConfig.visibleRows = CATEGORY_EDIT_VISIBLE_ROWS;
+        listConfig.showScrollIndicators = true;
+        listConfig.canToggle = true;
 
-        // Clamp selection and scroll
-        clampScrollableList(sEditCategoryIndex, sEditCategoryScroll, catCount, CATEGORY_EDIT_VISIBLE_ROWS);
+        sEditCatsListState.itemCount = catCount;
 
-        // Draw category list
-        for (int i = 0; i < CATEGORY_EDIT_VISIBLE_ROWS && (sEditCategoryScroll + i) < catCount; i++) {
-            int idx = sEditCategoryScroll + i;
-            const Settings::Category& cat = categories[idx];
+        UI::ListView::Render(sEditCatsListState, listConfig, [&categories, titleId](int index, bool isSelected) {
+            UI::ListView::ItemView view;
+            const Settings::Category& cat = categories[index];
+            bool inCategory = Settings::TitleHasCategory(titleId, cat.id);
 
-            // Check if title is in this category
-            bool inCategory = Settings::TitleHasCategory(title->titleId, cat.id);
-
-            // Cursor and checkbox
-            const char* cursor = (idx == sEditCategoryIndex) ? ">" : " ";
-            const char* checkbox = inCategory ? "[X]" : "[ ]";
-
-            Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), startRow + i,
-                              "%s %s %s", cursor, checkbox, cat.name);
-        }
-
-        // Scroll indicators
-        if (sEditCategoryScroll > 0) {
-            Renderer::DrawText(Renderer::GetDetailsPanelCol() + 20, startRow, "[UP]");
-        }
-        if (sEditCategoryScroll + CATEGORY_EDIT_VISIBLE_ROWS < catCount) {
-            Renderer::DrawText(Renderer::GetDetailsPanelCol() + 18, startRow + CATEGORY_EDIT_VISIBLE_ROWS - 1, "[DOWN]");
-        }
+            // Build prefix with cursor and checkbox
+            static char prefixBuf[16];
+            snprintf(prefixBuf, sizeof(prefixBuf), "%s%s ",
+                    isSelected ? ">" : " ",
+                    inCategory ? "[X]" : "[ ]");
+            view.prefix = prefixBuf;
+            view.text = cat.name;
+            return view;
+        });
     }
 
     // --- Footer ---
+    int selectedIdx = UI::ListView::GetSelectedIndex(sEditCatsListState);
     char footer[80];
     snprintf(footer, sizeof(footer),
              "%s:Toggle %s:Back  [Category %d/%d]",
              Buttons::Actions::CONFIRM.label,
              Buttons::Actions::CANCEL.label,
-             sEditCategoryIndex + 1,
+             catCount > 0 ? selectedIdx + 1 : 0,
              catCount > 0 ? catCount : 1);
     Renderer::DrawText(0, Renderer::GetFooterRow(), footer);
 }
@@ -686,40 +682,45 @@ void handleEditModeInput(uint32_t pressed)
 
     int catCount = Settings::GetCategoryCount();
 
-    // Navigation - Up/Down through categories
-    if (Buttons::Actions::NAV_UP.Pressed(pressed)) {
-        if (sEditCategoryIndex > 0) {
-            sEditCategoryIndex--;
-        }
-    }
-    if (Buttons::Actions::NAV_DOWN.Pressed(pressed)) {
-        if (sEditCategoryIndex < catCount - 1) {
-            sEditCategoryIndex++;
-        }
-    }
+    // Configure ListView for checkbox-style list
+    UI::ListView::Config listConfig;
+    listConfig.visibleRows = CATEGORY_EDIT_VISIBLE_ROWS;
+    listConfig.canToggle = true;
+    listConfig.canCancel = true;
 
-    // Toggle category (A)
-    if (Buttons::Actions::CONFIRM.Pressed(pressed)) {
-        if (catCount > 0 && sEditCategoryIndex >= 0 && sEditCategoryIndex < catCount) {
-            const auto& categories = Settings::Get().categories;
-            uint16_t catId = categories[sEditCategoryIndex].id;
+    sEditCatsListState.itemCount = catCount;
 
-            if (Settings::TitleHasCategory(title->titleId, catId)) {
-                Settings::RemoveTitleFromCategory(title->titleId, catId);
-            } else {
-                Settings::AssignTitleToCategory(title->titleId, catId);
+    // Handle navigation
+    UI::ListView::HandleInput(sEditCatsListState, pressed, listConfig);
+    int selectedIdx = UI::ListView::GetSelectedIndex(sEditCatsListState);
+
+    // Handle actions
+    UI::ListView::Action action = UI::ListView::GetAction(pressed, listConfig);
+    switch (action) {
+        case UI::ListView::Action::TOGGLE:
+            // Toggle category assignment
+            if (catCount > 0 && selectedIdx >= 0 && selectedIdx < catCount) {
+                const auto& categories = Settings::Get().categories;
+                uint16_t catId = categories[selectedIdx].id;
+
+                if (Settings::TitleHasCategory(title->titleId, catId)) {
+                    Settings::RemoveTitleFromCategory(title->titleId, catId);
+                } else {
+                    Settings::AssignTitleToCategory(title->titleId, catId);
+                }
+                // Refresh the filter in case this affects the current view
+                Categories::RefreshFilter();
             }
+            break;
 
-            // Refresh the filter in case this affects the current view
-            Categories::RefreshFilter();
-        }
-    }
+        case UI::ListView::Action::CANCEL:
+            // Save changes before exiting
+            Settings::Save();
+            sCurrentMode = Mode::BROWSE;
+            break;
 
-    // Cancel/Back (B)
-    if (Buttons::Actions::CANCEL.Pressed(pressed)) {
-        // Save changes before exiting
-        Settings::Save();
-        sCurrentMode = Mode::BROWSE;
+        default:
+            break;
     }
 }
 
