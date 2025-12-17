@@ -121,8 +121,44 @@ bool sInForeground = false;             // Is app in foreground?
 constexpr uint32_t STARTUP_GRACE_MS = 3000;  // Wait time before allowing menu
 
 // =============================================================================
+// Layout Constants
+// =============================================================================
+
+// Visible rows in different scrollable lists
+constexpr int CATEGORY_EDIT_VISIBLE_ROWS = 10;    // Category checkboxes in edit mode
+constexpr int CATEGORY_MANAGE_VISIBLE_ROWS = 10;  // Category list in manage mode (minus header rows)
+
+// =============================================================================
 // Helper Functions
 // =============================================================================
+
+/**
+ * Clamp selection and scroll offset for a scrollable list.
+ * @param selection  Current selected index (clamped in place)
+ * @param scroll     Current scroll offset (clamped in place)
+ * @param count      Total number of items
+ * @param visibleRows Number of visible rows
+ */
+void clampScrollableList(int& selection, int& scroll, int count, int visibleRows)
+{
+    // Clamp selection to valid range
+    if (selection < 0) selection = 0;
+    if (selection >= count) selection = count > 0 ? count - 1 : 0;
+
+    // Ensure selection is visible
+    if (selection < scroll) {
+        scroll = selection;
+    }
+    if (selection >= scroll + visibleRows) {
+        scroll = selection - visibleRows + 1;
+    }
+
+    // Clamp scroll offset
+    if (scroll < 0) scroll = 0;
+    int maxScroll = count - visibleRows;
+    if (maxScroll < 0) maxScroll = 0;
+    if (scroll > maxScroll) scroll = maxScroll;
+}
 
 /**
  * Clamp selection to valid range and update scroll offset.
@@ -130,32 +166,7 @@ constexpr uint32_t STARTUP_GRACE_MS = 3000;  // Wait time before allowing menu
 void clampSelection()
 {
     int count = Categories::GetFilteredCount();
-
-    // Clamp selection to valid range
-    if (sSelectedIndex < 0) {
-        sSelectedIndex = 0;
-    }
-    if (sSelectedIndex >= count) {
-        sSelectedIndex = count > 0 ? count - 1 : 0;
-    }
-
-    // Update scroll offset to keep selection visible
-    if (sSelectedIndex < sScrollOffset) {
-        sScrollOffset = sSelectedIndex;
-    }
-    if (sSelectedIndex >= sScrollOffset + Renderer::GetVisibleRows()) {
-        sScrollOffset = sSelectedIndex - Renderer::GetVisibleRows() + 1;
-    }
-
-    // Clamp scroll offset
-    if (sScrollOffset < 0) {
-        sScrollOffset = 0;
-    }
-    int maxScroll = count - Renderer::GetVisibleRows();
-    if (maxScroll < 0) maxScroll = 0;
-    if (sScrollOffset > maxScroll) {
-        sScrollOffset = maxScroll;
-    }
+    clampScrollableList(sSelectedIndex, sScrollOffset, count, Renderer::GetVisibleRows());
 }
 
 /**
@@ -517,30 +528,13 @@ void renderEditMode()
         Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 4,
                          "Create in Settings (+)");
     } else {
-        // Calculate visible rows for categories
-        constexpr int CAT_VISIBLE_ROWS = 10;
         int startRow = LIST_START_ROW + 3;
 
-        // Clamp scroll offset
-        if (sEditCategoryScroll > catCount - CAT_VISIBLE_ROWS) {
-            sEditCategoryScroll = catCount - CAT_VISIBLE_ROWS;
-        }
-        if (sEditCategoryScroll < 0) sEditCategoryScroll = 0;
-
-        // Clamp selection
-        if (sEditCategoryIndex < 0) sEditCategoryIndex = 0;
-        if (sEditCategoryIndex >= catCount) sEditCategoryIndex = catCount - 1;
-
-        // Ensure selection is visible
-        if (sEditCategoryIndex < sEditCategoryScroll) {
-            sEditCategoryScroll = sEditCategoryIndex;
-        }
-        if (sEditCategoryIndex >= sEditCategoryScroll + CAT_VISIBLE_ROWS) {
-            sEditCategoryScroll = sEditCategoryIndex - CAT_VISIBLE_ROWS + 1;
-        }
+        // Clamp selection and scroll
+        clampScrollableList(sEditCategoryIndex, sEditCategoryScroll, catCount, CATEGORY_EDIT_VISIBLE_ROWS);
 
         // Draw category list
-        for (int i = 0; i < CAT_VISIBLE_ROWS && (sEditCategoryScroll + i) < catCount; i++) {
+        for (int i = 0; i < CATEGORY_EDIT_VISIBLE_ROWS && (sEditCategoryScroll + i) < catCount; i++) {
             int idx = sEditCategoryScroll + i;
             const Settings::Category& cat = categories[idx];
 
@@ -559,8 +553,8 @@ void renderEditMode()
         if (sEditCategoryScroll > 0) {
             Renderer::DrawText(Renderer::GetDetailsPanelCol() + 20, startRow, "[UP]");
         }
-        if (sEditCategoryScroll + CAT_VISIBLE_ROWS < catCount) {
-            Renderer::DrawText(Renderer::GetDetailsPanelCol() + 18, startRow + CAT_VISIBLE_ROWS - 1, "[DOWN]");
+        if (sEditCategoryScroll + CATEGORY_EDIT_VISIBLE_ROWS < catCount) {
+            Renderer::DrawText(Renderer::GetDetailsPanelCol() + 18, startRow + CATEGORY_EDIT_VISIBLE_ROWS - 1, "[DOWN]");
         }
     }
 
@@ -709,37 +703,21 @@ void renderManageCategories()
     const auto& categories = Settings::Get().categories;
 
     // --- Left side: Category list ---
-    constexpr int CAT_VISIBLE_ROWS = 12;
     int row = LIST_START_ROW;
 
-    // "+ Add New" always at top
-    const char* cursor = (sManageCatIndex == 0) ? ">" : " ";
-    Renderer::DrawTextF(0, row++, "%s + Add New Category", cursor);
-
-    row++;  // Blank line
-
-    // Existing categories
     if (catCount == 0) {
         Renderer::DrawText(2, row, "(No categories)");
+        Renderer::DrawTextF(2, row + 2, "Press %s to create one", Buttons::Actions::SETTINGS.label);
     } else {
-        // Clamp scroll and selection
-        if (sManageCatScroll > catCount - CAT_VISIBLE_ROWS + 2) {
-            sManageCatScroll = catCount - CAT_VISIBLE_ROWS + 2;
-        }
-        if (sManageCatScroll < 0) sManageCatScroll = 0;
-
-        // Selection is offset by 1 (0 = Add New)
-        int maxSel = catCount;
-        if (sManageCatIndex < 0) sManageCatIndex = 0;
-        if (sManageCatIndex > maxSel) sManageCatIndex = maxSel;
+        // Clamp selection and scroll
+        clampScrollableList(sManageCatIndex, sManageCatScroll, catCount, CATEGORY_MANAGE_VISIBLE_ROWS);
 
         // Draw categories
-        for (int i = 0; i < CAT_VISIBLE_ROWS - 2 && (sManageCatScroll + i) < catCount; i++) {
+        for (int i = 0; i < CATEGORY_MANAGE_VISIBLE_ROWS && (sManageCatScroll + i) < catCount; i++) {
             int idx = sManageCatScroll + i;
             const Settings::Category& cat = categories[idx];
 
-            // Selection index is offset by 1
-            cursor = (sManageCatIndex == idx + 1) ? ">" : " ";
+            const char* cursor = (sManageCatIndex == idx) ? ">" : " ";
 
             // Show hidden status
             if (cat.hidden) {
@@ -754,13 +732,12 @@ void renderManageCategories()
     Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW, "Actions:");
     Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 1, "--------");
 
-    if (sManageCatIndex == 0) {
-        Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 3, "Create a new category");
-        Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 4, "for organizing titles.");
-        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 6, "%s: Create",
-                          Buttons::Actions::CONFIRM.label);
-    } else if (sManageCatIndex <= catCount) {
-        const Settings::Category& cat = categories[sManageCatIndex - 1];
+    if (catCount == 0) {
+        Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 3, "No categories yet.");
+        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 5, "%s: Add New",
+                          Buttons::Actions::SETTINGS.label);
+    } else if (sManageCatIndex >= 0 && sManageCatIndex < catCount) {
+        const Settings::Category& cat = categories[sManageCatIndex];
         Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 3, "Category: %s", cat.name);
 
         // Show visibility status
@@ -775,17 +752,20 @@ void renderManageCategories()
         Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 8, "%s: %s",
                           Buttons::Actions::FAVORITE.label,
                           cat.hidden ? "Show" : "Hide");
-        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 10, "%s/%s: Move Up/Down",
+        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 9, "%s: Add New",
+                          Buttons::Actions::SETTINGS.label);
+        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 11, "%s/%s: Move Up/Down",
                           Buttons::Actions::NAV_PAGE_UP.label,
                           Buttons::Actions::NAV_PAGE_DOWN.label);
     }
 
     // --- Footer ---
-    Renderer::DrawTextF(0, Renderer::GetFooterRow(), "%s:Select %s:Back %s:Hide/Show L/R:Move  [%d/%d]",
+    Renderer::DrawTextF(0, Renderer::GetFooterRow(), "%s:Rename %s:Back %s:Hide %s:Add  [%d/%d]",
                       Buttons::Actions::CONFIRM.label,
                       Buttons::Actions::CANCEL.label,
                       Buttons::Actions::FAVORITE.label,
-                      sManageCatIndex + 1, catCount + 1);
+                      Buttons::Actions::SETTINGS.label,
+                      catCount > 0 ? sManageCatIndex + 1 : 0, catCount);
 }
 
 /**
@@ -923,28 +903,28 @@ void handleSettingsMainInput(uint32_t pressed)
 void handleManageCategoriesInput(uint32_t pressed)
 {
     int catCount = Settings::GetCategoryCount();
-    int maxIndex = catCount;  // 0 = Add New, 1..catCount = categories
+    const auto& categories = Settings::Get().categories;
 
-    // Navigation
+    // Navigation (0-indexed into category array)
     if (Buttons::Actions::NAV_UP.Pressed(pressed)) {
         if (sManageCatIndex > 0) sManageCatIndex--;
     }
     if (Buttons::Actions::NAV_DOWN.Pressed(pressed)) {
-        if (sManageCatIndex < maxIndex) sManageCatIndex++;
+        if (sManageCatIndex < catCount - 1) sManageCatIndex++;
     }
 
-    // Confirm (A) - Add new or rename
+    // Add new category (+)
+    if (Buttons::Actions::SETTINGS.Pressed(pressed)) {
+        sEditingCategoryId = -1;  // -1 = new
+        sInputField.Init(Settings::MAX_CATEGORY_NAME - 1, TextInput::Library::ALPHA_NUMERIC);
+        sInputField.Clear();
+        sSettingsSubMode = SettingsSubMode::NAME_INPUT;
+    }
+
+    // Confirm (A) - Rename selected category
     if (Buttons::Actions::CONFIRM.Pressed(pressed)) {
-        if (sManageCatIndex == 0) {
-            // Add new category
-            sEditingCategoryId = -1;  // -1 = new
-            sInputField.Init(Settings::MAX_CATEGORY_NAME - 1, TextInput::Library::ALPHA_NUMERIC);
-            sInputField.Clear();
-            sSettingsSubMode = SettingsSubMode::NAME_INPUT;
-        } else if (sManageCatIndex <= catCount) {
-            // Rename existing category
-            const auto& categories = Settings::Get().categories;
-            const Settings::Category& cat = categories[sManageCatIndex - 1];
+        if (catCount > 0 && sManageCatIndex >= 0 && sManageCatIndex < catCount) {
+            const Settings::Category& cat = categories[sManageCatIndex];
             sEditingCategoryId = cat.id;
             sInputField.Init(Settings::MAX_CATEGORY_NAME - 1, TextInput::Library::ALPHA_NUMERIC);
             sInputField.SetValue(cat.name);
@@ -954,15 +934,14 @@ void handleManageCategoriesInput(uint32_t pressed)
 
     // Edit (X) - Delete category
     if (Buttons::Actions::EDIT.Pressed(pressed)) {
-        if (sManageCatIndex > 0 && sManageCatIndex <= catCount) {
-            const auto& categories = Settings::Get().categories;
-            uint16_t catId = categories[sManageCatIndex - 1].id;
+        if (catCount > 0 && sManageCatIndex >= 0 && sManageCatIndex < catCount) {
+            uint16_t catId = categories[sManageCatIndex].id;
             Settings::DeleteCategory(catId);
 
             // Adjust selection if needed
             int newCount = Settings::GetCategoryCount();
-            if (sManageCatIndex > newCount) {
-                sManageCatIndex = newCount;
+            if (sManageCatIndex >= newCount && newCount > 0) {
+                sManageCatIndex = newCount - 1;
             }
 
             // Refresh category filter
@@ -972,9 +951,8 @@ void handleManageCategoriesInput(uint32_t pressed)
 
     // Favorite (Y) - Toggle visibility
     if (Buttons::Actions::FAVORITE.Pressed(pressed)) {
-        if (sManageCatIndex > 0 && sManageCatIndex <= catCount) {
-            const auto& categories = Settings::Get().categories;
-            uint16_t catId = categories[sManageCatIndex - 1].id;
+        if (catCount > 0 && sManageCatIndex >= 0 && sManageCatIndex < catCount) {
+            uint16_t catId = categories[sManageCatIndex].id;
             bool currentlyHidden = Settings::IsCategoryHidden(catId);
             Settings::SetCategoryHidden(catId, !currentlyHidden);
         }
@@ -982,9 +960,8 @@ void handleManageCategoriesInput(uint32_t pressed)
 
     // Move category up (L)
     if (Buttons::Actions::NAV_PAGE_UP.Pressed(pressed)) {
-        if (sManageCatIndex > 1 && sManageCatIndex <= catCount) {
-            const auto& categories = Settings::Get().categories;
-            uint16_t catId = categories[sManageCatIndex - 1].id;
+        if (catCount > 0 && sManageCatIndex > 0 && sManageCatIndex < catCount) {
+            uint16_t catId = categories[sManageCatIndex].id;
             Settings::MoveCategoryUp(catId);
             // Follow the moved category
             sManageCatIndex--;
@@ -993,9 +970,8 @@ void handleManageCategoriesInput(uint32_t pressed)
 
     // Move category down (R)
     if (Buttons::Actions::NAV_PAGE_DOWN.Pressed(pressed)) {
-        if (sManageCatIndex > 0 && sManageCatIndex < catCount) {
-            const auto& categories = Settings::Get().categories;
-            uint16_t catId = categories[sManageCatIndex - 1].id;
+        if (catCount > 0 && sManageCatIndex >= 0 && sManageCatIndex < catCount - 1) {
+            uint16_t catId = categories[sManageCatIndex].id;
             Settings::MoveCategoryDown(catId);
             // Follow the moved category
             sManageCatIndex++;
