@@ -289,9 +289,12 @@ void drawDetailsPanel()
     constexpr int ICON_SIZE = 128;
     constexpr int ICON_MARGIN = 80;  // Extra margin from panel edge
     int screenWidth = Renderer::GetScreenWidth();
+    int screenHeight = Renderer::GetScreenHeight();
     int gridWidth = Renderer::GetGridWidth();
+    int gridHeight = Renderer::GetGridHeight();
     int iconX = (screenWidth * Renderer::GetDetailsPanelCol()) / gridWidth + ICON_MARGIN;
-    int iconY = 80;  // Below title row
+    // Y position: row 4 (after title at row 2 and some spacing)
+    int iconY = (screenHeight * 4) / gridHeight;
 
     if (ImageLoader::IsReady(title->titleId)) {
         Renderer::ImageHandle icon = ImageLoader::Get(title->titleId);
