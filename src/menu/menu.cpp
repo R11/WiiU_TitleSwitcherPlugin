@@ -288,7 +288,7 @@ void drawDetailsPanel()
     // Draw icon below title
     // Position calculated from screen percentages for accuracy
     constexpr int ICON_SIZE = 128;
-    constexpr int ICON_MARGIN = 180;  // Extra margin from panel edge
+    constexpr int ICON_MARGIN = 170;  // Extra margin from panel edge
     int screenWidth = Renderer::GetScreenWidth();
     int screenHeight = Renderer::GetScreenHeight();
     int gridWidth = Renderer::GetGridWidth();
