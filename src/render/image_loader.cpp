@@ -21,6 +21,9 @@
 // Wii U SDK for title meta directory
 #include <nn/acp/title.h>
 
+// Notifications for diagnostic logging
+#include <notifications/notifications.h>
+
 namespace ImageLoader {
 
 // =============================================================================
@@ -222,6 +225,7 @@ bool loadImage(uint64_t titleId, Renderer::ImageHandle& outHandle)
 
     // Cannot load images if renderer doesn't support them
     if (!Renderer::SupportsImages()) {
+        NotificationModule_AddInfoNotification("ImageLoader: SupportsImages=false");
         return false;
     }
 
@@ -230,6 +234,9 @@ bool loadImage(uint64_t titleId, Renderer::ImageHandle& outHandle)
 
     ACPResult result = ACPGetTitleMetaDir(titleId, metaPath, sizeof(metaPath));
     if (result != ACP_RESULT_SUCCESS) {
+        char msg[64];
+        snprintf(msg, sizeof(msg), "ImageLoader: ACPGetTitleMetaDir failed=%d", (int)result);
+        NotificationModule_AddInfoNotification(msg);
         return false;
     }
 
@@ -238,7 +245,13 @@ bool loadImage(uint64_t titleId, Renderer::ImageHandle& outHandle)
     snprintf(iconPath, sizeof(iconPath), "%s/iconTex.tga", metaPath);
 
     // Load the image
-    return loadImageFromFile(iconPath, outHandle);
+    bool loaded = loadImageFromFile(iconPath, outHandle);
+    if (!loaded) {
+        char msg[96];
+        snprintf(msg, sizeof(msg), "ImageLoader: loadImageFromFile failed: %.60s", iconPath);
+        NotificationModule_AddInfoNotification(msg);
+    }
+    return loaded;
 }
 
 } // anonymous namespace
