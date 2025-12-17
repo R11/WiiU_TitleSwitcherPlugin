@@ -179,34 +179,6 @@ constexpr int CATEGORY_MANAGE_VISIBLE_ROWS = 10;  // Category list in manage mod
 // =============================================================================
 
 /**
- * Clamp selection and scroll offset for a scrollable list.
- * @param selection  Current selected index (clamped in place)
- * @param scroll     Current scroll offset (clamped in place)
- * @param count      Total number of items
- * @param visibleRows Number of visible rows
- */
-void clampScrollableList(int& selection, int& scroll, int count, int visibleRows)
-{
-    // Clamp selection to valid range
-    if (selection < 0) selection = 0;
-    if (selection >= count) selection = count > 0 ? count - 1 : 0;
-
-    // Ensure selection is visible
-    if (selection < scroll) {
-        scroll = selection;
-    }
-    if (selection >= scroll + visibleRows) {
-        scroll = selection - visibleRows + 1;
-    }
-
-    // Clamp scroll offset
-    if (scroll < 0) scroll = 0;
-    int maxScroll = count - visibleRows;
-    if (maxScroll < 0) maxScroll = 0;
-    if (scroll > maxScroll) scroll = maxScroll;
-}
-
-/**
  * Clamp selection to valid range and update scroll offset.
  */
 void clampSelection()
@@ -553,8 +525,8 @@ uint64_t handleBrowseModeInput(uint32_t pressed)
 void renderEditMode()
 {
     // Get the title being edited
-    int selectedIdx = UI::ListView::GetSelectedIndex(sTitleListState);
-    const Titles::TitleInfo* title = Categories::GetFilteredTitle(selectedIdx);
+    int titleIdx = UI::ListView::GetSelectedIndex(sTitleListState);
+    const Titles::TitleInfo* title = Categories::GetFilteredTitle(titleIdx);
     if (!title) {
         Renderer::DrawText(0, 0, "Error: No title selected");
         return;
