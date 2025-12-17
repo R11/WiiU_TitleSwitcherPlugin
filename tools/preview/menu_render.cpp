@@ -205,8 +205,11 @@ void drawDetailsPanel() {
     Renderer::DrawText(detailsCol, LIST_START_ROW, titleName);
 
     // Draw icon below title - matches src/menu/menu.cpp logic
+    // Position using screen width percentage to match actual OSScreen behavior
     int iconSize = Renderer::GetIconSize();
-    int iconX = Renderer::ColToPixelX(Renderer::GetDetailsPanelCol());  // Aligned with details panel
+    int screenWidth = Renderer::GetScreenWidth();
+    int gridWidth = Renderer::GetGridWidth();
+    int iconX = (screenWidth * Renderer::GetDetailsPanelCol()) / gridWidth;
     int iconY = Renderer::RowToPixelY(LIST_START_ROW + 1);  // Below title
 
     if (ImageLoader::IsReady(title->titleId)) {
