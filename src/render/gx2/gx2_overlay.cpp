@@ -14,6 +14,9 @@
 #ifdef ENABLE_GX2_RENDERING
 
 #include "gx2_overlay.h"
+#include "SchriftGX2.h"
+#include "shaders/ColorShader.h"
+#include "shaders/Texture2DShader.h"
 
 #include <cstring>
 #include <malloc.h>
@@ -56,6 +59,10 @@ GX2ContextState* sSavedContextState = nullptr;  // Accessed by WUPS hooks
 // Screen dimensions
 static int sScreenWidth = 1280;
 static int sScreenHeight = 720;
+
+// Font for text rendering
+static SchriftGX2::Font* sFont = nullptr;
+static const float DEFAULT_FONT_SIZE = 16.0f;
 
 namespace {
 
@@ -144,6 +151,25 @@ bool Init() {
     // Initialize context state
     GX2SetupContextStateEx(sContextState, GX2_TRUE);
 
+    // Initialize shaders
+    if (!ColorShader::Init()) {
+        // ColorShader failed - continue anyway, DrawRect won't work
+    }
+
+    if (!Texture2DShader::Init()) {
+        // Texture2DShader failed - continue anyway, DrawText won't work
+    }
+
+    // Initialize font system
+    if (SchriftGX2::Init()) {
+        // Load default font
+        sFont = SchriftGX2::LoadDefaultFont(DEFAULT_FONT_SIZE);
+    }
+
+    // Set screen size for shaders
+    ColorShader::SetScreenSize((float)sScreenWidth, (float)sScreenHeight);
+    Texture2DShader::SetScreenSize((float)sScreenWidth, (float)sScreenHeight);
+
     sInitialized = true;
     sEnabled = false;
 
@@ -154,6 +180,19 @@ void Shutdown() {
     if (!sInitialized) {
         return;
     }
+
+    // Free font
+    if (sFont) {
+        delete sFont;
+        sFont = nullptr;
+    }
+
+    // Shutdown font system
+    SchriftGX2::Shutdown();
+
+    // Shutdown shaders
+    Texture2DShader::Shutdown();
+    ColorShader::Shutdown();
 
     // Free context state
     if (sContextState) {
@@ -190,38 +229,37 @@ void EndDraw() {
 }
 
 void DrawText(int x, int y, const char* text, uint32_t color, int size) {
-    // TODO: Implement using SchriftGX2
-    // - Look up glyphs for each character
-    // - Render glyph textures with color
-    (void)x;
-    (void)y;
-    (void)text;
-    (void)color;
+    if (!sFont || !Texture2DShader::IsInitialized()) {
+        return;
+    }
+
+    // For now, use default font size
+    // TODO: Support different sizes by loading multiple font instances
     (void)size;
+
+    Texture2DShader::Begin();
+    SchriftGX2::DrawText(sFont, (float)x, (float)y, text, color);
+    Texture2DShader::End();
 }
 
 void DrawRect(int x, int y, int width, int height, uint32_t color) {
-    // TODO: Implement using ColorShader
-    // - Set up vertex buffer with quad
-    // - Set color uniform
-    // - Draw
-    (void)x;
-    (void)y;
-    (void)width;
-    (void)height;
-    (void)color;
+    if (!ColorShader::IsInitialized()) {
+        return;
+    }
+
+    ColorShader::Begin();
+    ColorShader::DrawRect((float)x, (float)y, (float)width, (float)height, color);
+    ColorShader::End();
 }
 
 void DrawTexture(int x, int y, GX2Texture* texture, int width, int height) {
-    // TODO: Implement using Texture2DShader
-    // - Set up vertex buffer with quad
-    // - Bind texture
-    // - Draw
-    (void)x;
-    (void)y;
-    (void)texture;
-    (void)width;
-    (void)height;
+    if (!texture || !Texture2DShader::IsInitialized()) {
+        return;
+    }
+
+    Texture2DShader::Begin();
+    Texture2DShader::DrawTexture(texture, (float)x, (float)y, (float)width, (float)height, 0xFFFFFFFF);
+    Texture2DShader::End();
 }
 
 int GetScreenWidth() {
