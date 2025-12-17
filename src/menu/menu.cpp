@@ -285,15 +285,19 @@ void drawDetailsPanel()
     Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW, title->name);
 
     // Draw icon below title (128x128 = 2x the original 64x64)
-    // Position using screen width percentage to avoid character width mismatch
-    // OSScreen character width doesn't match ColToPixelX exactly, so we calculate
-    // pixel position directly from screen dimensions
+    // Position using screen percentages to avoid character size mismatch
+    // OSScreen character dimensions don't match our constants exactly
     constexpr int ICON_SIZE = 128;
     int screenWidth = Renderer::GetScreenWidth();
+    int screenHeight = Renderer::GetScreenHeight();
     int gridWidth = Renderer::GetGridWidth();
-    // Calculate pixel position that corresponds to details panel column
+    int gridHeight = Renderer::GetGridHeight();
+
+    // Calculate pixel positions from screen dimensions
+    // X: details panel starts at column 32 out of 100 = 32% of screen
     int iconX = (screenWidth * Renderer::GetDetailsPanelCol()) / gridWidth;
-    int iconY = Renderer::RowToPixelY(LIST_START_ROW + 1);  // Below title
+    // Y: row 3 out of 18 = about 17% of screen height
+    int iconY = (screenHeight * (LIST_START_ROW + 1)) / gridHeight;
 
     if (ImageLoader::IsReady(title->titleId)) {
         Renderer::ImageHandle icon = ImageLoader::Get(title->titleId);
