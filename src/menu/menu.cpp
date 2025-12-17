@@ -13,6 +13,7 @@
 #include "../titles/titles.h"
 #include "../storage/settings.h"
 #include "../presets/title_presets.h"
+#include "../ui/list_view.h"
 
 // Wii U SDK headers
 #include <vpad/input.h>           // VPADRead, VPADStatus
@@ -105,7 +106,9 @@ static const SystemAppOption sSystemApps[] = {
 };
 
 static constexpr int SYSTEM_APP_COUNT = sizeof(sSystemApps) / sizeof(sSystemApps[0]);
-int sSystemAppIndex = 0;  // Currently selected system app
+
+// ListView state for system apps submenu
+UI::ListView::State sSystemAppsListState;
 
 struct SettingItem {
     const char* name;
@@ -968,22 +971,31 @@ void renderSystemApps()
     // --- Divider ---
     drawDivider();
 
-    // --- Left side: System app list ---
-    int row = LIST_START_ROW;
+    // --- Left side: System app list using ListView ---
+    UI::ListView::Config listConfig;
+    listConfig.col = LIST_START_COL;
+    listConfig.row = LIST_START_ROW;
+    listConfig.width = Renderer::GetDividerCol() - 1;
+    listConfig.visibleRows = Renderer::GetFooterRow() - LIST_START_ROW - 1;
+    listConfig.showScrollIndicators = true;
 
-    for (int i = 0; i < SYSTEM_APP_COUNT && row < Renderer::GetFooterRow() - 1; i++) {
-        const SystemAppOption& app = sSystemApps[i];
-        const char* cursor = (sSystemAppIndex == i) ? ">" : " ";
-        Renderer::DrawTextF(0, row++, "%s %s", cursor, app.name);
-    }
+    sSystemAppsListState.itemCount = SYSTEM_APP_COUNT;
+
+    UI::ListView::Render(sSystemAppsListState, listConfig, [](int index, bool isSelected) {
+        UI::ListView::ItemView view;
+        view.text = sSystemApps[index].name;
+        view.prefix = isSelected ? "> " : "  ";
+        return view;
+    });
 
     // --- Right side: Description ---
     Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW, "Description:");
     Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 1, "------------");
 
     // Show description for selected app
-    if (sSystemAppIndex >= 0 && sSystemAppIndex < SYSTEM_APP_COUNT) {
-        const SystemAppOption& app = sSystemApps[sSystemAppIndex];
+    int selectedIdx = UI::ListView::GetSelectedIndex(sSystemAppsListState);
+    if (selectedIdx >= 0 && selectedIdx < SYSTEM_APP_COUNT) {
+        const SystemAppOption& app = sSystemApps[selectedIdx];
         Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 3, app.description);
     }
 
@@ -996,7 +1008,7 @@ void renderSystemApps()
     Renderer::DrawTextF(0, Renderer::GetFooterRow(), "%s:Launch %s:Back  [%d/%d]",
                       Buttons::Actions::CONFIRM.label,
                       Buttons::Actions::CANCEL.label,
-                      sSystemAppIndex + 1, SYSTEM_APP_COUNT);
+                      selectedIdx + 1, SYSTEM_APP_COUNT);
 }
 
 /**
@@ -1089,7 +1101,7 @@ void handleSettingsMainInput(uint32_t pressed)
                     sManageCatScroll = 0;
                     sSettingsSubMode = SettingsSubMode::MANAGE_CATS;
                 } else if (item.dataOffset == ACTION_SYSTEM_APPS) {
-                    sSystemAppIndex = 0;
+                    sSystemAppsListState = UI::ListView::State();  // Reset state
                     sSettingsSubMode = SettingsSubMode::SYSTEM_APPS;
                 } else if (item.dataOffset == ACTION_DEBUG_GRID) {
                     sCurrentMode = Mode::DEBUG_GRID;
@@ -1316,24 +1328,32 @@ void launchSystemApp(int appId)
  */
 void handleSystemAppsInput(uint32_t pressed)
 {
-    // Navigation
-    if (Buttons::Actions::NAV_UP.Pressed(pressed)) {
-        if (sSystemAppIndex > 0) sSystemAppIndex--;
-    }
-    if (Buttons::Actions::NAV_DOWN.Pressed(pressed)) {
-        if (sSystemAppIndex < SYSTEM_APP_COUNT - 1) sSystemAppIndex++;
-    }
+    // Configure ListView for input handling
+    UI::ListView::Config listConfig;
+    listConfig.visibleRows = Renderer::GetFooterRow() - LIST_START_ROW - 1;
+    listConfig.canConfirm = true;
+    listConfig.canCancel = true;
 
-    // Launch selected app
-    if (Buttons::Actions::CONFIRM.Pressed(pressed)) {
-        if (sSystemAppIndex >= 0 && sSystemAppIndex < SYSTEM_APP_COUNT) {
-            launchSystemApp(sSystemApps[sSystemAppIndex].appId);
+    sSystemAppsListState.itemCount = SYSTEM_APP_COUNT;
+
+    // Handle navigation
+    UI::ListView::HandleInput(sSystemAppsListState, pressed, listConfig);
+
+    // Handle actions
+    UI::ListView::Action action = UI::ListView::GetAction(pressed, listConfig);
+    switch (action) {
+        case UI::ListView::Action::CONFIRM: {
+            int idx = UI::ListView::GetSelectedIndex(sSystemAppsListState);
+            if (idx >= 0 && idx < SYSTEM_APP_COUNT) {
+                launchSystemApp(sSystemApps[idx].appId);
+            }
+            break;
         }
-    }
-
-    // Back
-    if (Buttons::Actions::CANCEL.Pressed(pressed)) {
-        sSettingsSubMode = SettingsSubMode::MAIN;
+        case UI::ListView::Action::CANCEL:
+            sSettingsSubMode = SettingsSubMode::MAIN;
+            break;
+        default:
+            break;
     }
 }
 

@@ -12,12 +12,14 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../extern/googletest googletest EXC
 add_executable(run_tests
     unit/buttons_test.cpp
     unit/settings_test.cpp
+    unit/list_view_test.cpp
     ../src/storage/settings.cpp
+    ../src/ui/list_view.cpp
 )
 
 target_include_directories(run_tests PRIVATE
-    ../src
     mocks
+    ../src
 )
 
 target_compile_features(run_tests PRIVATE cxx_std_17)
