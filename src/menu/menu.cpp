@@ -42,8 +42,7 @@ bool sInitialized = false;
 Mode sCurrentMode = Mode::BROWSE;
 
 // Selection state
-int sSelectedIndex = 0;     // Currently selected title index
-int sScrollOffset = 0;      // First visible title index
+UI::ListView::State sTitleListState;  // Title list state (browse mode)
 
 // Edit mode state
 UI::ListView::State sEditCatsListState;  // Category edit list state
@@ -213,7 +212,7 @@ void clampScrollableList(int& selection, int& scroll, int count, int visibleRows
 void clampSelection()
 {
     int count = Categories::GetFilteredCount();
-    clampScrollableList(sSelectedIndex, sScrollOffset, count, Renderer::GetVisibleRows());
+    sTitleListState.SetItemCount(count, Renderer::GetVisibleRows());
 }
 
 /**
@@ -265,62 +264,37 @@ void drawDivider()
 void drawTitleList()
 {
     int count = Categories::GetFilteredCount();
+    sTitleListState.itemCount = count;
 
-    if (count == 0) {
-        Renderer::DrawText(2, LIST_START_ROW + 2, "No titles in this category");
-        return;
-    }
+    // Configure list view
+    UI::ListView::Config listConfig;
+    listConfig.col = LIST_START_COL;
+    listConfig.row = LIST_START_ROW;
+    listConfig.width = Renderer::GetListWidth();
+    listConfig.visibleRows = Renderer::GetVisibleRows();
+    listConfig.showLineNumbers = Settings::Get().showNumbers;
+    listConfig.showScrollIndicators = true;
 
-    // Check if we should show numbers
-    bool showNums = Settings::Get().showNumbers;
+    // Render using ListView
+    UI::ListView::Render(sTitleListState, listConfig, [](int index, bool isSelected) {
+        UI::ListView::ItemView view;
+        const Titles::TitleInfo* title = Categories::GetFilteredTitle(index);
 
-    // Calculate max name width based on whether numbers are shown
-    int maxNameLen = Renderer::GetTitleNameWidth(showNums);
-
-    // Draw visible titles
-    for (int i = 0; i < Renderer::GetVisibleRows() && (sScrollOffset + i) < count; i++) {
-        int idx = sScrollOffset + i;
-        const Titles::TitleInfo* title = Categories::GetFilteredTitle(idx);
-
-        if (!title) continue;
-
-        char line[48];
-
-        // Truncate name to fit
-        char displayName[32];
-        strncpy(displayName, title->name, maxNameLen);
-        displayName[maxNameLen] = '\0';
-
-        const char* cursor = (idx == sSelectedIndex) ? ">" : " ";
-
-        // Check if we should show favorite markers
-        bool showFavs = Settings::Get().showFavorites;
-        const char* favMark = "";
-        if (showFavs) {
-            bool isFav = Settings::IsFavorite(title->titleId);
-            favMark = isFav ? "* " : "  ";
+        if (!title) {
+            view.text = "(error)";
+            return view;
         }
 
-        if (showNums) {
-            // Format: "> 001. * Name" or "> 001. Name"
-            snprintf(line, sizeof(line), "%s%3d. %s%-*s",
-                     cursor, idx + 1, favMark, maxNameLen, displayName);
-        } else {
-            // Format: "> * Name" or "> Name"
-            snprintf(line, sizeof(line), "%s %s%-*s",
-                     cursor, favMark, maxNameLen, displayName);
+        view.text = title->name;
+        view.prefix = isSelected ? "> " : "  ";
+
+        // Favorite marker as suffix if enabled
+        if (Settings::Get().showFavorites && Settings::IsFavorite(title->titleId)) {
+            view.suffix = " *";
         }
 
-        Renderer::DrawText(LIST_START_COL, LIST_START_ROW + i, line);
-    }
-
-    // Scroll indicators
-    if (sScrollOffset > 0) {
-        Renderer::DrawText(Renderer::GetListWidth() - 4, LIST_START_ROW, "[UP]");
-    }
-    if (sScrollOffset + Renderer::GetVisibleRows() < count) {
-        Renderer::DrawText(Renderer::GetListWidth() - 6, LIST_START_ROW + Renderer::GetVisibleRows() - 1, "[DOWN]");
-    }
+        return view;
+    });
 }
 
 /**
@@ -329,11 +303,12 @@ void drawTitleList()
 void drawDetailsPanel()
 {
     int count = Categories::GetFilteredCount();
-    if (count == 0 || sSelectedIndex < 0 || sSelectedIndex >= count) {
+    int selectedIdx = UI::ListView::GetSelectedIndex(sTitleListState);
+    if (count == 0 || selectedIdx < 0 || selectedIdx >= count) {
         return;
     }
 
-    const Titles::TitleInfo* title = Categories::GetFilteredTitle(sSelectedIndex);
+    const Titles::TitleInfo* title = Categories::GetFilteredTitle(selectedIdx);
     if (!title) return;
 
     // Request icon loading (will be cached if already loaded)
@@ -455,6 +430,7 @@ void drawDetailsPanel()
 void drawFooter()
 {
     int count = Categories::GetFilteredCount();
+    int selectedIdx = UI::ListView::GetSelectedIndex(sTitleListState);
 
     // Bottom row: main controls with customizable button labels
     char footer[100];
@@ -465,7 +441,7 @@ void drawFooter()
              Buttons::Actions::FAVORITE.label,
              Buttons::Actions::EDIT.label,
              Buttons::Actions::SETTINGS.label,
-             sSelectedIndex + 1,
+             selectedIdx + 1,
              count);
 
     Renderer::DrawText(0, Renderer::GetFooterRow(), footer);
@@ -492,92 +468,78 @@ void renderBrowseMode()
 uint64_t handleBrowseModeInput(uint32_t pressed)
 {
     int count = Categories::GetFilteredCount();
+    sTitleListState.itemCount = count;
 
-    // Navigation - Up/Down
-    if (Buttons::Actions::NAV_UP.Pressed(pressed)) {
-        if (sSelectedIndex > 0) {
-            sSelectedIndex--;
-            clampSelection();
-        }
-    }
-    if (Buttons::Actions::NAV_DOWN.Pressed(pressed)) {
-        if (sSelectedIndex < count - 1) {
-            sSelectedIndex++;
-            clampSelection();
-        }
-    }
+    // Configure ListView for navigation
+    UI::ListView::Config listConfig;
+    listConfig.visibleRows = Renderer::GetVisibleRows();
+    listConfig.smallSkip = Buttons::Skip::SMALL;
+    listConfig.largeSkip = Buttons::Skip::LARGE;
+    listConfig.canFavorite = true;  // Y for favorite toggle
 
-    // Navigation - Small skip (Left/Right)
-    if (Buttons::Actions::NAV_SKIP_UP.Pressed(pressed)) {
-        sSelectedIndex -= Buttons::Skip::SMALL;
-        clampSelection();
-    }
-    if (Buttons::Actions::NAV_SKIP_DOWN.Pressed(pressed)) {
-        sSelectedIndex += Buttons::Skip::SMALL;
-        clampSelection();
-    }
+    // Handle navigation via ListView
+    UI::ListView::HandleInput(sTitleListState, pressed, listConfig);
+    int selectedIdx = UI::ListView::GetSelectedIndex(sTitleListState);
 
-    // Navigation - Large skip (L/R)
-    if (Buttons::Actions::NAV_PAGE_UP.Pressed(pressed)) {
-        sSelectedIndex -= Buttons::Skip::LARGE;
-        clampSelection();
-    }
-    if (Buttons::Actions::NAV_PAGE_DOWN.Pressed(pressed)) {
-        sSelectedIndex += Buttons::Skip::LARGE;
-        clampSelection();
-    }
-
-    // Category navigation (ZL/ZR)
+    // Category navigation (ZL/ZR) - handled separately as these change the list
     if (Buttons::Actions::CATEGORY_PREV.Pressed(pressed)) {
         Categories::PreviousCategory();
-        sSelectedIndex = 0;
-        sScrollOffset = 0;
+        sTitleListState = UI::ListView::State();  // Reset list state
+        clampSelection();
     }
     if (Buttons::Actions::CATEGORY_NEXT.Pressed(pressed)) {
         Categories::NextCategory();
-        sSelectedIndex = 0;
-        sScrollOffset = 0;
+        sTitleListState = UI::ListView::State();  // Reset list state
+        clampSelection();
     }
 
-    // Toggle favorite (Y)
-    if (Buttons::Actions::FAVORITE.Pressed(pressed)) {
-        const Titles::TitleInfo* title = Categories::GetFilteredTitle(sSelectedIndex);
-        if (title) {
-            Settings::ToggleFavorite(title->titleId);
-            // Re-filter in case we're in Favorites category
-            Categories::RefreshFilter();
-            clampSelection();
-        }
+    // Handle actions
+    UI::ListView::Action action = UI::ListView::GetAction(pressed, listConfig);
+    switch (action) {
+        case UI::ListView::Action::FAVORITE:
+            // Toggle favorite
+            if (selectedIdx >= 0 && selectedIdx < count) {
+                const Titles::TitleInfo* title = Categories::GetFilteredTitle(selectedIdx);
+                if (title) {
+                    Settings::ToggleFavorite(title->titleId);
+                    // Re-filter in case we're in Favorites category
+                    Categories::RefreshFilter();
+                    clampSelection();
+                }
+            }
+            break;
+
+        case UI::ListView::Action::CANCEL:
+            // Close menu
+            sIsOpen = false;
+            return 0;
+
+        case UI::ListView::Action::CONFIRM:
+            // Launch title
+            if (selectedIdx >= 0 && selectedIdx < count) {
+                const Titles::TitleInfo* title = Categories::GetFilteredTitle(selectedIdx);
+                if (title) {
+                    sIsOpen = false;
+                    return title->titleId;
+                }
+            }
+            break;
+
+        default:
+            break;
     }
 
-    // Edit mode (X)
+    // Edit mode (X) - handled separately as it's not a standard ListView action
     if (Buttons::Actions::EDIT.Pressed(pressed)) {
-        // Reset edit mode state
         sEditCatsListState = UI::ListView::State();  // Reset list state
         sCurrentMode = Mode::EDIT;
     }
 
-    // Settings (Plus)
+    // Settings (Plus) - handled separately
     if (Buttons::Actions::SETTINGS.Pressed(pressed)) {
-        // Reset settings mode state
         sSettingsListState = UI::ListView::State();  // Reset list state
         sSettingsSubMode = SettingsSubMode::MAIN;
         sCurrentMode = Mode::SETTINGS;
-    }
-
-    // Cancel/Close (B)
-    if (Buttons::Actions::CANCEL.Pressed(pressed)) {
-        sIsOpen = false;
-        return 0;
-    }
-
-    // Confirm/Launch (A)
-    if (Buttons::Actions::CONFIRM.Pressed(pressed)) {
-        const Titles::TitleInfo* title = Categories::GetFilteredTitle(sSelectedIndex);
-        if (title) {
-            sIsOpen = false;
-            return title->titleId;
-        }
     }
 
     return 0;
@@ -591,7 +553,8 @@ uint64_t handleBrowseModeInput(uint32_t pressed)
 void renderEditMode()
 {
     // Get the title being edited
-    const Titles::TitleInfo* title = Categories::GetFilteredTitle(sSelectedIndex);
+    int selectedIdx = UI::ListView::GetSelectedIndex(sTitleListState);
+    const Titles::TitleInfo* title = Categories::GetFilteredTitle(selectedIdx);
     if (!title) {
         Renderer::DrawText(0, 0, "Error: No title selected");
         return;
@@ -673,7 +636,8 @@ void renderEditMode()
  */
 void handleEditModeInput(uint32_t pressed)
 {
-    const Titles::TitleInfo* title = Categories::GetFilteredTitle(sSelectedIndex);
+    int titleIdx = UI::ListView::GetSelectedIndex(sTitleListState);
+    const Titles::TitleInfo* title = Categories::GetFilteredTitle(titleIdx);
     if (!title) {
         // No title selected - go back
         sCurrentMode = Mode::BROWSE;
@@ -1634,7 +1598,8 @@ void Open()
     Categories::Init();
 
     // Restore last selection from settings
-    sSelectedIndex = Settings::Get().lastIndex;
+    sTitleListState = UI::ListView::State();  // Reset state
+    sTitleListState.selectedIndex = Settings::Get().lastIndex;
     clampSelection();
 
     // Mark as open and reset mode
@@ -1645,7 +1610,7 @@ void Open()
     uint64_t titleToLaunch = runMenuLoop();
 
     // Save state
-    Settings::Get().lastIndex = sSelectedIndex;
+    Settings::Get().lastIndex = sTitleListState.selectedIndex;
     Settings::Save();
 
     // Cleanup
