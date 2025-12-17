@@ -93,6 +93,20 @@ constexpr uint32_t DEFAULT_HEADER_COLOR      = 0xA6E3A1FF;  // Green
 constexpr uint32_t DEFAULT_CATEGORY_COLOR    = 0xF5C2E7FF;  // Pink
 
 // =============================================================================
+// Auto-Launch Configuration
+// =============================================================================
+
+/**
+ * Auto-launch behavior when the system boots or an application starts.
+ */
+enum class AutoLaunchMode : int32_t {
+    DISABLED = 0,       // No auto-launch (default, manual button combo)
+    OPEN_MENU = 1,      // Automatically open the menu after grace period
+    LAST_TITLE = 2,     // Launch the last-played title immediately
+    SPECIFIC_TITLE = 3  // Launch a specific configured title
+};
+
+// =============================================================================
 // Data Structures
 // =============================================================================
 
@@ -170,6 +184,18 @@ struct PluginSettings {
     int32_t lastCategoryIndex;
 
     // -------------------------------------------------------------------------
+    // Auto-Launch Options
+    // -------------------------------------------------------------------------
+
+    // Auto-launch behavior on system start
+    // Default: DISABLED (manual button combo required)
+    AutoLaunchMode autoLaunchMode;
+
+    // Title ID to launch when autoLaunchMode is SPECIFIC_TITLE
+    // Set to 0 if not configured
+    uint64_t autoLaunchTitleId;
+
+    // -------------------------------------------------------------------------
     // Display Options
     // -------------------------------------------------------------------------
 
@@ -221,6 +247,8 @@ struct PluginSettings {
         configVersion(CONFIG_VERSION),
         lastIndex(0),
         lastCategoryIndex(0),
+        autoLaunchMode(AutoLaunchMode::DISABLED),
+        autoLaunchTitleId(0),
         showNumbers(false),
         showFavorites(true),
         bgColor(DEFAULT_BG_COLOR),
@@ -451,5 +479,25 @@ void MoveCategoryDown(uint16_t categoryId);
  * @return Number of categories returned
  */
 int GetSortedCategoryIndices(int* outIndices, int maxCount, bool includeHidden = true);
+
+// =============================================================================
+// Auto-Launch Helper Functions
+// =============================================================================
+
+/**
+ * Get the display name for an auto-launch mode.
+ *
+ * @param mode The mode to get the name for
+ * @return Human-readable name string
+ */
+const char* GetAutoLaunchModeName(AutoLaunchMode mode);
+
+/**
+ * Cycle to the next auto-launch mode.
+ *
+ * @param current Current mode
+ * @return Next mode in the cycle
+ */
+AutoLaunchMode NextAutoLaunchMode(AutoLaunchMode current);
 
 } // namespace Settings

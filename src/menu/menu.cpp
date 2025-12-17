@@ -54,7 +54,8 @@ enum class SettingsSubMode {
     MANAGE_CATS,    // Category management submenu
     SYSTEM_APPS,    // System apps submenu
     COLOR_INPUT,    // Editing a color value
-    NAME_INPUT      // Editing a category name
+    NAME_INPUT,     // Editing a category name
+    SELECT_TITLE    // Selecting a title for auto-launch
 };
 
 // =============================================================================
@@ -62,10 +63,11 @@ enum class SettingsSubMode {
 // =============================================================================
 
 enum class SettingType {
-    TOGGLE,     // Boolean on/off
-    COLOR,      // RGBA hex color
-    BRIGHTNESS, // Gamepad brightness (1-5)
-    ACTION      // Opens a submenu or performs an action
+    TOGGLE,      // Boolean on/off
+    COLOR,       // RGBA hex color
+    BRIGHTNESS,  // Gamepad brightness (1-5)
+    ACTION,      // Opens a submenu or performs an action
+    AUTO_LAUNCH  // Auto-launch mode selector
 };
 
 enum SettingAction {
@@ -124,9 +126,12 @@ struct SettingItem {
     {n, d1, d2, SettingType::BRIGHTNESS, 0}
 #define ACTION_SETTING(n, d1, d2, actionId) \
     {n, d1, d2, SettingType::ACTION, actionId}
+#define AUTO_LAUNCH_SETTING(n, d1, d2) \
+    {n, d1, d2, SettingType::AUTO_LAUNCH, 0}
 
 // All settings defined in one place - easy to add/remove/reorder
 static const SettingItem sSettingItems[] = {
+    AUTO_LAUNCH_SETTING("Auto-Launch",      "Launch behavior on boot.",  "X: Select title"),
     BRIGHTNESS_SETTING("Gamepad Brightness", "Adjust Gamepad screen",   "brightness (1-5)."),
     ACTION_SETTING("System Apps",       "Launch system applications",   "(Browser, Settings, etc.)", ACTION_SYSTEM_APPS),
     TOGGLE_SETTING("Show Numbers",      "Show line numbers before",     "each title in the list.",   showNumbers),
@@ -151,6 +156,10 @@ int sEditingSettingIndex = -1;       // Which setting is being edited (-1 = none
 int sEditingCategoryId = -1;         // Which category is being renamed (-1 = new)
 TextInput::Field sInputField;        // Reusable text input field
 
+// Auto-launch title selection state
+int sSelectTitleIndex = 0;           // Currently selected title index
+int sSelectTitleScroll = 0;          // Scroll offset for title list
+
 // Helper to get a toggle value pointer from offset
 bool* getTogglePtr(int offset) {
     return (bool*)((char*)&Settings::Get() + offset);
@@ -165,6 +174,10 @@ uint32_t* getColorPtr(int offset) {
 OSTime sApplicationStartTime = 0;       // When current app started
 bool sInForeground = false;             // Is app in foreground?
 constexpr uint32_t STARTUP_GRACE_MS = 3000;  // Wait time before allowing menu
+
+// Auto-launch tracking
+bool sAutoLaunchTriggered = false;      // Has auto-launch been performed this session?
+bool sIsOnWiiUMenu = false;             // Are we on the Wii U Menu (vs. in a game)?
 
 // =============================================================================
 // Layout Constants
@@ -792,6 +805,12 @@ void renderSettingsMain()
                 }
                 break;
             }
+            case SettingType::AUTO_LAUNCH: {
+                Settings::AutoLaunchMode mode = Settings::Get().autoLaunchMode;
+                const char* modeName = Settings::GetAutoLaunchModeName(mode);
+                Renderer::DrawTextF(0, row++, "%s %s: %s", cursor, item.name, modeName);
+                break;
+            }
         }
     }
 
@@ -811,8 +830,42 @@ void renderSettingsMain()
         case SettingType::COLOR:      hint = "Press A to edit"; break;
         case SettingType::BRIGHTNESS: hint = "Left/Right to adjust"; break;
         case SettingType::ACTION:     hint = "Press A to open"; break;
+        case SettingType::AUTO_LAUNCH: hint = "A: Cycle mode  X: Select title"; break;
     }
     Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 6, hint);
+
+    // Show extra info for auto-launch setting
+    if (selected.type == SettingType::AUTO_LAUNCH) {
+        Settings::AutoLaunchMode mode = Settings::Get().autoLaunchMode;
+        int infoRow = LIST_START_ROW + 8;
+
+        if (mode == Settings::AutoLaunchMode::SPECIFIC_TITLE) {
+            uint64_t titleId = Settings::Get().autoLaunchTitleId;
+            if (titleId != 0) {
+                const Titles::TitleInfo* title = Titles::FindById(titleId);
+                if (title) {
+                    Renderer::DrawText(Renderer::GetDetailsPanelCol(), infoRow++, "Selected:");
+                    Renderer::DrawText(Renderer::GetDetailsPanelCol(), infoRow++, title->name);
+                } else {
+                    Renderer::DrawText(Renderer::GetDetailsPanelCol(), infoRow++, "Title not found!");
+                    Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), infoRow++, "ID: %016llX",
+                                       static_cast<unsigned long long>(titleId));
+                }
+            } else {
+                Renderer::DrawText(Renderer::GetDetailsPanelCol(), infoRow++, "No title selected");
+                Renderer::DrawText(Renderer::GetDetailsPanelCol(), infoRow++, "Press X to choose");
+            }
+        } else if (mode == Settings::AutoLaunchMode::LAST_TITLE) {
+            int lastIdx = Settings::Get().lastIndex;
+            if (lastIdx >= 0 && lastIdx < Titles::GetCount()) {
+                const Titles::TitleInfo* title = Titles::GetTitle(lastIdx);
+                if (title) {
+                    Renderer::DrawText(Renderer::GetDetailsPanelCol(), infoRow++, "Last played:");
+                    Renderer::DrawText(Renderer::GetDetailsPanelCol(), infoRow++, title->name);
+                }
+            }
+        }
+    }
 
     // --- Footer ---
     Renderer::DrawTextF(0, Renderer::GetFooterRow(), "%s:Edit %s:Back  [%d/%d]",
@@ -1000,6 +1053,82 @@ void renderSystemApps()
 }
 
 /**
+ * Render the select title submenu for auto-launch.
+ */
+void renderSelectTitle()
+{
+    // --- Header ---
+    Renderer::DrawText(0, 0, "SELECT AUTO-LAUNCH TITLE");
+    Renderer::DrawText(0, HEADER_ROW, "------------------------------------------------------------");
+
+    // --- Divider ---
+    drawDivider();
+
+    // --- Left side: Title list ---
+    int count = Titles::GetCount();
+
+    if (count == 0) {
+        Renderer::DrawText(2, LIST_START_ROW + 2, "No titles found");
+        return;
+    }
+
+    // Clamp selection and scroll
+    int visibleRows = Renderer::GetVisibleRows();
+    clampScrollableList(sSelectTitleIndex, sSelectTitleScroll, count, visibleRows);
+
+    // Draw visible titles
+    int maxNameLen = Renderer::GetTitleNameWidth(false);
+    for (int i = 0; i < visibleRows && (sSelectTitleScroll + i) < count; i++) {
+        int idx = sSelectTitleScroll + i;
+        const Titles::TitleInfo* title = Titles::GetTitle(idx);
+
+        if (!title) continue;
+
+        // Truncate name to fit
+        char displayName[32];
+        strncpy(displayName, title->name, maxNameLen);
+        displayName[maxNameLen] = '\0';
+
+        const char* cursor = (idx == sSelectTitleIndex) ? ">" : " ";
+
+        // Check if this is the currently selected auto-launch title
+        const char* marker = (title->titleId == Settings::Get().autoLaunchTitleId) ? "*" : " ";
+
+        Renderer::DrawTextF(LIST_START_COL, LIST_START_ROW + i, "%s%s %s", cursor, marker, displayName);
+    }
+
+    // Scroll indicators
+    if (sSelectTitleScroll > 0) {
+        Renderer::DrawText(Renderer::GetListWidth() - 4, LIST_START_ROW, "[UP]");
+    }
+    if (sSelectTitleScroll + visibleRows < count) {
+        Renderer::DrawText(Renderer::GetListWidth() - 6, LIST_START_ROW + visibleRows - 1, "[DOWN]");
+    }
+
+    // --- Right side: Selected title details ---
+    const Titles::TitleInfo* selectedTitle = Titles::GetTitle(sSelectTitleIndex);
+    if (selectedTitle) {
+        Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW, selectedTitle->name);
+
+        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 2, "ID: %016llX",
+                           static_cast<unsigned long long>(selectedTitle->titleId));
+
+        if (selectedTitle->titleId == Settings::Get().autoLaunchTitleId) {
+            Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 4, "* Currently selected");
+        }
+    }
+
+    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 6, "Press A to select");
+    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 7, "Press B to cancel");
+
+    // --- Footer ---
+    Renderer::DrawTextF(0, Renderer::GetFooterRow(), "%s:Select %s:Back  [%d/%d]",
+                      Buttons::Actions::CONFIRM.label,
+                      Buttons::Actions::CANCEL.label,
+                      sSelectTitleIndex + 1, count);
+}
+
+/**
  * Render the settings mode screen.
  */
 void renderSettingsMode()
@@ -1019,6 +1148,9 @@ void renderSettingsMode()
             break;
         case SettingsSubMode::NAME_INPUT:
             renderNameInput();
+            break;
+        case SettingsSubMode::SELECT_TITLE:
+            renderSelectTitle();
             break;
     }
 }
@@ -1096,6 +1228,33 @@ void handleSettingsMainInput(uint32_t pressed)
                 }
                 break;
             }
+            case SettingType::AUTO_LAUNCH: {
+                // Cycle to next auto-launch mode
+                Settings::AutoLaunchMode current = Settings::Get().autoLaunchMode;
+                Settings::Get().autoLaunchMode = Settings::NextAutoLaunchMode(current);
+                break;
+            }
+        }
+    }
+
+    // X button to select title (for auto-launch)
+    if (Buttons::Actions::EDIT.Pressed(pressed)) {
+        const SettingItem& item = sSettingItems[sSettingsIndex];
+        if (item.type == SettingType::AUTO_LAUNCH) {
+            // Open title selection submenu
+            sSelectTitleIndex = 0;
+            sSelectTitleScroll = 0;
+
+            // Try to pre-select the currently configured title
+            uint64_t currentTitleId = Settings::Get().autoLaunchTitleId;
+            if (currentTitleId != 0) {
+                int idx = Titles::FindIndexById(currentTitleId);
+                if (idx >= 0) {
+                    sSelectTitleIndex = idx;
+                }
+            }
+
+            sSettingsSubMode = SettingsSubMode::SELECT_TITLE;
         }
     }
 
@@ -1338,6 +1497,66 @@ void handleSystemAppsInput(uint32_t pressed)
 }
 
 /**
+ * Handle select title submenu input.
+ */
+void handleSelectTitleInput(uint32_t pressed)
+{
+    int count = Titles::GetCount();
+    int visibleRows = Renderer::GetVisibleRows();
+
+    // Navigation - Up/Down
+    if (Buttons::Actions::NAV_UP.Pressed(pressed)) {
+        if (sSelectTitleIndex > 0) {
+            sSelectTitleIndex--;
+        }
+    }
+    if (Buttons::Actions::NAV_DOWN.Pressed(pressed)) {
+        if (sSelectTitleIndex < count - 1) {
+            sSelectTitleIndex++;
+        }
+    }
+
+    // Navigation - Small skip (Left/Right)
+    if (Buttons::Actions::NAV_SKIP_UP.Pressed(pressed)) {
+        sSelectTitleIndex -= Buttons::Skip::SMALL;
+        if (sSelectTitleIndex < 0) sSelectTitleIndex = 0;
+    }
+    if (Buttons::Actions::NAV_SKIP_DOWN.Pressed(pressed)) {
+        sSelectTitleIndex += Buttons::Skip::SMALL;
+        if (sSelectTitleIndex >= count) sSelectTitleIndex = count - 1;
+    }
+
+    // Navigation - Large skip (L/R)
+    if (Buttons::Actions::NAV_PAGE_UP.Pressed(pressed)) {
+        sSelectTitleIndex -= Buttons::Skip::LARGE;
+        if (sSelectTitleIndex < 0) sSelectTitleIndex = 0;
+    }
+    if (Buttons::Actions::NAV_PAGE_DOWN.Pressed(pressed)) {
+        sSelectTitleIndex += Buttons::Skip::LARGE;
+        if (sSelectTitleIndex >= count) sSelectTitleIndex = count - 1;
+    }
+
+    // Select title (A)
+    if (Buttons::Actions::CONFIRM.Pressed(pressed)) {
+        const Titles::TitleInfo* title = Titles::GetTitle(sSelectTitleIndex);
+        if (title) {
+            Settings::Get().autoLaunchTitleId = title->titleId;
+            // Also set mode to SPECIFIC_TITLE if not already
+            if (Settings::Get().autoLaunchMode != Settings::AutoLaunchMode::SPECIFIC_TITLE) {
+                Settings::Get().autoLaunchMode = Settings::AutoLaunchMode::SPECIFIC_TITLE;
+            }
+            Settings::Save();
+        }
+        sSettingsSubMode = SettingsSubMode::MAIN;
+    }
+
+    // Back (B)
+    if (Buttons::Actions::CANCEL.Pressed(pressed)) {
+        sSettingsSubMode = SettingsSubMode::MAIN;
+    }
+}
+
+/**
  * Handle input in settings mode.
  * @param pressed Buttons just pressed this frame
  * @param held    Buttons held this frame (for text input repeat)
@@ -1359,6 +1578,9 @@ void handleSettingsModeInput(uint32_t pressed, uint32_t held)
             break;
         case SettingsSubMode::NAME_INPUT:
             handleNameInputInput(pressed, held);
+            break;
+        case SettingsSubMode::SELECT_TITLE:
+            handleSelectTitleInput(pressed);
             break;
     }
 }
@@ -1643,6 +1865,92 @@ void OnForegroundReleased()
     if (sIsOpen) {
         Close();
     }
+}
+
+bool ShouldAutoLaunch()
+{
+    // Check if auto-launch is enabled
+    Settings::AutoLaunchMode mode = Settings::Get().autoLaunchMode;
+    if (mode == Settings::AutoLaunchMode::DISABLED) {
+        return false;
+    }
+
+    // Check if already triggered this session
+    if (sAutoLaunchTriggered) {
+        return false;
+    }
+
+    // Check if we're on the Wii U Menu
+    if (!sIsOnWiiUMenu) {
+        return false;
+    }
+
+    // Check if it's safe to open the menu (grace period, foreground, etc.)
+    if (!IsSafeToOpen()) {
+        return false;
+    }
+
+    return true;
+}
+
+void PerformAutoLaunch()
+{
+    Settings::AutoLaunchMode mode = Settings::Get().autoLaunchMode;
+
+    // Mark as triggered to prevent repeat
+    sAutoLaunchTriggered = true;
+
+    switch (mode) {
+        case Settings::AutoLaunchMode::OPEN_MENU:
+            // Open the menu for user selection
+            Open();
+            break;
+
+        case Settings::AutoLaunchMode::LAST_TITLE: {
+            // Launch the last-played title
+            int lastIdx = Settings::Get().lastIndex;
+            if (lastIdx >= 0 && lastIdx < Titles::GetCount()) {
+                const Titles::TitleInfo* title = Titles::GetTitle(lastIdx);
+                if (title) {
+                    SYSLaunchTitle(title->titleId);
+                    return;
+                }
+            }
+            // Fallback: open the menu if last title isn't valid
+            Open();
+            break;
+        }
+
+        case Settings::AutoLaunchMode::SPECIFIC_TITLE: {
+            // Launch the configured specific title
+            uint64_t titleId = Settings::Get().autoLaunchTitleId;
+            if (titleId != 0) {
+                const Titles::TitleInfo* title = Titles::FindById(titleId);
+                if (title) {
+                    SYSLaunchTitle(titleId);
+                    return;
+                }
+            }
+            // Fallback: open the menu if specific title isn't valid
+            Open();
+            break;
+        }
+
+        case Settings::AutoLaunchMode::DISABLED:
+        default:
+            // Should not reach here, but do nothing
+            break;
+    }
+}
+
+void ResetAutoLaunchState()
+{
+    sAutoLaunchTriggered = true;  // Prevent further auto-launch this session
+}
+
+void SetOnWiiUMenu(bool onMenu)
+{
+    sIsOnWiiUMenu = onMenu;
 }
 
 } // namespace Menu

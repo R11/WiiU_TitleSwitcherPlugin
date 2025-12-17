@@ -67,6 +67,8 @@ constexpr const char* KEY_CATEGORIES_DATA  = "categoriesData";
 constexpr const char* KEY_TITLE_CAT_COUNT  = "titleCatCount";
 constexpr const char* KEY_TITLE_CAT_DATA   = "titleCatData";
 constexpr const char* KEY_NEXT_CAT_ID      = "nextCategoryId";
+constexpr const char* KEY_AUTO_LAUNCH_MODE = "autoLaunchMode";
+constexpr const char* KEY_AUTO_LAUNCH_TITLE = "autoLaunchTitle";
 
 // =============================================================================
 // Storage Helpers
@@ -144,6 +146,27 @@ void Load()
     int32_t nextId;
     if (WUPSStorageAPI_GetInt(nullptr, KEY_NEXT_CAT_ID, &nextId) == WUPS_STORAGE_ERROR_SUCCESS) {
         gSettings.nextCategoryId = static_cast<uint16_t>(nextId);
+    }
+
+    // -------------------------------------------------------------------------
+    // Step 5b: Load auto-launch settings
+    // -------------------------------------------------------------------------
+    int32_t autoLaunchMode;
+    if (WUPSStorageAPI_GetInt(nullptr, KEY_AUTO_LAUNCH_MODE, &autoLaunchMode) == WUPS_STORAGE_ERROR_SUCCESS) {
+        // Validate range
+        if (autoLaunchMode >= 0 && autoLaunchMode <= 3) {
+            gSettings.autoLaunchMode = static_cast<AutoLaunchMode>(autoLaunchMode);
+        }
+    }
+
+    // Load auto-launch title ID (stored as binary blob since it's uint64_t)
+    uint64_t autoLaunchTitle = 0;
+    uint32_t readSize = 0;
+    if (WUPSStorageAPI_GetBinary(nullptr, KEY_AUTO_LAUNCH_TITLE, &autoLaunchTitle,
+                                  sizeof(uint64_t), &readSize) == WUPS_STORAGE_ERROR_SUCCESS) {
+        if (readSize == sizeof(uint64_t)) {
+            gSettings.autoLaunchTitleId = autoLaunchTitle;
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -236,6 +259,12 @@ void Save()
     // -------------------------------------------------------------------------
     WUPSStorageAPI_StoreInt(nullptr, KEY_SHOW_NUMBERS, gSettings.showNumbers ? 1 : 0);
     WUPSStorageAPI_StoreInt(nullptr, KEY_SHOW_FAVORITES, gSettings.showFavorites ? 1 : 0);
+
+    // -------------------------------------------------------------------------
+    // Save auto-launch settings
+    // -------------------------------------------------------------------------
+    WUPSStorageAPI_StoreInt(nullptr, KEY_AUTO_LAUNCH_MODE, static_cast<int32_t>(gSettings.autoLaunchMode));
+    WUPSStorageAPI_StoreBinary(nullptr, KEY_AUTO_LAUNCH_TITLE, &gSettings.autoLaunchTitleId, sizeof(uint64_t));
 
     // -------------------------------------------------------------------------
     // Save colors (cast to signed for storage)
@@ -542,6 +571,32 @@ int GetSortedCategoryIndices(int* outIndices, int maxCount, bool includeHidden)
     }
 
     return count;
+}
+
+// =============================================================================
+// Auto-Launch Helper Functions Implementation
+// =============================================================================
+
+const char* GetAutoLaunchModeName(AutoLaunchMode mode)
+{
+    switch (mode) {
+        case AutoLaunchMode::DISABLED:       return "Disabled";
+        case AutoLaunchMode::OPEN_MENU:      return "Open Menu";
+        case AutoLaunchMode::LAST_TITLE:     return "Last Title";
+        case AutoLaunchMode::SPECIFIC_TITLE: return "Specific Title";
+        default:                             return "Unknown";
+    }
+}
+
+AutoLaunchMode NextAutoLaunchMode(AutoLaunchMode current)
+{
+    switch (current) {
+        case AutoLaunchMode::DISABLED:       return AutoLaunchMode::OPEN_MENU;
+        case AutoLaunchMode::OPEN_MENU:      return AutoLaunchMode::LAST_TITLE;
+        case AutoLaunchMode::LAST_TITLE:     return AutoLaunchMode::SPECIFIC_TITLE;
+        case AutoLaunchMode::SPECIFIC_TITLE: return AutoLaunchMode::DISABLED;
+        default:                             return AutoLaunchMode::DISABLED;
+    }
 }
 
 } // namespace Settings
