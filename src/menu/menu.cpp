@@ -16,7 +16,10 @@
 
 // Wii U SDK headers
 #include <vpad/input.h>           // VPADRead, VPADStatus
-#include <sysapp/launch.h>        // SYSLaunchTitle
+#include <sysapp/launch.h>        // SYSLaunchTitle, SYSLaunchMenu, _SYSLaunchSettings
+#include <sysapp/switch.h>        // SYSSwitchToBrowser, SYSSwitchToEShop, etc.
+#include <sysapp/title.h>         // SYSTEM_APP_ID_*
+#include <nn/ccr/sys.h>           // CCRSysGetCurrentLCDMode, CCRSysSetCurrentLCDMode
 #include <coreinit/time.h>        // OSGetTime, OSTicksToMilliseconds
 #include <proc_ui/procui.h>       // ProcUIIsRunning
 
@@ -49,6 +52,7 @@ int sEditCategoryScroll = 0;     // Scroll offset for category list
 enum class SettingsSubMode {
     MAIN,           // Main settings list
     MANAGE_CATS,    // Category management submenu
+    SYSTEM_APPS,    // System apps submenu
     COLOR_INPUT,    // Editing a color value
     NAME_INPUT      // Editing a category name
 };
@@ -60,13 +64,48 @@ enum class SettingsSubMode {
 enum class SettingType {
     TOGGLE,     // Boolean on/off
     COLOR,      // RGBA hex color
+    BRIGHTNESS, // Gamepad brightness (1-5)
     ACTION      // Opens a submenu or performs an action
 };
 
 enum SettingAction {
     ACTION_MANAGE_CATEGORIES = -1,
-    ACTION_DEBUG_GRID = -2
+    ACTION_SYSTEM_APPS = -2,
+    ACTION_DEBUG_GRID = -3
 };
+
+// =============================================================================
+// System Apps Data
+// =============================================================================
+
+// System app options for the System Apps submenu
+struct SystemAppOption {
+    const char* name;
+    const char* description;
+    int appId;  // SYSTEM_APP_ID_* or special negative values
+};
+
+// Special app IDs for actions that use different APIs
+constexpr int SYSAPP_RETURN_TO_MENU = -1;
+constexpr int SYSAPP_BROWSER = -2;
+constexpr int SYSAPP_ESHOP = -3;
+constexpr int SYSAPP_CONTROLLER_SYNC = -4;
+
+static const SystemAppOption sSystemApps[] = {
+    {"Return to Menu",       "Exit game and return to Wii U Menu",         SYSAPP_RETURN_TO_MENU},
+    {"Internet Browser",     "Open the Internet Browser",                   SYSAPP_BROWSER},
+    {"Nintendo eShop",       "Open the Nintendo eShop",                     SYSAPP_ESHOP},
+    {"Mii Maker",            "Open Mii Maker",                              SYSTEM_APP_ID_MII_MAKER},
+    {"System Settings",      "Open System Settings",                        SYSTEM_APP_ID_SYSTEM_SETTINGS},
+    {"Controller Sync",      "Sync controllers (Gamepad, Wiimotes)",        SYSAPP_CONTROLLER_SYNC},
+    {"Notifications",        "View system notifications",                   SYSTEM_APP_ID_NOTIFICATIONS},
+    {"User Settings",        "Manage user accounts",                        SYSTEM_APP_ID_USER_SETTINGS},
+    {"Parental Controls",    "Open Parental Controls",                      SYSTEM_APP_ID_PARENTAL_CONTROLS},
+    {"Daily Log",            "View play activity",                          SYSTEM_APP_ID_DAILY_LOG},
+};
+
+static constexpr int SYSTEM_APP_COUNT = sizeof(sSystemApps) / sizeof(sSystemApps[0]);
+int sSystemAppIndex = 0;  // Currently selected system app
 
 struct SettingItem {
     const char* name;
@@ -81,21 +120,25 @@ struct SettingItem {
     {n, d1, d2, SettingType::TOGGLE, (int)offsetof(Settings::PluginSettings, member)}
 #define COLOR_SETTING(n, d1, d2, member) \
     {n, d1, d2, SettingType::COLOR, (int)offsetof(Settings::PluginSettings, member)}
+#define BRIGHTNESS_SETTING(n, d1, d2) \
+    {n, d1, d2, SettingType::BRIGHTNESS, 0}
 #define ACTION_SETTING(n, d1, d2, actionId) \
     {n, d1, d2, SettingType::ACTION, actionId}
 
 // All settings defined in one place - easy to add/remove/reorder
 static const SettingItem sSettingItems[] = {
-    TOGGLE_SETTING("Show Numbers",    "Show line numbers before",    "each title in the list.",    showNumbers),
-    TOGGLE_SETTING("Show Favorites",  "Show favorite marker (*)",    "in the title list.",         showFavorites),
-    COLOR_SETTING("Background",       "Menu background color.",      "RGBA hex format.",           bgColor),
-    COLOR_SETTING("Title Text",       "Normal title text color.",    "RGBA hex format.",           titleColor),
-    COLOR_SETTING("Highlighted",      "Selected title color.",       "RGBA hex format.",           highlightedTitleColor),
-    COLOR_SETTING("Favorite",         "Favorite marker color.",      "RGBA hex format.",           favoriteColor),
-    COLOR_SETTING("Header",           "Header text color.",          "RGBA hex format.",           headerColor),
-    COLOR_SETTING("Category",         "Category tab color.",         "RGBA hex format.",           categoryColor),
-    ACTION_SETTING("Manage Categories", "Create, rename, or delete", "custom categories.",         ACTION_MANAGE_CATEGORIES),
-    ACTION_SETTING("Debug Grid",        "Show grid overlay with",    "dimensions and positions.",   ACTION_DEBUG_GRID),
+    BRIGHTNESS_SETTING("Gamepad Brightness", "Adjust Gamepad screen",   "brightness (1-5)."),
+    ACTION_SETTING("System Apps",       "Launch system applications",   "(Browser, Settings, etc.)", ACTION_SYSTEM_APPS),
+    TOGGLE_SETTING("Show Numbers",      "Show line numbers before",     "each title in the list.",   showNumbers),
+    TOGGLE_SETTING("Show Favorites",    "Show favorite marker (*)",     "in the title list.",        showFavorites),
+    COLOR_SETTING("Background",         "Menu background color.",       "RGBA hex format.",          bgColor),
+    COLOR_SETTING("Title Text",         "Normal title text color.",     "RGBA hex format.",          titleColor),
+    COLOR_SETTING("Highlighted",        "Selected title color.",        "RGBA hex format.",          highlightedTitleColor),
+    COLOR_SETTING("Favorite",           "Favorite marker color.",       "RGBA hex format.",          favoriteColor),
+    COLOR_SETTING("Header",             "Header text color.",           "RGBA hex format.",          headerColor),
+    COLOR_SETTING("Category",           "Category tab color.",          "RGBA hex format.",          categoryColor),
+    ACTION_SETTING("Manage Categories", "Create, rename, or delete",    "custom categories.",        ACTION_MANAGE_CATEGORIES),
+    ACTION_SETTING("Debug Grid",        "Show grid overlay with",       "dimensions and positions.", ACTION_DEBUG_GRID),
 };
 
 static constexpr int SETTINGS_ITEM_COUNT = sizeof(sSettingItems) / sizeof(sSettingItems[0]);
@@ -679,6 +722,29 @@ void handleEditModeInput(uint32_t pressed)
 }
 
 /**
+ * Get current gamepad brightness level (1-5).
+ */
+int getCurrentBrightness()
+{
+    CCRSysLCDMode mode;
+    if (CCRSysGetCurrentLCDMode(&mode) == 0) {
+        return static_cast<int>(mode) + 1;  // Convert 0-4 to 1-5
+    }
+    return 3;  // Default to middle if read fails
+}
+
+/**
+ * Set gamepad brightness level (1-5).
+ */
+void setBrightness(int level)
+{
+    if (level < 1) level = 1;
+    if (level > 5) level = 5;
+    CCRSysLCDMode mode = static_cast<CCRSysLCDMode>(level - 1);  // Convert 1-5 to 0-4
+    CCRSysSetCurrentLCDMode(mode);
+}
+
+/**
  * Render the main settings list.
  */
 void renderSettingsMain()
@@ -708,6 +774,16 @@ void renderSettingsMain()
                 Renderer::DrawTextF(0, row++, "%s %s: %08X", cursor, item.name, value);
                 break;
             }
+            case SettingType::BRIGHTNESS: {
+                int brightness = getCurrentBrightness();
+                // Draw brightness bar: [===--] for level 3
+                char bar[8] = "-----";
+                for (int b = 0; b < brightness && b < 5; b++) {
+                    bar[b] = '=';
+                }
+                Renderer::DrawTextF(0, row++, "%s %s: [%s] %d", cursor, item.name, bar, brightness);
+                break;
+            }
             case SettingType::ACTION: {
                 if (item.dataOffset == ACTION_MANAGE_CATEGORIES) {
                     Renderer::DrawTextF(0, row++, "%s %s (%d)", cursor, item.name, Settings::GetCategoryCount());
@@ -731,9 +807,10 @@ void renderSettingsMain()
     // Show action hint based on type
     const char* hint = "";
     switch (selected.type) {
-        case SettingType::TOGGLE: hint = "Press A to toggle"; break;
-        case SettingType::COLOR:  hint = "Press A to edit"; break;
-        case SettingType::ACTION: hint = "Press A to open"; break;
+        case SettingType::TOGGLE:     hint = "Press A to toggle"; break;
+        case SettingType::COLOR:      hint = "Press A to edit"; break;
+        case SettingType::BRIGHTNESS: hint = "Left/Right to adjust"; break;
+        case SettingType::ACTION:     hint = "Press A to open"; break;
     }
     Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 6, hint);
 
@@ -880,6 +957,49 @@ void renderNameInput()
 }
 
 /**
+ * Render the system apps submenu.
+ */
+void renderSystemApps()
+{
+    // --- Header ---
+    Renderer::DrawText(0, 0, "SYSTEM APPS");
+    Renderer::DrawText(0, HEADER_ROW, "------------------------------------------------------------");
+
+    // --- Divider ---
+    drawDivider();
+
+    // --- Left side: System app list ---
+    int row = LIST_START_ROW;
+
+    for (int i = 0; i < SYSTEM_APP_COUNT && row < Renderer::GetFooterRow() - 1; i++) {
+        const SystemAppOption& app = sSystemApps[i];
+        const char* cursor = (sSystemAppIndex == i) ? ">" : " ";
+        Renderer::DrawTextF(0, row++, "%s %s", cursor, app.name);
+    }
+
+    // --- Right side: Description ---
+    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW, "Description:");
+    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 1, "------------");
+
+    // Show description for selected app
+    if (sSystemAppIndex >= 0 && sSystemAppIndex < SYSTEM_APP_COUNT) {
+        const SystemAppOption& app = sSystemApps[sSystemAppIndex];
+        Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 3, app.description);
+    }
+
+    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 5, "Press A to launch");
+    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 7, "Note: The game will be");
+    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 8, "suspended while the");
+    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 9, "system app is open.");
+
+    // --- Footer ---
+    Renderer::DrawTextF(0, Renderer::GetFooterRow(), "%s:Launch %s:Back  [%d/%d]",
+                      Buttons::Actions::CONFIRM.label,
+                      Buttons::Actions::CANCEL.label,
+                      sSystemAppIndex + 1, SYSTEM_APP_COUNT);
+}
+
+/**
  * Render the settings mode screen.
  */
 void renderSettingsMode()
@@ -890,6 +1010,9 @@ void renderSettingsMode()
             break;
         case SettingsSubMode::MANAGE_CATS:
             renderManageCategories();
+            break;
+        case SettingsSubMode::SYSTEM_APPS:
+            renderSystemApps();
             break;
         case SettingsSubMode::COLOR_INPUT:
             renderColorInput();
@@ -911,6 +1034,24 @@ void handleSettingsMainInput(uint32_t pressed)
     }
     if (Buttons::Actions::NAV_DOWN.Pressed(pressed)) {
         if (sSettingsIndex < SETTINGS_ITEM_COUNT - 1) sSettingsIndex++;
+    }
+
+    // Check if current setting is brightness for left/right handling
+    const SettingItem& currentItem = sSettingItems[sSettingsIndex];
+    if (currentItem.type == SettingType::BRIGHTNESS) {
+        // Left/Right to adjust brightness
+        if (Buttons::Actions::NAV_SKIP_UP.Pressed(pressed)) {
+            int brightness = getCurrentBrightness();
+            if (brightness > 1) {
+                setBrightness(brightness - 1);
+            }
+        }
+        if (Buttons::Actions::NAV_SKIP_DOWN.Pressed(pressed)) {
+            int brightness = getCurrentBrightness();
+            if (brightness < 5) {
+                setBrightness(brightness + 1);
+            }
+        }
     }
 
     // Confirm/Edit - data-driven handling
@@ -935,12 +1076,21 @@ void handleSettingsMainInput(uint32_t pressed)
                 sSettingsSubMode = SettingsSubMode::COLOR_INPUT;
                 break;
             }
+            case SettingType::BRIGHTNESS: {
+                // A toggles between min and max brightness
+                int brightness = getCurrentBrightness();
+                setBrightness(brightness >= 3 ? 1 : 5);
+                break;
+            }
             case SettingType::ACTION: {
                 // Handle action based on action ID
                 if (item.dataOffset == ACTION_MANAGE_CATEGORIES) {
                     sManageCatIndex = 0;
                     sManageCatScroll = 0;
                     sSettingsSubMode = SettingsSubMode::MANAGE_CATS;
+                } else if (item.dataOffset == ACTION_SYSTEM_APPS) {
+                    sSystemAppIndex = 0;
+                    sSettingsSubMode = SettingsSubMode::SYSTEM_APPS;
                 } else if (item.dataOffset == ACTION_DEBUG_GRID) {
                     sCurrentMode = Mode::DEBUG_GRID;
                 }
@@ -1121,6 +1271,73 @@ void handleNameInputInput(uint32_t pressed, uint32_t held)
 }
 
 /**
+ * Launch a system app by ID.
+ * Closes the menu and launches the requested app.
+ */
+void launchSystemApp(int appId)
+{
+    // Close the menu first
+    sIsOpen = false;
+
+    switch (appId) {
+        case SYSAPP_RETURN_TO_MENU:
+            SYSLaunchMenu();
+            break;
+        case SYSAPP_BROWSER:
+            SYSSwitchToBrowser(nullptr);
+            break;
+        case SYSAPP_ESHOP:
+            SYSSwitchToEShop(nullptr);
+            break;
+        case SYSAPP_CONTROLLER_SYNC:
+            SYSSwitchToSyncControllerOnHBM();
+            break;
+        default:
+            // Standard system app - use _SYSLaunchSettings or SYSLaunchMiiStudio
+            if (appId == SYSTEM_APP_ID_MII_MAKER) {
+                SYSLaunchMiiStudio(nullptr);
+            } else if (appId == SYSTEM_APP_ID_SYSTEM_SETTINGS) {
+                _SYSLaunchSettings(nullptr);
+            } else if (appId == SYSTEM_APP_ID_PARENTAL_CONTROLS) {
+                _SYSLaunchParental(nullptr);
+            } else if (appId == SYSTEM_APP_ID_NOTIFICATIONS) {
+                _SYSLaunchNotifications(nullptr);
+            } else {
+                // Try generic title launch for other system apps
+                // Note: This may not work for all apps
+                SYSLaunchMenu();  // Fallback to menu
+            }
+            break;
+    }
+}
+
+/**
+ * Handle system apps submenu input.
+ */
+void handleSystemAppsInput(uint32_t pressed)
+{
+    // Navigation
+    if (Buttons::Actions::NAV_UP.Pressed(pressed)) {
+        if (sSystemAppIndex > 0) sSystemAppIndex--;
+    }
+    if (Buttons::Actions::NAV_DOWN.Pressed(pressed)) {
+        if (sSystemAppIndex < SYSTEM_APP_COUNT - 1) sSystemAppIndex++;
+    }
+
+    // Launch selected app
+    if (Buttons::Actions::CONFIRM.Pressed(pressed)) {
+        if (sSystemAppIndex >= 0 && sSystemAppIndex < SYSTEM_APP_COUNT) {
+            launchSystemApp(sSystemApps[sSystemAppIndex].appId);
+        }
+    }
+
+    // Back
+    if (Buttons::Actions::CANCEL.Pressed(pressed)) {
+        sSettingsSubMode = SettingsSubMode::MAIN;
+    }
+}
+
+/**
  * Handle input in settings mode.
  * @param pressed Buttons just pressed this frame
  * @param held    Buttons held this frame (for text input repeat)
@@ -1133,6 +1350,9 @@ void handleSettingsModeInput(uint32_t pressed, uint32_t held)
             break;
         case SettingsSubMode::MANAGE_CATS:
             handleManageCategoriesInput(pressed);
+            break;
+        case SettingsSubMode::SYSTEM_APPS:
+            handleSystemAppsInput(pressed);
             break;
         case SettingsSubMode::COLOR_INPUT:
             handleColorInputInput(pressed, held);

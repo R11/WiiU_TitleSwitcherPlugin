@@ -50,7 +50,7 @@ void printUsage() {
     std::cout << "Navigation options:\n";
     std::cout << "  --select N      Set selected title index (0-based)\n";
     std::cout << "  --scroll N      Set scroll offset\n";
-    std::cout << "  --category N    Set category (0=All, 1=Favorites, 2=System, 3+=User)\n";
+    std::cout << "  --category N    Set category (0=All, 1=Favorites, 2+=User)\n";
     std::cout << "\n";
     std::cout << "Snapshot options:\n";
     std::cout << "  --update-snapshots   Regenerate all snapshot files\n";
@@ -62,28 +62,49 @@ void printUsage() {
 // Snapshot Testing
 // =============================================================================
 
+enum class SnapshotMode {
+    BROWSE,
+    SETTINGS_MAIN,
+    SETTINGS_SYSTEM_APPS,
+    DEBUG_GRID
+};
+
 struct SnapshotConfig {
-    const char* filename;
+    const char* folder;      // Subfolder under snapshots/
+    const char* filename;    // Filename within folder
+    SnapshotMode mode;
     int selection;
     int scroll;
     int category;
     bool showNumbers;
     bool showFavorites;
+    int settingsIndex;       // For settings mode
+    int systemAppIndex;      // For system apps submenu
 };
 
 const SnapshotConfig SNAPSHOTS[] = {
-    {"browse_default.txt",       1,  0, 0, false, true},
-    {"browse_scrolled.txt",     10,  5, 0, false, true},
-    {"browse_at_bottom.txt",    19, 10, 0, false, true},
-    {"browse_favorites.txt",     0,  0, 1, false, true},
-    {"browse_system.txt",        0,  0, 2, false, true},
-    {"browse_games.txt",         0,  0, 3, false, true},
-    {"browse_with_numbers.txt",  1,  0, 0, true,  true},
-    {"browse_no_favorites.txt",  1,  0, 0, false, false},
+    // Browse mode snapshots
+    {"browse", "default.txt",       SnapshotMode::BROWSE, 1,  0, 0, false, true,  0, 0},
+    {"browse", "scrolled.txt",      SnapshotMode::BROWSE, 10, 5, 0, false, true,  0, 0},
+    {"browse", "at_bottom.txt",     SnapshotMode::BROWSE, 19, 10, 0, false, true, 0, 0},
+    {"browse", "favorites.txt",     SnapshotMode::BROWSE, 0,  0, 1, false, true,  0, 0},
+    {"browse", "games.txt",         SnapshotMode::BROWSE, 0,  0, 2, false, true,  0, 0},
+    {"browse", "with_numbers.txt",  SnapshotMode::BROWSE, 1,  0, 0, true,  true,  0, 0},
+    {"browse", "no_favorites.txt",  SnapshotMode::BROWSE, 1,  0, 0, false, false, 0, 0},
+
+    // Settings mode snapshots
+    {"settings", "main.txt",              SnapshotMode::SETTINGS_MAIN, 0, 0, 0, false, true, 0, 0},
+    {"settings", "main_brightness.txt",   SnapshotMode::SETTINGS_MAIN, 0, 0, 0, false, true, 0, 0},
+    {"settings", "main_system_apps.txt",  SnapshotMode::SETTINGS_MAIN, 0, 0, 0, false, true, 1, 0},
+    {"settings", "system_apps.txt",       SnapshotMode::SETTINGS_SYSTEM_APPS, 0, 0, 0, false, true, 0, 0},
+    {"settings", "system_apps_browser.txt", SnapshotMode::SETTINGS_SYSTEM_APPS, 0, 0, 0, false, true, 0, 1},
+
+    // Debug snapshots
+    {"debug", "grid.txt",           SnapshotMode::DEBUG_GRID, 0, 0, 0, false, true, 0, 0},
 };
 
 const int SNAPSHOT_COUNT = sizeof(SNAPSHOTS) / sizeof(SNAPSHOTS[0]);
-const char* SNAPSHOT_DIR = "snapshots";
+const char* SNAPSHOT_BASE_DIR = "../../snapshots";  // Relative to tools/preview/
 
 // All screen types to include in snapshots
 struct ScreenInfo {
@@ -206,17 +227,33 @@ std::string renderForScreen(const SnapshotConfig& config, Renderer::ScreenType s
         Categories::SelectCategory(config.category);
     }
 
-    // Clamp selection
-    int count = Categories::GetFilteredCount();
-    int sel = config.selection;
-    if (sel >= count && count > 0) sel = count - 1;
-
     Renderer::SetScreenType(screenType);
     Renderer::Init();
-    MenuRender::SetSelection(sel, config.scroll);
 
     Renderer::BeginFrame(Settings::Get().bgColor);
-    MenuRender::renderBrowseMode();
+
+    switch (config.mode) {
+        case SnapshotMode::BROWSE: {
+            // Clamp selection
+            int count = Categories::GetFilteredCount();
+            int sel = config.selection;
+            if (sel >= count && count > 0) sel = count - 1;
+            MenuRender::SetSelection(sel, config.scroll);
+            MenuRender::renderBrowseMode();
+            break;
+        }
+        case SnapshotMode::SETTINGS_MAIN:
+            MenuRender::SetSettingsIndex(config.settingsIndex);
+            MenuRender::renderSettingsMain();
+            break;
+        case SnapshotMode::SETTINGS_SYSTEM_APPS:
+            MenuRender::SetSystemAppIndex(config.systemAppIndex);
+            MenuRender::renderSystemApps();
+            break;
+        case SnapshotMode::DEBUG_GRID:
+            // Handled separately
+            break;
+    }
 
     std::string output = Renderer::GetTrimmedOutput();
     Renderer::Shutdown();
@@ -250,40 +287,32 @@ std::string renderSnapshot(const SnapshotConfig& config) {
 int updateSnapshots() {
     namespace fs = std::filesystem;
 
-    // Create snapshots directory if it doesn't exist
-    if (!fs::exists(SNAPSHOT_DIR)) {
-        fs::create_directory(SNAPSHOT_DIR);
-    }
+    // Create snapshots directories if they don't exist
+    std::string baseDir = SNAPSHOT_BASE_DIR;
+    fs::create_directories(baseDir + "/browse");
+    fs::create_directories(baseDir + "/settings");
+    fs::create_directories(baseDir + "/edit");
+    fs::create_directories(baseDir + "/debug");
 
-    int totalSnapshots = SNAPSHOT_COUNT + 1;  // +1 for debug grid
-    std::cout << "Updating " << totalSnapshots << " snapshots...\n";
+    std::cout << "Updating " << SNAPSHOT_COUNT << " snapshots...\n";
 
-    // Update browse mode snapshots
     for (int i = 0; i < SNAPSHOT_COUNT; i++) {
         const auto& config = SNAPSHOTS[i];
-        std::string output = renderSnapshot(config);
 
-        std::string path = std::string(SNAPSHOT_DIR) + "/" + config.filename;
-        std::ofstream file(path);
-        if (file) {
-            file << output;
-            std::cout << "  Updated: " << config.filename << "\n";
+        std::string output;
+        if (config.mode == SnapshotMode::DEBUG_GRID) {
+            output = renderDebugGridSnapshot();
         } else {
-            std::cerr << "  FAILED:  " << config.filename << "\n";
-            return 1;
+            output = renderSnapshot(config);
         }
-    }
 
-    // Update debug grid snapshot
-    {
-        std::string output = renderDebugGridSnapshot();
-        std::string path = std::string(SNAPSHOT_DIR) + "/debug_grid.txt";
+        std::string path = baseDir + "/" + config.folder + "/" + config.filename;
         std::ofstream file(path);
         if (file) {
             file << output;
-            std::cout << "  Updated: debug_grid.txt\n";
+            std::cout << "  Updated: " << config.folder << "/" << config.filename << "\n";
         } else {
-            std::cerr << "  FAILED:  debug_grid.txt\n";
+            std::cerr << "  FAILED:  " << config.folder << "/" << config.filename << "\n";
             return 1;
         }
     }
@@ -295,26 +324,32 @@ int updateSnapshots() {
 int verifySnapshots() {
     namespace fs = std::filesystem;
 
-    if (!fs::exists(SNAPSHOT_DIR)) {
+    std::string baseDir = SNAPSHOT_BASE_DIR;
+    if (!fs::exists(baseDir)) {
         std::cerr << "Snapshot directory not found. Run --update-snapshots first.\n";
         return 1;
     }
 
-    int totalSnapshots = SNAPSHOT_COUNT + 1;  // +1 for debug grid
-    std::cout << "Verifying " << totalSnapshots << " snapshots...\n";
+    std::cout << "Verifying " << SNAPSHOT_COUNT << " snapshots...\n";
 
     int passed = 0;
     int failed = 0;
 
-    // Verify browse mode snapshots
     for (int i = 0; i < SNAPSHOT_COUNT; i++) {
         const auto& config = SNAPSHOTS[i];
-        std::string current = renderSnapshot(config);
 
-        std::string path = std::string(SNAPSHOT_DIR) + "/" + config.filename;
+        std::string current;
+        if (config.mode == SnapshotMode::DEBUG_GRID) {
+            current = renderDebugGridSnapshot();
+        } else {
+            current = renderSnapshot(config);
+        }
+
+        std::string displayName = std::string(config.folder) + "/" + config.filename;
+        std::string path = baseDir + "/" + displayName;
         std::ifstream file(path);
         if (!file) {
-            std::cerr << "  MISSING: " << config.filename << "\n";
+            std::cerr << "  MISSING: " << displayName << "\n";
             failed++;
             continue;
         }
@@ -323,32 +358,11 @@ int verifySnapshots() {
                               std::istreambuf_iterator<char>());
 
         if (current == expected) {
-            std::cout << "  PASS:    " << config.filename << "\n";
+            std::cout << "  PASS:    " << displayName << "\n";
             passed++;
         } else {
-            std::cerr << "  FAIL:    " << config.filename << "\n";
+            std::cerr << "  FAIL:    " << displayName << "\n";
             failed++;
-        }
-    }
-
-    // Verify debug grid snapshot
-    {
-        std::string current = renderDebugGridSnapshot();
-        std::string path = std::string(SNAPSHOT_DIR) + "/debug_grid.txt";
-        std::ifstream file(path);
-        if (!file) {
-            std::cerr << "  MISSING: debug_grid.txt\n";
-            failed++;
-        } else {
-            std::string expected((std::istreambuf_iterator<char>(file)),
-                                  std::istreambuf_iterator<char>());
-            if (current == expected) {
-                std::cout << "  PASS:    debug_grid.txt\n";
-                passed++;
-            } else {
-                std::cerr << "  FAIL:    debug_grid.txt\n";
-                failed++;
-            }
         }
     }
 
