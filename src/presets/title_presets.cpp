@@ -32,7 +32,7 @@ int gPresetCount = 0;
 bool gIsLoaded = false;
 
 // Path to the presets file on SD card
-constexpr const char* PRESETS_FILE_PATH = "fs:/vol/external01/wiiu/plugins/config/TitleSwitcher_presets.json";
+constexpr const char* PRESETS_FILE_PATH = "fs:/vol/external01/wiiu/environments/aroma/plugins/config/TitleSwitcher_presets.json";
 
 // =============================================================================
 // Simple JSON Parser
