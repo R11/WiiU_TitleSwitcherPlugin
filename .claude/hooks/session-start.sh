@@ -11,36 +11,39 @@ echo '{"async": true, "asyncTimeout": 300000}'
 
 echo "=== Setting up WiiU_TitleSwitcherPlugin environment ==="
 
-# Install build dependencies if not present
-if ! command -v g++ &> /dev/null || ! dpkg -s libgtest-dev &> /dev/null 2>&1; then
+cd "$CLAUDE_PROJECT_DIR"
+
+# Install minimal build dependencies (cmake, g++, make - no gtest needed!)
+if ! command -v cmake &> /dev/null || ! command -v g++ &> /dev/null; then
     echo "Installing build dependencies..."
     apt-get update
-    apt-get install -y g++ make libgtest-dev cmake
+    apt-get install -y g++ make cmake
 fi
 
-# Build Google Test libraries if not present (Ubuntu packages source only)
-if [ ! -f /usr/lib/libgtest.a ]; then
-    echo "Building Google Test libraries..."
-    cd /usr/src/gtest
-    cmake .
-    make
-    cp lib/*.a /usr/lib/
+# Initialize git submodules (vendored googletest)
+if [ ! -f extern/googletest/CMakeLists.txt ]; then
+    echo "Initializing git submodules..."
+    git submodule update --init --recursive
 fi
-
-cd "$CLAUDE_PROJECT_DIR"
 
 # Install git hooks
 echo "Installing git hooks..."
 ./scripts/install-hooks.sh
 
-# Build unit tests
+# Build unit tests with CMake (uses vendored googletest)
 echo "Building unit tests..."
-cd "$CLAUDE_PROJECT_DIR/tests"
-make
+cmake -S tests -B tests/build
+cmake --build tests/build
 
-# Build preview tool
+# Copy executable to expected location for compatibility
+cp tests/build/run_tests tests/run_tests
+
+# Build preview tool with CMake
 echo "Building preview tool..."
-cd "$CLAUDE_PROJECT_DIR/tools/preview"
-make
+cmake -S tools/preview -B tools/preview/build
+cmake --build tools/preview/build
+
+# Copy executable to expected location for compatibility
+cp tools/preview/build/preview_demo tools/preview/preview_demo
 
 echo "=== Environment setup complete ==="
