@@ -286,18 +286,23 @@ inline bool isDividerRow(const std::string& s) {
     return true;
 }
 
-// Fixed-width output based on screen layout
-// DRC menu: 30 col list + 2 divider + 23 details = 55 columns
+// Get trimmed width that includes full menu content
+// Uses divider position + details panel, scaled to screen width
 inline int getMenuWidth() {
-    // Divider at 30% + details panel content width
-    int divider = (sConfig->gridCols * 30) / 100;  // 30 for DRC
-    return divider + 2 + 23;  // 55 for DRC
+    // List (30%) + divider (2 chars) + details panel (25%)
+    // Total: ~55% of screen width, which captures all menu content
+    int listWidth = (sConfig->gridCols * 30) / 100;
+    int detailsWidth = (sConfig->gridCols * 25) / 100;
+    return listWidth + 2 + detailsWidth;
 }
 
 inline std::string GetTrimmedOutput() {
     int cols = sConfig->gridCols;
     int rows = sConfig->gridRows;
     int width = getMenuWidth();
+
+    // Ensure width doesn't exceed grid
+    if (width > cols) width = cols;
 
     std::ostringstream out;
 
