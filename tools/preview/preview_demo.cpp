@@ -100,6 +100,101 @@ const ScreenInfo SCREEN_TYPES[] = {
 
 const int SCREEN_TYPE_COUNT = sizeof(SCREEN_TYPES) / sizeof(SCREEN_TYPES[0]);
 
+// Render debug grid overlay for a single screen type
+std::string renderDebugGridForScreen(Renderer::ScreenType screenType) {
+    Renderer::SetScreenType(screenType);
+    Renderer::Init();
+
+    int gridWidth = Renderer::GetGridWidth();
+    int gridHeight = Renderer::GetGridHeight();
+    int screenWidth = Renderer::GetScreenWidth();
+    int screenHeight = Renderer::GetScreenHeight();
+
+    Renderer::BeginFrame(0x1E1E2EFF);  // Dark background
+
+    // Draw header info
+    char header[128];
+    snprintf(header, sizeof(header), "DEBUG GRID - Screen: %dx%d px  Grid: %dx%d chars",
+             screenWidth, screenHeight, gridWidth, gridHeight);
+    Renderer::DrawText(0, 0, header, 0xFFFF00FF);
+
+    // Draw column markers every 10 columns
+    for (int col = 0; col < gridWidth; col += 10) {
+        char colNum[8];
+        snprintf(colNum, sizeof(colNum), "%d", col);
+        Renderer::DrawText(col, 1, colNum, 0x00FF00FF);
+    }
+
+    // Draw horizontal line at row 2
+    for (int col = 0; col < gridWidth; col++) {
+        Renderer::DrawText(col, 2, "-", 0x888888FF);
+    }
+
+    // Draw row markers and grid lines
+    int dividerCol = Renderer::GetDividerCol();
+    int detailsCol = Renderer::GetDetailsPanelCol();
+
+    for (int row = 3; row < gridHeight - 1; row++) {
+        // Row number on left
+        char rowNum[8];
+        snprintf(rowNum, sizeof(rowNum), "%2d", row);
+        Renderer::DrawText(0, row, rowNum, 0x00FF00FF);
+
+        // Mark divider column (red)
+        Renderer::DrawText(dividerCol, row, "|", 0xFF0000FF);
+
+        // Mark details panel start (cyan)
+        if (detailsCol < gridWidth) {
+            Renderer::DrawText(detailsCol, row, ">", 0x00FFFFFF);
+        }
+
+        // Light grid every 10 columns
+        for (int col = 10; col < gridWidth; col += 10) {
+            if (col != dividerCol && col != detailsCol) {
+                Renderer::DrawText(col, row, ".", 0x444444FF);
+            }
+        }
+    }
+
+    // Draw footer with layout info
+    int footerRow = gridHeight - 1;
+    int visibleRows = Renderer::GetVisibleRows();
+
+    char footer[128];
+    snprintf(footer, sizeof(footer), "Divider:%d Details:%d VisRows:%d",
+             dividerCol, detailsCol, visibleRows);
+    Renderer::DrawText(0, footerRow, footer, 0xFFFFFFFF);
+
+    std::string output = Renderer::GetTrimmedOutput();
+    Renderer::Shutdown();
+
+    return output;
+}
+
+// Render debug grid for all screen types
+std::string renderDebugGridSnapshot() {
+    std::string output;
+
+    for (int i = 0; i < SCREEN_TYPE_COUNT; i++) {
+        const auto& screen = SCREEN_TYPES[i];
+
+        // Add separator header
+        output += "================================================================================\n";
+        output += "  " + std::string(screen.name) + "\n";
+        output += "================================================================================\n\n";
+
+        // Render debug grid for this screen type
+        output += renderDebugGridForScreen(screen.type);
+
+        // Add spacing between screens (except after last)
+        if (i < SCREEN_TYPE_COUNT - 1) {
+            output += "\n\n";
+        }
+    }
+
+    return output;
+}
+
 std::string renderForScreen(const SnapshotConfig& config, Renderer::ScreenType screenType) {
     // Reset state
     Settings::Init();
@@ -160,8 +255,10 @@ int updateSnapshots() {
         fs::create_directory(SNAPSHOT_DIR);
     }
 
-    std::cout << "Updating " << SNAPSHOT_COUNT << " snapshots...\n";
+    int totalSnapshots = SNAPSHOT_COUNT + 1;  // +1 for debug grid
+    std::cout << "Updating " << totalSnapshots << " snapshots...\n";
 
+    // Update browse mode snapshots
     for (int i = 0; i < SNAPSHOT_COUNT; i++) {
         const auto& config = SNAPSHOTS[i];
         std::string output = renderSnapshot(config);
@@ -173,6 +270,20 @@ int updateSnapshots() {
             std::cout << "  Updated: " << config.filename << "\n";
         } else {
             std::cerr << "  FAILED:  " << config.filename << "\n";
+            return 1;
+        }
+    }
+
+    // Update debug grid snapshot
+    {
+        std::string output = renderDebugGridSnapshot();
+        std::string path = std::string(SNAPSHOT_DIR) + "/debug_grid.txt";
+        std::ofstream file(path);
+        if (file) {
+            file << output;
+            std::cout << "  Updated: debug_grid.txt\n";
+        } else {
+            std::cerr << "  FAILED:  debug_grid.txt\n";
             return 1;
         }
     }
@@ -189,11 +300,13 @@ int verifySnapshots() {
         return 1;
     }
 
-    std::cout << "Verifying " << SNAPSHOT_COUNT << " snapshots...\n";
+    int totalSnapshots = SNAPSHOT_COUNT + 1;  // +1 for debug grid
+    std::cout << "Verifying " << totalSnapshots << " snapshots...\n";
 
     int passed = 0;
     int failed = 0;
 
+    // Verify browse mode snapshots
     for (int i = 0; i < SNAPSHOT_COUNT; i++) {
         const auto& config = SNAPSHOTS[i];
         std::string current = renderSnapshot(config);
@@ -215,6 +328,27 @@ int verifySnapshots() {
         } else {
             std::cerr << "  FAIL:    " << config.filename << "\n";
             failed++;
+        }
+    }
+
+    // Verify debug grid snapshot
+    {
+        std::string current = renderDebugGridSnapshot();
+        std::string path = std::string(SNAPSHOT_DIR) + "/debug_grid.txt";
+        std::ifstream file(path);
+        if (!file) {
+            std::cerr << "  MISSING: debug_grid.txt\n";
+            failed++;
+        } else {
+            std::string expected((std::istreambuf_iterator<char>(file)),
+                                  std::istreambuf_iterator<char>());
+            if (current == expected) {
+                std::cout << "  PASS:    debug_grid.txt\n";
+                passed++;
+            } else {
+                std::cerr << "  FAIL:    debug_grid.txt\n";
+                failed++;
+            }
         }
     }
 
