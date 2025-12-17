@@ -63,7 +63,8 @@ enum class SettingType {
 };
 
 enum SettingAction {
-    ACTION_MANAGE_CATEGORIES = -1
+    ACTION_MANAGE_CATEGORIES = -1,
+    ACTION_DEBUG_GRID = -2
 };
 
 struct SettingItem {
@@ -93,6 +94,7 @@ static const SettingItem sSettingItems[] = {
     COLOR_SETTING("Header",           "Header text color.",          "RGBA hex format.",           headerColor),
     COLOR_SETTING("Category",         "Category tab color.",         "RGBA hex format.",           categoryColor),
     ACTION_SETTING("Manage Categories", "Create, rename, or delete", "custom categories.",         ACTION_MANAGE_CATEGORIES),
+    ACTION_SETTING("Debug Grid",        "Show grid overlay with",    "dimensions and positions.",   ACTION_DEBUG_GRID),
 };
 
 static constexpr int SETTINGS_ITEM_COUNT = sizeof(sSettingItems) / sizeof(sSettingItems[0]);
@@ -884,6 +886,8 @@ void handleSettingsMainInput(uint32_t pressed)
                     sManageCatIndex = 0;
                     sManageCatScroll = 0;
                     sSettingsSubMode = SettingsSubMode::MANAGE_CATS;
+                } else if (item.dataOffset == ACTION_DEBUG_GRID) {
+                    sCurrentMode = Mode::DEBUG_GRID;
                 }
                 break;
             }
@@ -1084,6 +1088,82 @@ void handleSettingsModeInput(uint32_t pressed, uint32_t held)
     }
 }
 
+// =============================================================================
+// Debug Grid Mode
+// =============================================================================
+
+/**
+ * Render debug grid overlay.
+ * Shows character grid with position labels and pixel information.
+ */
+void renderDebugGridMode()
+{
+    int gridWidth = Renderer::GetGridWidth();
+    int gridHeight = Renderer::GetGridHeight();
+    int screenWidth = Renderer::GetScreenWidth();
+    int screenHeight = Renderer::GetScreenHeight();
+
+    // Draw header info
+    Renderer::DrawTextF(0, 0, 0xFFFF00FF, "DEBUG GRID - Screen: %dx%d px  Grid: %dx%d chars",
+                        screenWidth, screenHeight, gridWidth, gridHeight);
+
+    // Draw column markers every 10 columns
+    for (int col = 0; col < gridWidth; col += 10) {
+        Renderer::DrawTextF(col, 1, 0x00FF00FF, "%d", col);
+    }
+
+    // Draw horizontal line at row 2
+    for (int col = 0; col < gridWidth; col++) {
+        Renderer::DrawText(col, 2, "-", 0x888888FF);
+    }
+
+    // Draw row markers and grid lines
+    for (int row = 3; row < gridHeight - 1; row++) {
+        // Row number on left
+        Renderer::DrawTextF(0, row, 0x00FF00FF, "%2d", row);
+
+        // Vertical lines at key positions
+        int dividerCol = Renderer::GetDividerCol();
+        int detailsCol = Renderer::GetDetailsPanelCol();
+
+        // Mark divider column
+        Renderer::DrawText(dividerCol, row, "|", 0xFF0000FF);
+
+        // Mark details panel start
+        if (detailsCol < gridWidth) {
+            Renderer::DrawText(detailsCol, row, ">", 0x00FFFFFF);
+        }
+
+        // Light grid every 10 columns
+        for (int col = 10; col < gridWidth; col += 10) {
+            if (col != dividerCol && col != detailsCol) {
+                Renderer::DrawText(col, row, ".", 0x444444FF);
+            }
+        }
+    }
+
+    // Draw footer with layout info
+    int footerRow = gridHeight - 1;
+    int dividerCol = Renderer::GetDividerCol();
+    int detailsCol = Renderer::GetDetailsPanelCol();
+    int visibleRows = Renderer::GetVisibleRows();
+
+    Renderer::DrawTextF(0, footerRow, 0xFFFFFFFF,
+                        "Divider:%d Details:%d VisRows:%d  B:Back",
+                        dividerCol, detailsCol, visibleRows);
+}
+
+/**
+ * Handle input in debug grid mode.
+ */
+void handleDebugGridModeInput(uint32_t pressed)
+{
+    // B to go back to settings
+    if (Buttons::Actions::CANCEL.Pressed(pressed)) {
+        sCurrentMode = Mode::SETTINGS;
+    }
+}
+
 /**
  * Main menu loop.
  * @return Title ID to launch, or 0 if cancelled
@@ -1108,6 +1188,9 @@ uint64_t runMenuLoop()
                 break;
             case Mode::SETTINGS:
                 renderSettingsMode();
+                break;
+            case Mode::DEBUG_GRID:
+                renderDebugGridMode();
                 break;
         }
 
@@ -1134,6 +1217,9 @@ uint64_t runMenuLoop()
                     break;
                 case Mode::SETTINGS:
                     handleSettingsModeInput(pressed, held);
+                    break;
+                case Mode::DEBUG_GRID:
+                    handleDebugGridModeInput(pressed);
                     break;
             }
         }
