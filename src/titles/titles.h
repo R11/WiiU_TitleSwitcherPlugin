@@ -70,6 +70,10 @@ constexpr int MAX_TITLES = 512;
 // Maximum length of a title name (including null terminator)
 constexpr int MAX_NAME_LENGTH = 64;
 
+// Maximum length of a product code (e.g., "WUP-P-ARDE" or "ARDE01")
+// GameTDB uses the last 4-6 characters as game ID
+constexpr int MAX_PRODUCT_CODE = 24;
+
 // =============================================================================
 // Data Structures
 // =============================================================================
@@ -88,6 +92,11 @@ struct TitleInfo {
     // Human-readable name (from meta.xml)
     // Falls back to hex title ID if name unavailable
     char name[MAX_NAME_LENGTH];
+
+    // Product code from meta.xml (e.g., "WUP-P-ARDE")
+    // Used to match against GameTDB database entries
+    // The last 4-6 characters typically form the GameTDB game ID
+    char productCode[MAX_PRODUCT_CODE];
 };
 
 // =============================================================================
@@ -184,6 +193,24 @@ const TitleInfo* FindById(uint64_t titleId);
  *   }
  */
 int FindIndexById(uint64_t titleId);
+
+/**
+ * Find a title by its product code (or GameTDB game ID).
+ *
+ * This function matches against the product code extracted from meta.xml.
+ * It performs partial matching to support both full product codes
+ * (e.g., "WUP-P-ARDE") and GameTDB-style short IDs (e.g., "ARDE").
+ *
+ * @param productCode The product code or game ID to search for
+ * @return Pointer to TitleInfo, or nullptr if not found
+ *
+ * Example:
+ *   // Find by GameTDB ID
+ *   const auto* zelda = Titles::FindByProductCode("ALZE");
+ *   // Or by full product code
+ *   const auto* mario = Titles::FindByProductCode("WUP-P-ARDE");
+ */
+const TitleInfo* FindByProductCode(const char* productCode);
 
 // =============================================================================
 // Metadata Functions

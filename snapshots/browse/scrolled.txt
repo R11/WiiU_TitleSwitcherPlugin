@@ -12,10 +12,10 @@
 │    Donkey Kong Country: Tro  |                                                                     │
 │>   Captain Toad: Treasure T  | ID: 0005000010175B00                                                │
 │    Yoshi's Woolly World      | Favorite: No                                                        │
-│    Star Fox Zero             |                                                                     │
-│    NES Remix Pack            | Categories:                                                         │
-│    Mii Verse                 |   (none)                                                            │
-│    Nintendo eShop            |                                                                     │
+│    Star Fox Zero             | Game ID: AKBP01                                                     │
+│    NES Remix Pack            |                                                                     │
+│    Mii Verse                 | Categories:                                                         │
+│    Nintendo eShop            |   (none)                                                            │
 │    Internet Browser          |                                                                     │
 │    Tokyo Mirage Sessions FE  |                                                                     │
 │    Pokken Tournament         |                                                                     │
@@ -51,10 +51,10 @@
 │    Star Fox Zero                               |                                                                                                               │
 │    NES Remix Pack                              | ID: 0005000010175B00                                                                                          │
 │    Mii Verse                                   | Favorite: No                                                                                                  │
-│    Nintendo eShop                              |                                                                                                               │
-│    Internet Browser                            | Categories:                                                                                                   │
-│    Tokyo Mirage Sessions FE                    |   (none)                                                                                                      │
-│    Pokken Tournament                           |                                                                                                               │
+│    Nintendo eShop                              | Game ID: AKBP01                                                                                               │
+│    Internet Browser                            |                                                                                                               │
+│    Tokyo Mirage Sessions FE                    | Categories:                                                                                                   │
+│    Pokken Tournament                           |   (none)                                                                                                      │
 │    Super Mario Maker                           |                                                                                                               │
 │                                                |                                                                                                               │
 │                                                |                                                                                                               │
@@ -102,10 +102,10 @@
 │>   Captain Toad: Treasure Tracker  |    ░░░░░░░░░░░░░                                                                  │
 │    Yoshi's Woolly World            | ID: 0005000010175B00                                                              │
 │    Star Fox Zero                   | Favorite: No                                                                      │
-│    NES Remix Pack                  |                                                                                   │
-│    Mii Verse                       | Categories:                                                                       │
-│    Nintendo eShop                  |   (none)                                                                          │
-│    Internet Browser                |                                                                                   │
+│    NES Remix Pack                  | Game ID: AKBP01                                                                   │
+│    Mii Verse                       |                                                                                   │
+│    Nintendo eShop                  | Categories:                                                                       │
+│    Internet Browser                |   (none)                                                                          │
 │    Tokyo Mirage Sessions FE        |                                                                                   │
 │    Pokken Tournament               |                                                                                   │
 │    Super Mario Maker               |                                                                                   │
@@ -144,10 +144,10 @@
 │>   Captain Toad: Trea  |                                                       │
 │    Yoshi's Woolly Wor  | ID: 0005000010175B00                                  │
 │    Star Fox Zero       | Favorite: No                                          │
-│    NES Remix Pack      |                                                       │
-│    Mii Verse           | Categories:                                           │
-│    Nintendo eShop      |   (none)                                              │
-│    Internet Browser    |                                                       │
+│    NES Remix Pack      | Game ID: AKBP01                                       │
+│    Mii Verse           |                                                       │
+│    Nintendo eShop      | Categories:                                           │
+│    Internet Browser    |   (none)                                              │
 │    Tokyo Mirage Sessi  |                                                       │
 │    Pokken Tournament   |                                                       │
 │    Super Mario Maker   |                                                       │

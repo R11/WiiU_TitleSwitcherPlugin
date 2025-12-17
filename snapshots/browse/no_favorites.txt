@@ -12,15 +12,15 @@
 │  The Legend of Zelda: Bre    |                                                                     │
 │  Bayonetta 2                 | ID: 000500001010EC00                                                │
 │  Pikmin 3                    | Favorite: Yes                                                       │
-│  Xenoblade Chronicles X      |                                                                     │
-│  Hyrule Warriors             | Categories:                                                         │
-│  Donkey Kong Country: Tro    |   - Games                                                           │
-│  Captain Toad: Treasure T    |                                                                     │
-│  Yoshi's Woolly World        |                                                                     │
-│  Star Fox Zero               |                                                                     │
+│  Xenoblade Chronicles X      | Game ID: AMKP01                                                     │
+│  Hyrule Warriors             |                                                                     │
+│  Donkey Kong Country: Tro    | Pub: Nintendo                                                       │
+│  Captain Toad: Treasure T    | Dev: Nintendo EAD                                                   │
+│  Yoshi's Woolly World        | Released: 2014-05-30                                                │
+│  Star Fox Zero               | Racing / EUR                                                        │
 │  NES Remix Pack              |                                                                     │
-│  Mii Verse                   |                                                                     │
-│  Nintendo eShop              |                                                                     │
+│  Mii Verse                   | Categories:                                                         │
+│  Nintendo eShop              |   - Games                                                           │
 │  Internet Browser            |                                                                     │
 │  Tokyo Mirage Sessions FE    |                                                                     │
 │  Pokken Tournament           |                                                                     │
@@ -51,15 +51,15 @@
 │  Xenoblade Chronicles X                        |                                                                                                               │
 │  Hyrule Warriors                               | ID: 000500001010EC00                                                                                          │
 │  Donkey Kong Country: Tropical Freeze          | Favorite: Yes                                                                                                 │
-│  Captain Toad: Treasure Tracker                |                                                                                                               │
-│  Yoshi's Woolly World                          | Categories:                                                                                                   │
-│  Star Fox Zero                                 |   - Games                                                                                                     │
-│  NES Remix Pack                                |                                                                                                               │
-│  Mii Verse                                     |                                                                                                               │
-│  Nintendo eShop                                |                                                                                                               │
+│  Captain Toad: Treasure Tracker                | Game ID: AMKP01                                                                                               │
+│  Yoshi's Woolly World                          |                                                                                                               │
+│  Star Fox Zero                                 | Pub: Nintendo                                                                                                 │
+│  NES Remix Pack                                | Dev: Nintendo EAD                                                                                             │
+│  Mii Verse                                     | Released: 2014-05-30                                                                                          │
+│  Nintendo eShop                                | Racing / EUR                                                                                                  │
 │  Internet Browser                              |                                                                                                               │
-│  Tokyo Mirage Sessions FE                      |                                                                                                               │
-│  Pokken Tournament                             |                                                                                                               │
+│  Tokyo Mirage Sessions FE                      | Categories:                                                                                                   │
+│  Pokken Tournament                             |   - Games                                                                                                     │
 │  Super Mario Maker                             |                                                                                                               │
 │                                                |                                                                                                               │
 │                                                |                                                                                                               │
@@ -102,15 +102,15 @@
 │  Bayonetta 2                       |    ░░░░░░░░░░░░░                                                                  │
 │  Pikmin 3                          | ID: 000500001010EC00                                                              │
 │  Xenoblade Chronicles X            | Favorite: Yes                                                                     │
-│  Hyrule Warriors                   |                                                                                   │
-│  Donkey Kong Country: Tropical     | Categories:                                                                       │
-│  Captain Toad: Treasure Tracker    |   - Games                                                                         │
-│  Yoshi's Woolly World              |                                                                                   │
-│  Star Fox Zero                     |                                                                                   │
-│  NES Remix Pack                    |                                                                                   │
+│  Hyrule Warriors                   | Game ID: AMKP01                                                                   │
+│  Donkey Kong Country: Tropical     |                                                                                   │
+│  Captain Toad: Treasure Tracker    | Pub: Nintendo                                                                     │
+│  Yoshi's Woolly World              | Dev: Nintendo EAD                                                                 │
+│  Star Fox Zero                     | Released: 2014-05-30                                                              │
+│  NES Remix Pack                    | Racing / EUR                                                                      │
 │  Mii Verse                         |                                                                                   │
-│  Nintendo eShop                    |                                                                                   │
-│  Internet Browser                  |                                                                                   │
+│  Nintendo eShop                    | Categories:                                                                       │
+│  Internet Browser                  |   - Games                                                                         │
 │  Tokyo Mirage Sessions FE          |                                                                                   │
 │  Pokken Tournament                 |                                                                                   │
 │  Super Mario Maker                 |                                                                                   │
@@ -144,15 +144,15 @@
 │  Bayonetta 2           |                                                       │
 │  Pikmin 3              | ID: 000500001010EC00                                  │
 │  Xenoblade Chronicl    | Favorite: Yes                                         │
-│  Hyrule Warriors       |                                                       │
-│  Donkey Kong Countr    | Categories:                                           │
-│  Captain Toad: Trea    |   - Games                                             │
-│  Yoshi's Woolly Wor    |                                                       │
-│  Star Fox Zero         |                                                       │
-│  NES Remix Pack        |                                                       │
+│  Hyrule Warriors       | Game ID: AMKP01                                       │
+│  Donkey Kong Countr    |                                                       │
+│  Captain Toad: Trea    | Pub: Nintendo                                         │
+│  Yoshi's Woolly Wor    | Dev: Nintendo EAD                                     │
+│  Star Fox Zero         | Released: 2014-05-30                                  │
+│  NES Remix Pack        | Racing / EUR                                          │
 │  Mii Verse             |                                                       │
-│  Nintendo eShop        |                                                       │
-│  Internet Browser      |                                                       │
+│  Nintendo eShop        | Categories:                                           │
+│  Internet Browser      |   - Games                                             │
 │  Tokyo Mirage Sessi    |                                                       │
 │  Pokken Tournament     |                                                       │
 │  Super Mario Maker     |                                                       │

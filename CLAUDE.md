@@ -47,6 +47,8 @@ src/
 │   └── categories.*   # Category filtering (All, Favorites, System, custom)
 ├── titles/
 │   └── titles.*       # Title enumeration via MCP/ACP APIs
+├── presets/
+│   └── title_presets.*# GameTDB metadata integration
 ├── storage/
 │   └── settings.*     # Persistent storage via WUPS Storage API
 └── utils/
@@ -62,6 +64,7 @@ src/
 - `Titles::` - Title management
 - `Settings::` - Persistent configuration
 - `Categories::` - Filtering logic
+- `TitlePresets::` - GameTDB preset metadata
 
 ### Button System
 All buttons defined in `src/input/buttons.h` as constexpr. Use semantic names like `Buttons::CONFIRM`, `Buttons::LAUNCH` rather than raw VPAD constants.
@@ -77,6 +80,9 @@ Dynamic layouts support: DRC GamePad (854x480), TV 1080p/720p/480p. Layout calcu
 
 ### Storage Format
 WUPS Storage API writes to `sd:/wiiu/plugins/config/TitleSwitcher.json`. Version-based migration (CONFIG_VERSION = 2).
+
+### Presets System
+GameTDB metadata loaded from `sd:/wiiu/environments/aroma/plugins/config/TitleSwitcher_presets.json`. Provides publisher, developer, release date, genre, and region data. Use `tools/convert_gametdb.py` to generate from GameTDB XML.
 
 ## Common Tasks
 

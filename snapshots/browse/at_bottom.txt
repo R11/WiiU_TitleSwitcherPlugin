@@ -12,10 +12,10 @@
 │    Mii Verse                 |                                                                     │
 │    Nintendo eShop            | ID: 0005000010162B00                                                │
 │    Internet Browser          | Favorite: No                                                        │
-│    Tokyo Mirage Sessions FE  |                                                                     │
-│    Pokken Tournament         | Categories:                                                         │
-│>   Super Mario Maker         |   (none)                                                            │
-│                              |                                                                     │
+│    Tokyo Mirage Sessions FE  | Game ID: AMFP01                                                     │
+│    Pokken Tournament         |                                                                     │
+│>   Super Mario Maker         | Categories:                                                         │
+│                              |   (none)                                                            │
 │                              |                                                                     │
 │                              |                                                                     │
 │                              |                                                                     │
@@ -51,10 +51,10 @@
 │    Tokyo Mirage Sessions FE                    |                                                                                                               │
 │    Pokken Tournament                           | ID: 0005000010162B00                                                                                          │
 │>   Super Mario Maker                           | Favorite: No                                                                                                  │
+│                                                | Game ID: AMFP01                                                                                               │
 │                                                |                                                                                                               │
 │                                                | Categories:                                                                                                   │
 │                                                |   (none)                                                                                                      │
-│                                                |                                                                                                               │
 │                                                |                                                                                                               │
 │                                                |                                                                                                               │
 │                                                |                                                                                                               │
@@ -102,10 +102,10 @@
 │    Nintendo eShop                  |    ░░░░░░░░░░░░░                                                                  │
 │    Internet Browser                | ID: 0005000010162B00                                                              │
 │    Tokyo Mirage Sessions FE        | Favorite: No                                                                      │
-│    Pokken Tournament               |                                                                                   │
-│>   Super Mario Maker               | Categories:                                                                       │
+│    Pokken Tournament               | Game ID: AMFP01                                                                   │
+│>   Super Mario Maker               |                                                                                   │
+│                                    | Categories:                                                                       │
 │                                    |   (none)                                                                          │
-│                                    |                                                                                   │
 │                                    |                                                                                   │
 │                                    |                                                                                   │
 │                                    |                                                                                   │
@@ -144,10 +144,10 @@
 │    Nintendo eShop      |                                                       │
 │    Internet Browser    | ID: 0005000010162B00                                  │
 │    Tokyo Mirage Sessi  | Favorite: No                                          │
-│    Pokken Tournament   |                                                       │
-│>   Super Mario Maker   | Categories:                                           │
+│    Pokken Tournament   | Game ID: AMFP01                                       │
+│>   Super Mario Maker   |                                                       │
+│                        | Categories:                                           │
 │                        |   (none)                                              │
-│                        |                                                       │
 │                        |                                                       │
 │                        |                                                       │
 │                        |                                                       │
