@@ -2,3 +2,4 @@ build/
 *.wps
 *.elf
 *.map
+.DS_Store

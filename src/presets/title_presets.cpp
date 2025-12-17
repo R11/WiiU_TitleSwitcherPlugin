@@ -16,6 +16,7 @@
 #include <cctype>
 #include <algorithm>
 #include <set>
+#include <string>
 
 namespace TitlePresets {
 
