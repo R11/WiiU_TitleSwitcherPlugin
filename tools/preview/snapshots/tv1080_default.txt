@@ -16,13 +16,13 @@
 │    Hyrule Warriors                             | ID: 000500001010EC00                                                                                          │
 │    Donkey Kong Country: Tropical Freeze        | Favorite: Yes                                                                                                 │
 │    Captain Toad: Treasure Tracker              |                                                                                                               │
-│    Yoshi's Woolly World                        | Categories:                                                                                                   │
-│    Star Fox Zero                               |   - Games                                                                                                     │
-│    NES Remix Pack                              |                                                                                                               │
-│    Mii Verse                                   |                                                                                                               │
+│    Yoshi's Woolly World                        | Pub: Nintendo                                                                                                 │
+│    Star Fox Zero                               | Dev: Nintendo EAD                                                                                             │
+│    NES Remix Pack                              | Released: 2014-05-30                                                                                          │
+│    Mii Verse                                   | Racing / EUR                                                                                                  │
 │    Nintendo eShop                              |                                                                                                               │
-│    Internet Browser                            |                                                                                                               │
-│    Tokyo Mirage Sessions FE                    |                                                                                                               │
+│    Internet Browser                            | Categories:                                                                                                   │
+│    Tokyo Mirage Sessions FE                    |   - Games                                                                                                     │
 │    Pokken Tournament                           |                                                                                                               │
 │    Super Mario Maker                           |                                                                                                               │
 │                                                |                                                                                                               │

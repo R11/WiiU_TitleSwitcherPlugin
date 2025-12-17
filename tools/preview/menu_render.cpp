@@ -24,6 +24,7 @@
 #include "stubs/image_loader_stub.h"
 #include "stubs/buttons_stub.h"
 #include "stubs/text_input_stub.h"
+#include "stubs/title_presets_stub.h"
 
 #include <cstdio>
 #include <cstring>
@@ -229,29 +230,79 @@ void drawDetailsPanel() {
         infoStartRow = LIST_START_ROW + 2;
     }
 
+    int currentRow = infoStartRow;
+
+    // Title ID
     char idStr[32];
     snprintf(idStr, sizeof(idStr), "ID: %016llX",
              static_cast<unsigned long long>(title->titleId));
-    Renderer::DrawText(detailsCol, infoStartRow, idStr);
+    Renderer::DrawText(detailsCol, currentRow++, idStr);
 
+    // Favorite status
     const char* favStatus = Settings::IsFavorite(title->titleId) ? "Yes" : "No";
-    Renderer::DrawTextF(detailsCol, infoStartRow + 1, "Favorite: %s", favStatus);
+    Renderer::DrawTextF(detailsCol, currentRow++, "Favorite: %s", favStatus);
 
-    // Categories
-    Renderer::DrawText(detailsCol, infoStartRow + 3, "Categories:");
+    // Look up preset metadata if available
+    const TitlePresets::TitlePreset* preset = nullptr;
+    if (title->productCode[0] != '\0') {
+        preset = TitlePresets::GetPresetByGameId(title->productCode);
+    }
 
-    uint16_t catIds[Settings::MAX_CATEGORIES];
-    int catCount = Settings::GetCategoriesForTitle(title->titleId, catIds, Settings::MAX_CATEGORIES);
+    // Display preset metadata if found
+    if (preset) {
+        currentRow++;  // Blank line before preset info
 
-    if (catCount == 0) {
-        Renderer::DrawText(detailsCol + 2, infoStartRow + 4, "(none)");
-    } else {
-        int row = infoStartRow + 4;
-        for (int i = 0; i < catCount && row < footerRow - 1; i++) {
-            const Settings::Category* cat = Settings::GetCategory(catIds[i]);
-            if (cat) {
-                Renderer::DrawTextF(detailsCol + 2, row, "- %s", cat->name);
-                row++;
+        if (preset->publisher[0] != '\0') {
+            Renderer::DrawTextF(detailsCol, currentRow++, "Pub: %s", preset->publisher);
+        }
+
+        if (preset->developer[0] != '\0' && currentRow < footerRow - 3) {
+            Renderer::DrawTextF(detailsCol, currentRow++, "Dev: %s", preset->developer);
+        }
+
+        // Release date
+        if (preset->releaseYear > 0 && currentRow < footerRow - 3) {
+            if (preset->releaseMonth > 0 && preset->releaseDay > 0) {
+                Renderer::DrawTextF(detailsCol, currentRow++, "Released: %04d-%02d-%02d",
+                                   preset->releaseYear, preset->releaseMonth, preset->releaseDay);
+            } else if (preset->releaseMonth > 0) {
+                Renderer::DrawTextF(detailsCol, currentRow++, "Released: %04d-%02d",
+                                   preset->releaseYear, preset->releaseMonth);
+            } else {
+                Renderer::DrawTextF(detailsCol, currentRow++, "Released: %04d",
+                                   preset->releaseYear);
+            }
+        }
+
+        // Genre and region combined if space allows
+        if (currentRow < footerRow - 3) {
+            if (preset->genre[0] != '\0' && preset->region[0] != '\0') {
+                Renderer::DrawTextF(detailsCol, currentRow++, "%s / %s",
+                                   preset->genre, preset->region);
+            } else if (preset->genre[0] != '\0') {
+                Renderer::DrawTextF(detailsCol, currentRow++, "Genre: %s", preset->genre);
+            } else if (preset->region[0] != '\0') {
+                Renderer::DrawTextF(detailsCol, currentRow++, "Region: %s", preset->region);
+            }
+        }
+    }
+
+    // Categories this title belongs to (only if there's room)
+    if (currentRow < footerRow - 2) {
+        currentRow++;  // Blank line before categories
+        Renderer::DrawText(detailsCol, currentRow++, "Categories:");
+
+        uint16_t catIds[Settings::MAX_CATEGORIES];
+        int catCount = Settings::GetCategoriesForTitle(title->titleId, catIds, Settings::MAX_CATEGORIES);
+
+        if (catCount == 0) {
+            Renderer::DrawText(detailsCol + 2, currentRow, "(none)");
+        } else {
+            for (int i = 0; i < catCount && currentRow < footerRow - 1; i++) {
+                const Settings::Category* cat = Settings::GetCategory(catIds[i]);
+                if (cat) {
+                    Renderer::DrawTextF(detailsCol + 2, currentRow++, "- %s", cat->name);
+                }
             }
         }
     }

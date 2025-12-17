@@ -14,13 +14,13 @@
 │    Pikmin 3                        | ID: 000500001010EC00                                                              │
 │    Xenoblade Chronicles X          | Favorite: Yes                                                                     │
 │    Hyrule Warriors                 |                                                                                   │
-│    Donkey Kong Country: Tropical   | Categories:                                                                       │
-│    Captain Toad: Treasure Tracker  |   - Games                                                                         │
-│    Yoshi's Woolly World            |                                                                                   │
-│    Star Fox Zero                   |                                                                                   │
+│    Donkey Kong Country: Tropical   | Pub: Nintendo                                                                     │
+│    Captain Toad: Treasure Tracker  | Dev: Nintendo EAD                                                                 │
+│    Yoshi's Woolly World            | Released: 2014-05-30                                                              │
+│    Star Fox Zero                   | Racing / EUR                                                                      │
 │    NES Remix Pack                  |                                                                                   │
-│    Mii Verse                       |                                                                                   │
-│    Nintendo eShop                  |                                                                                   │
+│    Mii Verse                       | Categories:                                                                       │
+│    Nintendo eShop                  |   - Games                                                                         │
 │    Internet Browser                |                                                                                   │
 │    Tokyo Mirage Sessions FE        |                                                                                   │
 │    Pokken Tournament               |                                                                                   │
