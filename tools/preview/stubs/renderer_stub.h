@@ -41,16 +41,19 @@ struct ScreenConfig {
 };
 
 // Screen configurations
-// Character dimensions chosen so grid roughly matches OSScreen behavior
+// Grid dimensions calculated for correct visual aspect ratio in terminal
+// Terminal chars are ~2:1 (height:width), so grid_cols/rows = pixel_aspect * 2
+// Keep original col counts for readable text, adjust rows for aspect
+// Formula: rows = cols / (pixel_width/pixel_height) / 2
 inline const ScreenConfig SCREEN_CONFIGS[] = {
-    // DRC (GamePad) - baseline reference
-    { "DRC (GamePad)", 854, 480, 100, 18, 8, 26, false },
-    // TV 1080p - more space, show more content
-    { "TV 1080p", 1920, 1080, 160, 36, 12, 30, false },
-    // TV 720p - medium size
-    { "TV 720p", 1280, 720, 120, 27, 10, 26, false },
-    // TV 480p - 4:3 aspect, narrower
-    { "TV 480p (4:3)", 640, 480, 80, 20, 8, 24, true }
+    // DRC (GamePad) - 854x480 (16:9), 100 cols -> 28 rows
+    { "DRC (GamePad)", 854, 480, 100, 28, 8, 26, false },
+    // TV 1080p - 1920x1080 (16:9), 160 cols -> 45 rows
+    { "TV 1080p", 1920, 1080, 160, 45, 12, 30, false },
+    // TV 720p - 1280x720 (16:9), 120 cols -> 34 rows
+    { "TV 720p", 1280, 720, 120, 34, 10, 26, false },
+    // TV 480p - 640x480 (4:3), 80 cols -> 30 rows
+    { "TV 480p (4:3)", 640, 480, 80, 30, 8, 24, true }
 };
 
 // =============================================================================
@@ -286,31 +289,23 @@ inline bool isDividerRow(const std::string& s) {
     return true;
 }
 
-// Fixed-width output based on screen layout
-// DRC menu: 30 col list + 2 divider + 23 details = 55 columns
-inline int getMenuWidth() {
-    // Divider at 30% + details panel content width
-    int divider = (sConfig->gridCols * 30) / 100;  // 30 for DRC
-    return divider + 2 + 23;  // 55 for DRC
-}
-
+// Output full grid to preserve screen aspect ratio
 inline std::string GetTrimmedOutput() {
     int cols = sConfig->gridCols;
     int rows = sConfig->gridRows;
-    int width = getMenuWidth();
 
     std::ostringstream out;
 
     // Top border
     out << "\u250C"; // ┌
-    for (int i = 0; i < width; i++) out << "\u2500"; // ─
+    for (int i = 0; i < cols; i++) out << "\u2500"; // ─
     out << "\u2510\n"; // ┐
 
     // Content rows
     for (int row = 0; row < rows; row++) {
         out << "\u2502"; // │
 
-        for (int col = 0; col < width && col < cols; col++) {
+        for (int col = 0; col < cols; col++) {
             const Cell& cell = sCharBuffer[row * cols + col];
 
             // Check for pixel regions
@@ -335,7 +330,7 @@ inline std::string GetTrimmedOutput() {
 
     // Bottom border
     out << "\u2514"; // └
-    for (int i = 0; i < width; i++) out << "\u2500"; // ─
+    for (int i = 0; i < cols; i++) out << "\u2500"; // ─
     out << "\u2518\n"; // ┘
 
     return out.str();
@@ -501,7 +496,7 @@ inline int GetGridHeight() { return sConfig->gridRows; }
 // These return proportional values that adapt to different resolutions
 
 // Get the divider column (splits list from details panel)
-// Roughly 30% of screen width for list
+// 30% of screen width for list (matches real renderer)
 inline int GetDividerCol() {
     return (sConfig->gridCols * 30) / 100;
 }
