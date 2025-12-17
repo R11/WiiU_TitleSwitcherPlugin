@@ -299,6 +299,10 @@ void drawDetailsPanel()
     // Y: row 3 out of 18 = about 17% of screen height
     int iconY = (screenHeight * (LIST_START_ROW + 1)) / gridHeight;
 
+    // DEBUG: Show calculated values
+    Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 6,
+                       "X:%d Y:%d", iconX, iconY);
+
     if (ImageLoader::IsReady(title->titleId)) {
         Renderer::ImageHandle icon = ImageLoader::Get(title->titleId);
         Renderer::DrawImage(iconX, iconY, icon, ICON_SIZE, ICON_SIZE);
