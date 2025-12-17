@@ -41,16 +41,19 @@ struct ScreenConfig {
 };
 
 // Screen configurations
-// Character dimensions chosen so grid roughly matches OSScreen behavior
+// Grid dimensions calculated for correct visual aspect ratio in terminal
+// Terminal chars are ~2:1 (height:width), so grid_cols/rows = pixel_aspect * 2
+// Keep original col counts for readable text, adjust rows for aspect
+// Formula: rows = cols / (pixel_width/pixel_height) / 2
 inline const ScreenConfig SCREEN_CONFIGS[] = {
-    // DRC (GamePad) - baseline reference
-    { "DRC (GamePad)", 854, 480, 100, 18, 8, 26, false },
-    // TV 1080p - more space, show more content
-    { "TV 1080p", 1920, 1080, 160, 36, 12, 30, false },
-    // TV 720p - medium size
-    { "TV 720p", 1280, 720, 120, 27, 10, 26, false },
-    // TV 480p - 4:3 aspect, narrower
-    { "TV 480p (4:3)", 640, 480, 80, 20, 8, 24, true }
+    // DRC (GamePad) - 854x480 (16:9), 100 cols -> 28 rows
+    { "DRC (GamePad)", 854, 480, 100, 28, 8, 26, false },
+    // TV 1080p - 1920x1080 (16:9), 160 cols -> 45 rows
+    { "TV 1080p", 1920, 1080, 160, 45, 12, 30, false },
+    // TV 720p - 1280x720 (16:9), 120 cols -> 34 rows
+    { "TV 720p", 1280, 720, 120, 34, 10, 26, false },
+    // TV 480p - 640x480 (4:3), 80 cols -> 30 rows
+    { "TV 480p (4:3)", 640, 480, 80, 30, 8, 24, true }
 };
 
 // =============================================================================
@@ -493,9 +496,9 @@ inline int GetGridHeight() { return sConfig->gridRows; }
 // These return proportional values that adapt to different resolutions
 
 // Get the divider column (splits list from details panel)
-// ~40% of screen width for list (matches actual GamePad layout)
+// 30% of screen width for list (matches real renderer)
 inline int GetDividerCol() {
-    return (sConfig->gridCols * 40) / 100;
+    return (sConfig->gridCols * 30) / 100;
 }
 
 // Get the details panel start column
