@@ -5,21 +5,21 @@
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │[All]  Favorites   System   Games   Apps                                                            │
 │----------------------------------------------------------------------------------------------------│
-│   1. * Super Mario 3D World  | Mario Kart 8                                                        │
-│>  2. * Mario Kart 8          |                                                                     │
-│   3.   Splatoon              |    ░░░░░░░░░░░░                                                     │
-│   4. * Super Smash Bros. for |    ░░░░░░░░░░░░                                                     │
-│   5.   The Legend of Zelda:  |    ░░░░░░░░░░░░                                                     │
-│   6.   Bayonetta 2           | ID: 000500001010EC00                                                │
-│   7.   Pikmin 3              | Favorite: Yes                                                       │
-│   8.   Xenoblade Chronicles  |                                                                     │
-│   9.   Hyrule Warriors       | Categories:                                                         │
-│  10.   Donkey Kong Country:  |   - Games                                                           │
-│  11.   Captain Toad: Treasur |                                                                     │
-│  12.   Yoshi's Woolly World  |                                                                     │
-│  13.   Star Fox Zero         |                                                                     │
-│  14.   NES Remix Pack        |                                                                     │
-│  15.   Mii Verse      [DOWN] |                                                                     │
+│   1. * Super Mario 3D World            | Mario Kart 8                                              │
+│>  2. * Mario Kart 8                    |                                                           │
+│   3.   Splatoon                        |    ░░░░░░░░░░░░                                           │
+│   4. * Super Smash Bros. for Wii U     |    ░░░░░░░░░░░░                                           │
+│   5.   The Legend of Zelda: Breath of  |    ░░░░░░░░░░░░                                           │
+│   6.   Bayonetta 2                     | ID: 000500001010EC00                                      │
+│   7.   Pikmin 3                        | Favorite: Yes                                             │
+│   8.   Xenoblade Chronicles X          |                                                           │
+│   9.   Hyrule Warriors                 | Categories:                                               │
+│  10.   Donkey Kong Country: Tropical F |   - Games                                                 │
+│  11.   Captain Toad: Treasure Tracker  |                                                           │
+│  12.   Yoshi's Woolly World            |                                                           │
+│  13.   Star Fox Zero                   |                                                           │
+│  14.   NES Remix Pack                  |                                                           │
+│  15.   Mii Verse                [DOWN] |                                                           │
 │A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [2/20]                                               │
 └────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -31,39 +31,39 @@
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │[All]  Favorites   System   Games   Apps                                                                                                                        │
 │----------------------------------------------------------------------------------------------------------------------------------------------------------------│
-│   1. * Super Mario 3D World                    | Mario Kart 8                                                                                                  │
-│>  2. * Mario Kart 8                            | ░░░░░░░░░░░░░░░░                                                                                              │
-│   3.   Splatoon                                | ░░░░░░░░░░░░░░░░                                                                                              │
-│   4. * Super Smash Bros. for Wii U             | ░░░░░░░░░░░░░░░░                                                                                              │
-│   5.   The Legend of Zelda: Breath of the Wild | ░░░░░░░░░░░░░░░░                                                                                              │
-│   6.   Bayonetta 2                             | ░░░░░░░░░░░░░░░░                                                                                              │
-│   7.   Pikmin 3                                | ░░░░░░░░░░░░░░░░                                                                                              │
-│   8.   Xenoblade Chronicles X                  | ░░░░░░░░░░░░░░░░                                                                                              │
-│   9.   Hyrule Warriors                         | ID: 000500001010EC00                                                                                          │
-│  10.   Donkey Kong Country: Tropical Freeze    | Favorite: Yes                                                                                                 │
-│  11.   Captain Toad: Treasure Tracker          |                                                                                                               │
-│  12.   Yoshi's Woolly World                    | Categories:                                                                                                   │
-│  13.   Star Fox Zero                           |   - Games                                                                                                     │
-│  14.   NES Remix Pack                          |                                                                                                               │
-│  15.   Mii Verse                               |                                                                                                               │
-│  16.   Nintendo eShop                          |                                                                                                               │
-│  17.   Internet Browser                        |                                                                                                               │
-│  18.   Tokyo Mirage Sessions FE                |                                                                                                               │
-│  19.   Pokken Tournament                       |                                                                                                               │
-│  20.   Super Mario Maker                       |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
+│   1. * Super Mario 3D World                                    | Mario Kart 8                                                                                  │
+│>  2. * Mario Kart 8                                            | ░░░░░░░░░░░░░░░░                                                                              │
+│   3.   Splatoon                                                | ░░░░░░░░░░░░░░░░                                                                              │
+│   4. * Super Smash Bros. for Wii U                             | ░░░░░░░░░░░░░░░░                                                                              │
+│   5.   The Legend of Zelda: Breath of the Wild                 | ░░░░░░░░░░░░░░░░                                                                              │
+│   6.   Bayonetta 2                                             | ░░░░░░░░░░░░░░░░                                                                              │
+│   7.   Pikmin 3                                                | ░░░░░░░░░░░░░░░░                                                                              │
+│   8.   Xenoblade Chronicles X                                  | ░░░░░░░░░░░░░░░░                                                                              │
+│   9.   Hyrule Warriors                                         | ID: 000500001010EC00                                                                          │
+│  10.   Donkey Kong Country: Tropical Freeze                    | Favorite: Yes                                                                                 │
+│  11.   Captain Toad: Treasure Tracker                          |                                                                                               │
+│  12.   Yoshi's Woolly World                                    | Categories:                                                                                   │
+│  13.   Star Fox Zero                                           |   - Games                                                                                     │
+│  14.   NES Remix Pack                                          |                                                                                               │
+│  15.   Mii Verse                                               |                                                                                               │
+│  16.   Nintendo eShop                                          |                                                                                               │
+│  17.   Internet Browser                                        |                                                                                               │
+│  18.   Tokyo Mirage Sessions FE                                |                                                                                               │
+│  19.   Pokken Tournament                                       |                                                                                               │
+│  20.   Super Mario Maker                                       |                                                                                               │
+│                                                                |                                                                                               │
+│                                                                |                                                                                               │
+│                                                                |                                                                                               │
+│                                                                |                                                                                               │
+│                                                                |                                                                                               │
+│                                                                |                                                                                               │
+│                                                                |                                                                                               │
+│                                                                |                                                                                               │
+│                                                                |                                                                                               │
+│                                                                |                                                                                               │
+│                                                                |                                                                                               │
+│                                                                |                                                                                               │
+│                                                                |                                                                                               │
 │A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [2/20]                                                                                                           │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -75,30 +75,30 @@
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │[All]  Favorites   System   Games   Apps                                                                                │
 │------------------------------------------------------------------------------------------------------------------------│
-│   1. * Super Mario 3D World        | Mario Kart 8                                                                      │
-│>  2. * Mario Kart 8                |                                                                                   │
-│   3.   Splatoon                    |    ░░░░░░░░░░░░░                                                                  │
-│   4. * Super Smash Bros. for Wii U |    ░░░░░░░░░░░░░                                                                  │
-│   5.   The Legend of Zelda: Breath |    ░░░░░░░░░░░░░                                                                  │
-│   6.   Bayonetta 2                 |    ░░░░░░░░░░░░░                                                                  │
-│   7.   Pikmin 3                    | ID: 000500001010EC00                                                              │
-│   8.   Xenoblade Chronicles X      | Favorite: Yes                                                                     │
-│   9.   Hyrule Warriors             |                                                                                   │
-│  10.   Donkey Kong Country: Tropic | Categories:                                                                       │
-│  11.   Captain Toad: Treasure Trac |   - Games                                                                         │
-│  12.   Yoshi's Woolly World        |                                                                                   │
-│  13.   Star Fox Zero               |                                                                                   │
-│  14.   NES Remix Pack              |                                                                                   │
-│  15.   Mii Verse                   |                                                                                   │
-│  16.   Nintendo eShop              |                                                                                   │
-│  17.   Internet Browser            |                                                                                   │
-│  18.   Tokyo Mirage Sessions FE    |                                                                                   │
-│  19.   Pokken Tournament           |                                                                                   │
-│  20.   Super Mario Maker           |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
+│   1. * Super Mario 3D World                    | Mario Kart 8                                                          │
+│>  2. * Mario Kart 8                            |                                                                       │
+│   3.   Splatoon                                |     ░░░░░░░░░░░░░                                                     │
+│   4. * Super Smash Bros. for Wii U             |     ░░░░░░░░░░░░░                                                     │
+│   5.   The Legend of Zelda: Breath of the Wild |     ░░░░░░░░░░░░░                                                     │
+│   6.   Bayonetta 2                             |     ░░░░░░░░░░░░░                                                     │
+│   7.   Pikmin 3                                | ID: 000500001010EC00                                                  │
+│   8.   Xenoblade Chronicles X                  | Favorite: Yes                                                         │
+│   9.   Hyrule Warriors                         |                                                                       │
+│  10.   Donkey Kong Country: Tropical Freeze    | Categories:                                                           │
+│  11.   Captain Toad: Treasure Tracker          |   - Games                                                             │
+│  12.   Yoshi's Woolly World                    |                                                                       │
+│  13.   Star Fox Zero                           |                                                                       │
+│  14.   NES Remix Pack                          |                                                                       │
+│  15.   Mii Verse                               |                                                                       │
+│  16.   Nintendo eShop                          |                                                                       │
+│  17.   Internet Browser                        |                                                                       │
+│  18.   Tokyo Mirage Sessions FE                |                                                                       │
+│  19.   Pokken Tournament                       |                                                                       │
+│  20.   Super Mario Maker                       |                                                                       │
+│                                                |                                                                       │
+│                                                |                                                                       │
+│                                                |                                                                       │
+│                                                |                                                                       │
 │A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [2/20]                                                                   │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -110,22 +110,22 @@
 ┌────────────────────────────────────────────────────────────────────────────────┐
 │[All]  Favorites   System   Games   Apps                                        │
 │--------------------------------------------------------------------------------│
-│   1. * Super Mario 3D  | Mario Kart 8                                          │
-│>  2. * Mario Kart 8    | ░░░░░░░░░░░░                                          │
-│   3.   Splatoon        | ░░░░░░░░░░░░                                          │
-│   4. * Super Smash Bro | ░░░░░░░░░░░░                                          │
-│   5.   The Legend of Z | ░░░░░░░░░░░░                                          │
-│   6.   Bayonetta 2     |                                                       │
-│   7.   Pikmin 3        | ID: 000500001010EC00                                  │
-│   8.   Xenoblade Chron | Favorite: Yes                                         │
-│   9.   Hyrule Warriors |                                                       │
-│  10.   Donkey Kong Cou | Categories:                                           │
-│  11.   Captain Toad: T |   - Games                                             │
-│  12.   Yoshi's Woolly  |                                                       │
-│  13.   Star Fox Zero   |                                                       │
-│  14.   NES Remix Pack  |                                                       │
-│  15.   Mii Verse       |                                                       │
-│  16.   Nintendo eShop  |                                                       │
-│  17.   Internet [DOWN] |                                                       │
+│   1. * Super Mario 3D World    | Mario Kart 8                                  │
+│>  2. * Mario Kart 8            | ░░░░░░░░░░░░                                  │
+│   3.   Splatoon                | ░░░░░░░░░░░░                                  │
+│   4. * Super Smash Bros. for W | ░░░░░░░░░░░░                                  │
+│   5.   The Legend of Zelda: Br | ░░░░░░░░░░░░                                  │
+│   6.   Bayonetta 2             |                                               │
+│   7.   Pikmin 3                | ID: 000500001010EC00                          │
+│   8.   Xenoblade Chronicles X  | Favorite: Yes                                 │
+│   9.   Hyrule Warriors         |                                               │
+│  10.   Donkey Kong Country: Tr | Categories:                                   │
+│  11.   Captain Toad: Treasure  |   - Games                                     │
+│  12.   Yoshi's Woolly World    |                                               │
+│  13.   Star Fox Zero           |                                               │
+│  14.   NES Remix Pack          |                                               │
+│  15.   Mii Verse               |                                               │
+│  16.   Nintendo eShop          |                                               │
+│  17.   Internet Browser [DOWN] |                                               │
 │A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [2/20]                           │
 └────────────────────────────────────────────────────────────────────────────────┘

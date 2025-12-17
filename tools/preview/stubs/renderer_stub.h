@@ -493,9 +493,9 @@ inline int GetGridHeight() { return sConfig->gridRows; }
 // These return proportional values that adapt to different resolutions
 
 // Get the divider column (splits list from details panel)
-// Roughly 30% of screen width for list
+// ~40% of screen width for list (matches actual GamePad layout)
 inline int GetDividerCol() {
-    return (sConfig->gridCols * 30) / 100;
+    return (sConfig->gridCols * 40) / 100;
 }
 
 // Get the details panel start column
