@@ -8,6 +8,7 @@
  */
 
 #include "renderer.h"
+#include "bitmap_font.h"
 #include "../utils/dc.h"
 
 // Wii U SDK headers
@@ -160,12 +161,44 @@ void endFrameOSScreen()
 
 void drawTextOSScreen(int col, int row, const char* text, uint32_t color)
 {
-    // Note: OSScreen doesn't support colored text directly
-    // Color parameter is ignored in this implementation
-    (void)color;
+    // For white text, use the built-in OSScreen font (anti-aliased, faster)
+    if (color == 0xFFFFFFFF) {
+        OSScreenPutFontEx(SCREEN_TV, col, row, text);
+        OSScreenPutFontEx(SCREEN_DRC, col, row, text);
+        return;
+    }
 
-    OSScreenPutFontEx(SCREEN_TV, col, row, text);
-    OSScreenPutFontEx(SCREEN_DRC, col, row, text);
+    // For colored text, render using our bitmap font pixel-by-pixel
+    // Convert color from RGBA to RGBX format for OSScreenPutPixelEx
+    uint32_t rgbx = color & 0xFFFFFF00;
+
+    // Calculate pixel position from character grid position
+    int baseX = col * OS_SCREEN_CHAR_WIDTH;
+    int baseY = row * OS_SCREEN_CHAR_HEIGHT;
+
+    // Render each character
+    for (int i = 0; text[i] != '\0'; i++) {
+        const uint8_t* glyph = BitmapFont::GetGlyph(text[i]);
+        if (!glyph) {
+            // Unknown character - skip
+            baseX += BitmapFont::CHAR_WIDTH;
+            continue;
+        }
+
+        // Draw each pixel of the glyph
+        for (int gy = 0; gy < BitmapFont::CHAR_HEIGHT; gy++) {
+            for (int gx = 0; gx < BitmapFont::CHAR_WIDTH; gx++) {
+                if (BitmapFont::IsPixelSet(glyph, gx, gy)) {
+                    int px = baseX + gx;
+                    int py = baseY + gy;
+                    OSScreenPutPixelEx(SCREEN_TV, px, py, rgbx);
+                    OSScreenPutPixelEx(SCREEN_DRC, px, py, rgbx);
+                }
+            }
+        }
+
+        baseX += BitmapFont::CHAR_WIDTH;
+    }
 }
 
 void drawImageOSScreen(int x, int y, ImageHandle image, int width, int height)
