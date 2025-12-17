@@ -247,6 +247,13 @@ void drawDetailsPanel() {
     const char* favStatus = Settings::IsFavorite(title->titleId) ? "Yes" : "No";
     Renderer::DrawTextF(detailsCol, currentRow++, "Favorite: %s", favStatus);
 
+    // Game ID (product code) for debugging preset matching
+    if (title->productCode[0] != '\0') {
+        Renderer::DrawTextF(detailsCol, currentRow++, "Game ID: %s", title->productCode);
+    } else {
+        Renderer::DrawText(detailsCol, currentRow++, "Game ID: (none)");
+    }
+
     // Look up preset metadata if available
     const TitlePresets::TitlePreset* preset = nullptr;
     if (title->productCode[0] != '\0') {

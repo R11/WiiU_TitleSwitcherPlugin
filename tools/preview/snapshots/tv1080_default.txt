@@ -15,15 +15,15 @@
 │    Xenoblade Chronicles X                      | ░░░░░░░░░░░░░░░░                                                                                              │
 │    Hyrule Warriors                             | ID: 000500001010EC00                                                                                          │
 │    Donkey Kong Country: Tropical Freeze        | Favorite: Yes                                                                                                 │
-│    Captain Toad: Treasure Tracker              |                                                                                                               │
-│    Yoshi's Woolly World                        | Pub: Nintendo                                                                                                 │
-│    Star Fox Zero                               | Dev: Nintendo EAD                                                                                             │
-│    NES Remix Pack                              | Released: 2014-05-30                                                                                          │
-│    Mii Verse                                   | Racing / EUR                                                                                                  │
-│    Nintendo eShop                              |                                                                                                               │
-│    Internet Browser                            | Categories:                                                                                                   │
-│    Tokyo Mirage Sessions FE                    |   - Games                                                                                                     │
-│    Pokken Tournament                           |                                                                                                               │
+│    Captain Toad: Treasure Tracker              | Game ID: AMKP01                                                                                               │
+│    Yoshi's Woolly World                        |                                                                                                               │
+│    Star Fox Zero                               | Pub: Nintendo                                                                                                 │
+│    NES Remix Pack                              | Dev: Nintendo EAD                                                                                             │
+│    Mii Verse                                   | Released: 2014-05-30                                                                                          │
+│    Nintendo eShop                              | Racing / EUR                                                                                                  │
+│    Internet Browser                            |                                                                                                               │
+│    Tokyo Mirage Sessions FE                    | Categories:                                                                                                   │
+│    Pokken Tournament                           |   - Games                                                                                                     │
 │    Super Mario Maker                           |                                                                                                               │
 │                                                |                                                                                                               │
 │                                                |                                                                                                               │

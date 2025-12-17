@@ -13,14 +13,14 @@
 │    Bayonetta 2         |                                                       │
 │    Pikmin 3            | ID: 000500001010EC00                                  │
 │    Xenoblade Chronicl  | Favorite: Yes                                         │
-│    Hyrule Warriors     |                                                       │
-│    Donkey Kong Countr  | Pub: Nintendo                                         │
-│    Captain Toad: Trea  | Dev: Nintendo EAD                                     │
-│    Yoshi's Woolly Wor  | Released: 2014-05-30                                  │
-│    Star Fox Zero       | Racing / EUR                                          │
-│    NES Remix Pack      |                                                       │
-│    Mii Verse           | Categories:                                           │
-│    Nintendo eShop      |   - Games                                             │
+│    Hyrule Warriors     | Game ID: AMKP01                                       │
+│    Donkey Kong Countr  |                                                       │
+│    Captain Toad: Trea  | Pub: Nintendo                                         │
+│    Yoshi's Woolly Wor  | Dev: Nintendo EAD                                     │
+│    Star Fox Zero       | Released: 2014-05-30                                  │
+│    NES Remix Pack      | Racing / EUR                                          │
+│    Mii Verse           |                                                       │
+│    Nintendo eShop      | Categories:                                           │
 │    Internet Brow[DOWN] |                                                       │
 │A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [2/20]                           │
 └────────────────────────────────────────────────────────────────────────────────┘

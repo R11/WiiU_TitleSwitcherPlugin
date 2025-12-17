@@ -12,11 +12,11 @@
 │    The Legend of Zelda: Bre  |    ░░░░░░░░░░░░                                                     │
 │    Bayonetta 2               | ID: 000500001010EC00                                                │
 │    Pikmin 3                  | Favorite: Yes                                                       │
-│    Xenoblade Chronicles X    |                                                                     │
-│    Hyrule Warriors           | Pub: Nintendo                                                       │
-│    Donkey Kong Country: Tro  | Dev: Nintendo EAD                                                   │
-│    Captain Toad: Treasure T  | Released: 2014-05-30                                                │
-│    Yoshi's Woolly World      | Racing / EUR                                                        │
+│    Xenoblade Chronicles X    | Game ID: AMKP01                                                     │
+│    Hyrule Warriors           |                                                                     │
+│    Donkey Kong Country: Tro  | Pub: Nintendo                                                       │
+│    Captain Toad: Treasure T  | Dev: Nintendo EAD                                                   │
+│    Yoshi's Woolly World      | Released: 2014-05-30                                                │
 │    Star Fox Zero             |                                                                     │
 │    NES Remix Pack            | Categories:                                                         │
 │    Mii Verse          [DOWN] |                                                                     │
