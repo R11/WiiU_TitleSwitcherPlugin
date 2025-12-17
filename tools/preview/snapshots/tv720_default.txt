@@ -6,11 +6,11 @@
 │[All]  Favorites   System   Games   Apps                                                                                │
 │------------------------------------------------------------------------------------------------------------------------│
 │  * Super Mario 3D World            | Mario Kart 8                                                                      │
-│> * Mario Kart 8                    | ░░░░░░░░░░░░░                                                                     │
-│    Splatoon                        | ░░░░░░░░░░░░░                                                                     │
-│  * Super Smash Bros. for Wii U     | ░░░░░░░░░░░░░                                                                     │
-│    The Legend of Zelda: Breath of  | ░░░░░░░░░░░░░                                                                     │
-│    Bayonetta 2                     | ░░░░░░░░░░░░░                                                                     │
+│> * Mario Kart 8                    |                                                                                   │
+│    Splatoon                        |    ░░░░░░░░░░░░░                                                                  │
+│  * Super Smash Bros. for Wii U     |    ░░░░░░░░░░░░░                                                                  │
+│    The Legend of Zelda: Breath of  |    ░░░░░░░░░░░░░                                                                  │
+│    Bayonetta 2                     |    ░░░░░░░░░░░░░                                                                  │
 │    Pikmin 3                        | ID: 000500001010EC00                                                              │
 │    Xenoblade Chronicles X          | Favorite: Yes                                                                     │
 │    Hyrule Warriors                 |                                                                                   │
