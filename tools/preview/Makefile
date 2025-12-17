@@ -43,47 +43,12 @@ run-numbers: $(TARGET)
 run-favs: $(TARGET)
 	./$(TARGET) --no-color --category 1
 
-# Snapshot directory
-SNAPSHOT_DIR := snapshots
+# Update all snapshot files
+update-snapshots: $(TARGET)
+	./$(TARGET) --update-snapshots
 
-# Screen types for snapshots
-SCREENS := drc tv1080 tv720 tv480
-
-# Generate all snapshots (for updating golden files)
-# Creates snapshots for all 4 screen types
-snapshots: $(TARGET)
-	@mkdir -p $(SNAPSHOT_DIR)
-	@echo "Generating snapshots for all screen types..."
-	@for screen in $(SCREENS); do \
-		echo "  $$screen..."; \
-		./$(TARGET) --no-color --screen $$screen > $(SNAPSHOT_DIR)/$${screen}_default.txt; \
-	done
-	@echo "Snapshots generated in $(SNAPSHOT_DIR)/"
-
-# Verify snapshots match current output (for CI/testing)
+# Verify current output matches saved snapshots
 verify-snapshots: $(TARGET)
-	@echo "Verifying snapshots..."
-	@failed=0; \
-	for screen in $(SCREENS); do \
-		if ./$(TARGET) --no-color --screen $$screen | diff -q - $(SNAPSHOT_DIR)/$${screen}_default.txt > /dev/null 2>&1; then \
-			echo "  $$screen: OK"; \
-		else \
-			echo "  $$screen: MISMATCH"; \
-			failed=1; \
-		fi; \
-	done; \
-	if [ $$failed -eq 1 ]; then \
-		echo "Snapshot verification FAILED"; \
-		exit 1; \
-	else \
-		echo "All snapshots match!"; \
-	fi
+	./$(TARGET) --verify-snapshots
 
-# Show diff if snapshots don't match
-diff-snapshots: $(TARGET)
-	@for screen in $(SCREENS); do \
-		echo "=== $$screen ==="; \
-		./$(TARGET) --no-color --screen $$screen | diff - $(SNAPSHOT_DIR)/$${screen}_default.txt || true; \
-	done
-
-.PHONY: all clean run run-nocolor run-numbers run-favs snapshots verify-snapshots diff-snapshots
+.PHONY: all clean run run-nocolor run-numbers run-favs update-snapshots verify-snapshots

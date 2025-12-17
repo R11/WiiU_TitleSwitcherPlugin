@@ -1,0 +1,20 @@
+┌───────────────────────────────────────────────────────┐
+│[All]  Favorites   System   Games   Apps               │
+│-------------------------------------------------------│
+│    Captain Toad: Treasur[UP] | Super Mario Maker      │
+│    Yoshi's Woolly World      |                        │
+│    Star Fox Zero             |    ░░░░░░░░░░░░        │
+│    NES Remix Pack            |    ░░░░░░░░░░░░        │
+│    Mii Verse                 |    ░░░░░░░░░░░░        │
+│    Nintendo eShop            | ID: 0005000010162B00   │
+│    Internet Browser          | Favorite: No           │
+│    Tokyo Mirage Sessions FE  |                        │
+│    Pokken Tournament         | Categories:            │
+│>   Super Mario Maker         |   (none)               │
+│                              |                        │
+│                              |                        │
+│                              |                        │
+│                              |                        │
+│                              |                        │
+│A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [20/20] │
+└───────────────────────────────────────────────────────┘

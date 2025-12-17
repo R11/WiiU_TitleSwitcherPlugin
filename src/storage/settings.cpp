@@ -68,6 +68,26 @@ constexpr const char* KEY_TITLE_CAT_COUNT  = "titleCatCount";
 constexpr const char* KEY_TITLE_CAT_DATA   = "titleCatData";
 constexpr const char* KEY_NEXT_CAT_ID      = "nextCategoryId";
 
+// =============================================================================
+// Storage Helpers
+// =============================================================================
+
+// Load boolean from storage (stored as int: 0=false, non-zero=true)
+inline void LoadBool(const char* key, bool& out) {
+    int32_t temp;
+    if (WUPSStorageAPI_GetInt(nullptr, key, &temp) == WUPS_STORAGE_ERROR_SUCCESS) {
+        out = (temp != 0);
+    }
+}
+
+// Load color from storage (stored as signed int32, cast to uint32)
+inline void LoadColor(const char* key, uint32_t& out) {
+    int32_t temp;
+    if (WUPSStorageAPI_GetInt(nullptr, key, &temp) == WUPS_STORAGE_ERROR_SUCCESS) {
+        out = static_cast<uint32_t>(temp);
+    }
+}
+
 } // anonymous namespace
 
 // =============================================================================
@@ -103,44 +123,23 @@ void Load()
     WUPSStorageAPI_GetInt(nullptr, KEY_LAST_CATEGORY, &gSettings.lastCategoryIndex);
 
     // -------------------------------------------------------------------------
-    // Step 3: Load boolean settings (stored as int: 0=false, 1=true)
+    // Step 3: Load boolean settings
     // -------------------------------------------------------------------------
-    int32_t tempBool;
-    if (WUPSStorageAPI_GetInt(nullptr, KEY_SHOW_NUMBERS, &tempBool) == WUPS_STORAGE_ERROR_SUCCESS) {
-        gSettings.showNumbers = (tempBool != 0);
-    }
-    if (WUPSStorageAPI_GetInt(nullptr, KEY_SHOW_FAVORITES, &tempBool) == WUPS_STORAGE_ERROR_SUCCESS) {
-        gSettings.showFavorites = (tempBool != 0);
-    }
+    LoadBool(KEY_SHOW_NUMBERS, gSettings.showNumbers);
+    LoadBool(KEY_SHOW_FAVORITES, gSettings.showFavorites);
 
     // -------------------------------------------------------------------------
     // Step 4: Load colors
     // -------------------------------------------------------------------------
-    // Colors are stored as signed int32 (WUPS doesn't have unsigned storage)
-    // We cast them back to uint32_t when reading
-    int32_t tempColor;
-
-    if (WUPSStorageAPI_GetInt(nullptr, KEY_BG_COLOR, &tempColor) == WUPS_STORAGE_ERROR_SUCCESS) {
-        gSettings.bgColor = static_cast<uint32_t>(tempColor);
-    }
-    if (WUPSStorageAPI_GetInt(nullptr, KEY_TITLE_COLOR, &tempColor) == WUPS_STORAGE_ERROR_SUCCESS) {
-        gSettings.titleColor = static_cast<uint32_t>(tempColor);
-    }
-    if (WUPSStorageAPI_GetInt(nullptr, KEY_HIGHLIGHTED, &tempColor) == WUPS_STORAGE_ERROR_SUCCESS) {
-        gSettings.highlightedTitleColor = static_cast<uint32_t>(tempColor);
-    }
-    if (WUPSStorageAPI_GetInt(nullptr, KEY_FAVORITE_COLOR, &tempColor) == WUPS_STORAGE_ERROR_SUCCESS) {
-        gSettings.favoriteColor = static_cast<uint32_t>(tempColor);
-    }
-    if (WUPSStorageAPI_GetInt(nullptr, KEY_HEADER_COLOR, &tempColor) == WUPS_STORAGE_ERROR_SUCCESS) {
-        gSettings.headerColor = static_cast<uint32_t>(tempColor);
-    }
-    if (WUPSStorageAPI_GetInt(nullptr, KEY_CATEGORY_COLOR, &tempColor) == WUPS_STORAGE_ERROR_SUCCESS) {
-        gSettings.categoryColor = static_cast<uint32_t>(tempColor);
-    }
+    LoadColor(KEY_BG_COLOR, gSettings.bgColor);
+    LoadColor(KEY_TITLE_COLOR, gSettings.titleColor);
+    LoadColor(KEY_HIGHLIGHTED, gSettings.highlightedTitleColor);
+    LoadColor(KEY_FAVORITE_COLOR, gSettings.favoriteColor);
+    LoadColor(KEY_HEADER_COLOR, gSettings.headerColor);
+    LoadColor(KEY_CATEGORY_COLOR, gSettings.categoryColor);
 
     // -------------------------------------------------------------------------
-    // Step 4: Load next category ID
+    // Step 5: Load next category ID
     // -------------------------------------------------------------------------
     int32_t nextId;
     if (WUPSStorageAPI_GetInt(nullptr, KEY_NEXT_CAT_ID, &nextId) == WUPS_STORAGE_ERROR_SUCCESS) {
@@ -148,7 +147,7 @@ void Load()
     }
 
     // -------------------------------------------------------------------------
-    // Step 5: Load favorites
+    // Step 6: Load favorites
     // -------------------------------------------------------------------------
     // Favorites are stored as a binary blob (array of uint64_t)
     int32_t favCount = 0;
@@ -172,7 +171,7 @@ void Load()
     }
 
     // -------------------------------------------------------------------------
-    // Step 6: Load categories
+    // Step 7: Load categories
     // -------------------------------------------------------------------------
     int32_t catCount = 0;
     WUPSStorageAPI_GetInt(nullptr, KEY_CATEGORIES_COUNT, &catCount);
@@ -194,7 +193,7 @@ void Load()
     }
 
     // -------------------------------------------------------------------------
-    // Step 7: Load title-category assignments
+    // Step 8: Load title-category assignments
     // -------------------------------------------------------------------------
     int32_t tcCount = 0;
     WUPSStorageAPI_GetInt(nullptr, KEY_TITLE_CAT_COUNT, &tcCount);

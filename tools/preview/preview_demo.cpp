@@ -19,7 +19,9 @@
 #include "stubs/categories_stub.h"
 
 #include <iostream>
+#include <fstream>
 #include <string>
+#include <filesystem>
 
 void printUsage() {
     std::cout << "\n";
@@ -39,6 +41,9 @@ void printUsage() {
     std::cout << "\n";
     std::cout << "Display options:\n";
     std::cout << "  --no-color      Disable ANSI color codes\n";
+    std::cout << "  --compact       Scale to 78 columns (fits 80-col terminal)\n";
+    std::cout << "  --width N       Set compact width (default: 78)\n";
+    std::cout << "  --raw           Output raw text buffer (no borders/colors)\n";
     std::cout << "  --numbers       Enable line numbers\n";
     std::cout << "  --no-favs       Hide favorite markers\n";
     std::cout << "\n";
@@ -47,6 +52,136 @@ void printUsage() {
     std::cout << "  --scroll N      Set scroll offset\n";
     std::cout << "  --category N    Set category (0=All, 1=Favorites, 2=System, 3+=User)\n";
     std::cout << "\n";
+    std::cout << "Snapshot options:\n";
+    std::cout << "  --update-snapshots   Regenerate all snapshot files\n";
+    std::cout << "  --verify-snapshots   Compare current output against snapshots\n";
+    std::cout << "\n";
+}
+
+// =============================================================================
+// Snapshot Testing
+// =============================================================================
+
+struct SnapshotConfig {
+    const char* filename;
+    int selection;
+    int scroll;
+    int category;
+    bool showNumbers;
+    bool showFavorites;
+};
+
+const SnapshotConfig SNAPSHOTS[] = {
+    {"browse_default.txt",       1,  0, 0, false, true},
+    {"browse_scrolled.txt",     10,  5, 0, false, true},
+    {"browse_at_bottom.txt",    19, 10, 0, false, true},
+    {"browse_favorites.txt",     0,  0, 1, false, true},
+    {"browse_system.txt",        0,  0, 2, false, true},
+    {"browse_games.txt",         0,  0, 3, false, true},
+    {"browse_with_numbers.txt",  1,  0, 0, true,  true},
+    {"browse_no_favorites.txt",  1,  0, 0, false, false},
+};
+
+const int SNAPSHOT_COUNT = sizeof(SNAPSHOTS) / sizeof(SNAPSHOTS[0]);
+const char* SNAPSHOT_DIR = "snapshots";
+
+std::string renderSnapshot(const SnapshotConfig& config) {
+    // Reset state
+    Settings::Init();
+    Settings::Get().showNumbers = config.showNumbers;
+    Settings::Get().showFavorites = config.showFavorites;
+
+    Categories::Init();
+    if (config.category > 0) {
+        Categories::SelectCategory(config.category);
+    }
+
+    // Clamp selection
+    int count = Categories::GetFilteredCount();
+    int sel = config.selection;
+    if (sel >= count && count > 0) sel = count - 1;
+
+    Renderer::SetScreenType(Renderer::ScreenType::DRC);
+    Renderer::Init();
+    MenuRender::SetSelection(sel, config.scroll);
+
+    Renderer::BeginFrame(Settings::Get().bgColor);
+    MenuRender::renderBrowseMode();
+
+    std::string output = Renderer::GetTrimmedOutput();
+    Renderer::Shutdown();
+
+    return output;
+}
+
+int updateSnapshots() {
+    namespace fs = std::filesystem;
+
+    // Create snapshots directory if it doesn't exist
+    if (!fs::exists(SNAPSHOT_DIR)) {
+        fs::create_directory(SNAPSHOT_DIR);
+    }
+
+    std::cout << "Updating " << SNAPSHOT_COUNT << " snapshots...\n";
+
+    for (int i = 0; i < SNAPSHOT_COUNT; i++) {
+        const auto& config = SNAPSHOTS[i];
+        std::string output = renderSnapshot(config);
+
+        std::string path = std::string(SNAPSHOT_DIR) + "/" + config.filename;
+        std::ofstream file(path);
+        if (file) {
+            file << output;
+            std::cout << "  Updated: " << config.filename << "\n";
+        } else {
+            std::cerr << "  FAILED:  " << config.filename << "\n";
+            return 1;
+        }
+    }
+
+    std::cout << "Done.\n";
+    return 0;
+}
+
+int verifySnapshots() {
+    namespace fs = std::filesystem;
+
+    if (!fs::exists(SNAPSHOT_DIR)) {
+        std::cerr << "Snapshot directory not found. Run --update-snapshots first.\n";
+        return 1;
+    }
+
+    std::cout << "Verifying " << SNAPSHOT_COUNT << " snapshots...\n";
+
+    int passed = 0;
+    int failed = 0;
+
+    for (int i = 0; i < SNAPSHOT_COUNT; i++) {
+        const auto& config = SNAPSHOTS[i];
+        std::string current = renderSnapshot(config);
+
+        std::string path = std::string(SNAPSHOT_DIR) + "/" + config.filename;
+        std::ifstream file(path);
+        if (!file) {
+            std::cerr << "  MISSING: " << config.filename << "\n";
+            failed++;
+            continue;
+        }
+
+        std::string expected((std::istreambuf_iterator<char>(file)),
+                              std::istreambuf_iterator<char>());
+
+        if (current == expected) {
+            std::cout << "  PASS:    " << config.filename << "\n";
+            passed++;
+        } else {
+            std::cerr << "  FAIL:    " << config.filename << "\n";
+            failed++;
+        }
+    }
+
+    std::cout << "\nResults: " << passed << " passed, " << failed << " failed\n";
+    return (failed > 0) ? 1 : 0;
 }
 
 Renderer::ScreenType parseScreenType(const std::string& arg) {
@@ -62,6 +197,8 @@ Renderer::ScreenType parseScreenType(const std::string& arg) {
     return Renderer::ScreenType::DRC;  // Default
 }
 
+enum class OutputMode { Full, Compact, Raw };
+
 int main(int argc, char* argv[]) {
     bool useColor = true;
     int selectedIndex = 1;
@@ -70,12 +207,25 @@ int main(int argc, char* argv[]) {
     bool showNumbers = false;
     bool showFavorites = true;
     Renderer::ScreenType screenType = Renderer::ScreenType::DRC;
+    OutputMode outputMode = OutputMode::Full;
+    int compactWidth = 78;
 
     // Parse command line arguments
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
-        if (arg == "--no-color") {
+        if (arg == "--update-snapshots") {
+            return updateSnapshots();
+        } else if (arg == "--verify-snapshots") {
+            return verifySnapshots();
+        } else if (arg == "--no-color") {
             useColor = false;
+        } else if (arg == "--compact") {
+            outputMode = OutputMode::Compact;
+        } else if (arg == "--raw") {
+            outputMode = OutputMode::Raw;
+        } else if (arg == "--width" && i + 1 < argc) {
+            compactWidth = std::stoi(argv[++i]);
+            outputMode = OutputMode::Compact;
         } else if (arg == "--screen" && i + 1 < argc) {
             screenType = parseScreenType(argv[++i]);
         } else if (arg == "--select" && i + 1 < argc) {
@@ -118,16 +268,29 @@ int main(int argc, char* argv[]) {
     // Set menu state
     MenuRender::SetSelection(selectedIndex, scrollOffset);
 
-    std::cout << "\n=== Wii U Menu Preview ===\n";
-    std::cout << "(Using actual menu.cpp rendering code)\n\n";
+    if (outputMode != OutputMode::Raw) {
+        std::cout << "\n=== Wii U Menu Preview ===\n";
+        std::cout << "(Using actual menu.cpp rendering code)\n\n";
+    }
 
     // Render the frame
     uint32_t bgColor = Settings::Get().bgColor;
     Renderer::BeginFrame(bgColor);
     MenuRender::renderBrowseMode();
 
-    // Get and print output
-    std::string output = Renderer::GetFrameOutput(useColor);
+    // Get and print output based on mode
+    std::string output;
+    switch (outputMode) {
+        case OutputMode::Full:
+            output = Renderer::GetFrameOutput(useColor);
+            break;
+        case OutputMode::Compact:
+            output = Renderer::GetCompactOutput(compactWidth);
+            break;
+        case OutputMode::Raw:
+            output = Renderer::GetRawText();
+            break;
+    }
     std::cout << output;
 
     Renderer::Shutdown();
