@@ -284,43 +284,21 @@ void drawDetailsPanel()
     // Title name (left-aligned with details panel)
     Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW, title->name);
 
-    // DEBUG: Draw colored test blocks at known coordinates to map the coordinate system
-    // Each block is 32x32 pixels with a unique color
-    constexpr int BLOCK_SIZE = 32;
-
-    // Red block at (0, 0) - should be top-left corner
-    Renderer::DrawPlaceholder(0, 0, BLOCK_SIZE, BLOCK_SIZE, 0xFF0000FF);
-
-    // Green block at (427, 0) - should be top-center (854/2)
-    Renderer::DrawPlaceholder(427, 0, BLOCK_SIZE, BLOCK_SIZE, 0x00FF00FF);
-
-    // Blue block at (0, 240) - should be left-center (480/2)
-    Renderer::DrawPlaceholder(0, 240, BLOCK_SIZE, BLOCK_SIZE, 0x0000FFFF);
-
-    // Yellow block at (427, 240) - should be center of screen
-    Renderer::DrawPlaceholder(427, 240, BLOCK_SIZE, BLOCK_SIZE, 0xFFFF00FF);
-
-    // Magenta block at (822, 448) - should be bottom-right (854-32, 480-32)
-    Renderer::DrawPlaceholder(822, 448, BLOCK_SIZE, BLOCK_SIZE, 0xFF00FFFF);
-
-    // Cyan block at (273, 80) - our calculated icon position
-    Renderer::DrawPlaceholder(273, 80, BLOCK_SIZE, BLOCK_SIZE, 0x00FFFFFF);
-
-    // Show coordinate labels
-    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 1, "RED=0,0 GRN=427,0");
-    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 2, "BLU=0,240 YEL=427,240");
-    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 3, "MAG=822,448 CYN=273,80");
-
-    // Still draw the actual icon for reference
+    // Draw icon below title
+    // Position calculated from screen percentages for accuracy
     constexpr int ICON_SIZE = 128;
+    constexpr int ICON_MARGIN = 80;  // Extra margin from panel edge
     int screenWidth = Renderer::GetScreenWidth();
     int gridWidth = Renderer::GetGridWidth();
-    int iconX = (screenWidth * Renderer::GetDetailsPanelCol()) / gridWidth;
-    int iconY = 80;
+    int iconX = (screenWidth * Renderer::GetDetailsPanelCol()) / gridWidth + ICON_MARGIN;
+    int iconY = 80;  // Below title row
 
     if (ImageLoader::IsReady(title->titleId)) {
         Renderer::ImageHandle icon = ImageLoader::Get(title->titleId);
         Renderer::DrawImage(iconX, iconY, icon, ICON_SIZE, ICON_SIZE);
+    } else {
+        // Draw placeholder while loading
+        Renderer::DrawPlaceholder(iconX, iconY, ICON_SIZE, ICON_SIZE, 0x333333FF);
     }
 
     // Info starts after icon (icon is ~5-6 rows at 24px/row)
