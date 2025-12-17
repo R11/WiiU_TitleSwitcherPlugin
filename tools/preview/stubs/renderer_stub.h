@@ -286,36 +286,23 @@ inline bool isDividerRow(const std::string& s) {
     return true;
 }
 
-// Get trimmed width that includes full menu content
-// Uses divider position + details panel, scaled to screen width
-inline int getMenuWidth() {
-    // List (30%) + divider (2 chars) + details panel (25%)
-    // Total: ~55% of screen width, which captures all menu content
-    int listWidth = (sConfig->gridCols * 30) / 100;
-    int detailsWidth = (sConfig->gridCols * 25) / 100;
-    return listWidth + 2 + detailsWidth;
-}
-
+// Output full grid to preserve screen aspect ratio
 inline std::string GetTrimmedOutput() {
     int cols = sConfig->gridCols;
     int rows = sConfig->gridRows;
-    int width = getMenuWidth();
-
-    // Ensure width doesn't exceed grid
-    if (width > cols) width = cols;
 
     std::ostringstream out;
 
     // Top border
     out << "\u250C"; // ┌
-    for (int i = 0; i < width; i++) out << "\u2500"; // ─
+    for (int i = 0; i < cols; i++) out << "\u2500"; // ─
     out << "\u2510\n"; // ┐
 
     // Content rows
     for (int row = 0; row < rows; row++) {
         out << "\u2502"; // │
 
-        for (int col = 0; col < width && col < cols; col++) {
+        for (int col = 0; col < cols; col++) {
             const Cell& cell = sCharBuffer[row * cols + col];
 
             // Check for pixel regions
@@ -340,7 +327,7 @@ inline std::string GetTrimmedOutput() {
 
     // Bottom border
     out << "\u2514"; // └
-    for (int i = 0; i < width; i++) out << "\u2500"; // ─
+    for (int i = 0; i < cols; i++) out << "\u2500"; // ─
     out << "\u2518\n"; // ┘
 
     return out.str();
