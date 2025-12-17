@@ -85,7 +85,22 @@ const SnapshotConfig SNAPSHOTS[] = {
 const int SNAPSHOT_COUNT = sizeof(SNAPSHOTS) / sizeof(SNAPSHOTS[0]);
 const char* SNAPSHOT_DIR = "snapshots";
 
-std::string renderSnapshot(const SnapshotConfig& config) {
+// All screen types to include in snapshots
+struct ScreenInfo {
+    Renderer::ScreenType type;
+    const char* name;
+};
+
+const ScreenInfo SCREEN_TYPES[] = {
+    {Renderer::ScreenType::DRC,      "DRC (854x480)"},
+    {Renderer::ScreenType::TV_1080P, "TV 1080p (1920x1080)"},
+    {Renderer::ScreenType::TV_720P,  "TV 720p (1280x720)"},
+    {Renderer::ScreenType::TV_480P,  "TV 480p (640x480)"},
+};
+
+const int SCREEN_TYPE_COUNT = sizeof(SCREEN_TYPES) / sizeof(SCREEN_TYPES[0]);
+
+std::string renderForScreen(const SnapshotConfig& config, Renderer::ScreenType screenType) {
     // Reset state
     Settings::Init();
     Settings::Get().showNumbers = config.showNumbers;
@@ -101,7 +116,7 @@ std::string renderSnapshot(const SnapshotConfig& config) {
     int sel = config.selection;
     if (sel >= count && count > 0) sel = count - 1;
 
-    Renderer::SetScreenType(Renderer::ScreenType::DRC);
+    Renderer::SetScreenType(screenType);
     Renderer::Init();
     MenuRender::SetSelection(sel, config.scroll);
 
@@ -110,6 +125,29 @@ std::string renderSnapshot(const SnapshotConfig& config) {
 
     std::string output = Renderer::GetTrimmedOutput();
     Renderer::Shutdown();
+
+    return output;
+}
+
+std::string renderSnapshot(const SnapshotConfig& config) {
+    std::string output;
+
+    for (int i = 0; i < SCREEN_TYPE_COUNT; i++) {
+        const auto& screen = SCREEN_TYPES[i];
+
+        // Add separator header
+        output += "================================================================================\n";
+        output += "  " + std::string(screen.name) + "\n";
+        output += "================================================================================\n\n";
+
+        // Render for this screen type
+        output += renderForScreen(config, screen.type);
+
+        // Add spacing between screens (except after last)
+        if (i < SCREEN_TYPE_COUNT - 1) {
+            output += "\n\n";
+        }
+    }
 
     return output;
 }

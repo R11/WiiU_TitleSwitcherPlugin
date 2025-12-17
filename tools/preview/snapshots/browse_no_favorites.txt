@@ -1,3 +1,7 @@
+================================================================================
+  DRC (854x480)
+================================================================================
+
 ┌───────────────────────────────────────────────────────┐
 │[All]  Favorites   System   Games   Apps               │
 │-------------------------------------------------------│
@@ -18,3 +22,110 @@
 │  Mii Verse            [DOWN] |                        │
 │A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [2/20]  │
 └───────────────────────────────────────────────────────┘
+
+
+================================================================================
+  TV 1080p (1920x1080)
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│[All]  Favorites   System   Games   Apps                                 │
+│-------------------------------------------------------------------------│
+│  Super Mario 3D World                          | Mario Kart 8           │
+│> Mario Kart 8                                  | ░░░░░░░░░░░░░░░░       │
+│  Splatoon                                      | ░░░░░░░░░░░░░░░░       │
+│  Super Smash Bros. for Wii U                   | ░░░░░░░░░░░░░░░░       │
+│  The Legend of Zelda: Breath of the Wild       | ░░░░░░░░░░░░░░░░       │
+│  Bayonetta 2                                   | ░░░░░░░░░░░░░░░░       │
+│  Pikmin 3                                      | ░░░░░░░░░░░░░░░░       │
+│  Xenoblade Chronicles X                        | ░░░░░░░░░░░░░░░░       │
+│  Hyrule Warriors                               | ID: 000500001010EC00   │
+│  Donkey Kong Country: Tropical Freeze          | Favorite: Yes          │
+│  Captain Toad: Treasure Tracker                |                        │
+│  Yoshi's Woolly World                          | Categories:            │
+│  Star Fox Zero                                 |   - Games              │
+│  NES Remix Pack                                |                        │
+│  Mii Verse                                     |                        │
+│  Nintendo eShop                                |                        │
+│  Internet Browser                              |                        │
+│  Tokyo Mirage Sessions FE                      |                        │
+│  Pokken Tournament                             |                        │
+│  Super Mario Maker                             |                        │
+│                                                |                        │
+│                                                |                        │
+│                                                |                        │
+│                                                |                        │
+│                                                |                        │
+│                                                |                        │
+│                                                |                        │
+│                                                |                        │
+│                                                |                        │
+│                                                |                        │
+│                                                |                        │
+│                                                |                        │
+│                                                |                        │
+│A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [2/20]                    │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+  TV 720p (1280x720)
+================================================================================
+
+┌─────────────────────────────────────────────────────────────┐
+│[All]  Favorites   System   Games   Apps                     │
+│-------------------------------------------------------------│
+│  Super Mario 3D World              | Mario Kart 8           │
+│> Mario Kart 8                      |                        │
+│  Splatoon                          |    ░░░░░░░░░░░░░       │
+│  Super Smash Bros. for Wii U       |    ░░░░░░░░░░░░░       │
+│  The Legend of Zelda: Breath of    |    ░░░░░░░░░░░░░       │
+│  Bayonetta 2                       |    ░░░░░░░░░░░░░       │
+│  Pikmin 3                          | ID: 000500001010EC00   │
+│  Xenoblade Chronicles X            | Favorite: Yes          │
+│  Hyrule Warriors                   |                        │
+│  Donkey Kong Country: Tropical     | Categories:            │
+│  Captain Toad: Treasure Tracker    |   - Games              │
+│  Yoshi's Woolly World              |                        │
+│  Star Fox Zero                     |                        │
+│  NES Remix Pack                    |                        │
+│  Mii Verse                         |                        │
+│  Nintendo eShop                    |                        │
+│  Internet Browser                  |                        │
+│  Tokyo Mirage Sessions FE          |                        │
+│  Pokken Tournament                 |                        │
+│  Super Mario Maker                 |                        │
+│                                    |                        │
+│                                    |                        │
+│                                    |                        │
+│                                    |                        │
+│A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [2/20]        │
+└─────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+  TV 480p (640x480)
+================================================================================
+
+┌─────────────────────────────────────────────────┐
+│[All]  Favorites   System   Games   Apps         │
+│-------------------------------------------------│
+│  Super Mario 3D Wor    | Mario Kart 8           │
+│> Mario Kart 8          | ░░░░░░░░░░░░           │
+│  Splatoon              | ░░░░░░░░░░░░           │
+│  Super Smash Bros.     | ░░░░░░░░░░░░           │
+│  The Legend of Zeld    | ░░░░░░░░░░░░           │
+│  Bayonetta 2           |                        │
+│  Pikmin 3              | ID: 000500001010EC00   │
+│  Xenoblade Chronicl    | Favorite: Yes          │
+│  Hyrule Warriors       |                        │
+│  Donkey Kong Countr    | Categories:            │
+│  Captain Toad: Trea    |   - Games              │
+│  Yoshi's Woolly Wor    |                        │
+│  Star Fox Zero         |                        │
+│  NES Remix Pack        |                        │
+│  Mii Verse             |                        │
+│  Nintendo eShop        |                        │
+│  Internet Browse[DOWN] |                        │
+│A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [2│
+└─────────────────────────────────────────────────┘
