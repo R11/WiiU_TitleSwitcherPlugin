@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ make libgtest-dev cmake
+          # Build gtest from source (Ubuntu packages source only)
+          cd /usr/src/gtest
+          sudo cmake .
+          sudo make
+          sudo cp lib/*.a /usr/lib/
+
+      - name: Run unit tests
+        run: |
+          cd tests
+          make
+          ./run_tests
+
+      - name: Build preview tool
+        run: |
+          cd tools/preview
+          make
+
+      - name: Verify snapshots
+        run: |
+          cd tools/preview
+          ./preview_demo --verify-snapshots
+
+  build:
+    name: Build Plugin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build with Docker
+        run: ./build.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TitleSwitcherPlugin
+          path: TitleSwitcherPlugin.wps

@@ -6,6 +6,9 @@ if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
     exit 0
 fi
 
+# Run asynchronously - session starts immediately while this runs in background
+echo '{"async": true, "asyncTimeout": 300000}'
+
 echo "=== Setting up WiiU_TitleSwitcherPlugin environment ==="
 
 # Install build dependencies if not present
