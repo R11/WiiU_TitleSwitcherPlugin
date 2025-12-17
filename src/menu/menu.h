@@ -196,4 +196,50 @@ void OnForegroundAcquired();
  */
 void OnForegroundReleased();
 
+// =============================================================================
+// Auto-Launch Functions
+// =============================================================================
+
+/**
+ * Check if auto-launch should be performed.
+ *
+ * This checks if:
+ * - Auto-launch is enabled in settings
+ * - We're on the Wii U Menu (not already in a game)
+ * - Auto-launch hasn't already been performed this boot
+ *
+ * @return true if auto-launch should be triggered
+ */
+bool ShouldAutoLaunch();
+
+/**
+ * Perform the auto-launch action based on settings.
+ *
+ * Depending on the configured auto-launch mode, this will either:
+ * - Open the menu automatically
+ * - Launch the last-played title
+ * - Launch a specific configured title
+ *
+ * This function should be called after IsSafeToOpen() returns true.
+ */
+void PerformAutoLaunch();
+
+/**
+ * Reset the auto-launch state.
+ *
+ * Called when the user manually opens the menu or launches a title,
+ * to prevent auto-launch from triggering again.
+ */
+void ResetAutoLaunchState();
+
+/**
+ * Set whether we're currently on the Wii U Menu.
+ *
+ * This is used to determine if auto-launch should trigger.
+ * Auto-launch only works from the Wii U Menu, not from within games.
+ *
+ * @param onMenu true if on Wii U Menu, false if in a game
+ */
+void SetOnWiiUMenu(bool onMenu);
+
 } // namespace Menu

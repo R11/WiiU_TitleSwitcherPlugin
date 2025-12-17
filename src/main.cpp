@@ -148,6 +148,9 @@ DEINITIALIZE_PLUGIN()
  * We notify the menu system so it can:
  * - Start the grace period timer (prevent opening during loading)
  * - Reset state for the new application
+ *
+ * Note: This is called for BOTH the Wii U Menu and games.
+ * The VPADRead hooks determine which process type we're in.
  */
 ON_APPLICATION_START()
 {
@@ -209,9 +212,26 @@ bool sComboWasHeld = false;
  *
  * @param buffer    Input data from VPADRead
  * @param bufferSize Number of samples in buffer
+ * @param isWiiUMenu true if this is called from VPADRead_Menu (Wii U Menu process)
  */
-void handleInput(VPADStatus* buffer, uint32_t bufferSize)
+void handleInput(VPADStatus* buffer, uint32_t bufferSize, bool isWiiUMenu)
 {
+    // Update the menu system about which process we're in
+    Menu::SetOnWiiUMenu(isWiiUMenu);
+
+    // Check for auto-launch (only on Wii U Menu, after grace period)
+    if (Menu::ShouldAutoLaunch()) {
+        Menu::PerformAutoLaunch();
+
+        // Clear input buffer
+        for (uint32_t i = 0; i < bufferSize; i++) {
+            buffer[i].trigger = 0;
+            buffer[i].hold = 0;
+            buffer[i].release = 0;
+        }
+        return;
+    }
+
     // Get current button state
     uint32_t held = buffer[0].hold;
 
@@ -220,6 +240,9 @@ void handleInput(VPADStatus* buffer, uint32_t bufferSize)
 
     // Trigger on press (transition from not-held to held)
     if (comboHeld && !sComboWasHeld && Menu::IsSafeToOpen()) {
+        // Mark that user manually opened the menu (prevent auto-launch)
+        Menu::ResetAutoLaunchState();
+
         // Open the menu (blocks until menu closes)
         Menu::Open();
 
@@ -253,7 +276,7 @@ DECL_FUNCTION(int32_t, VPADRead_Game, VPADChan chan, VPADStatus* buffer,
 
     // Process input if we got valid data
     if (result > 0 && realError == VPAD_READ_SUCCESS) {
-        handleInput(buffer, bufferSize);
+        handleInput(buffer, bufferSize, false);  // false = in a game
     }
 
     // Pass through the error if caller wants it
@@ -278,7 +301,7 @@ DECL_FUNCTION(int32_t, VPADRead_Menu, VPADChan chan, VPADStatus* buffer,
     int32_t result = real_VPADRead_Menu(chan, buffer, bufferSize, &realError);
 
     if (result > 0 && realError == VPAD_READ_SUCCESS) {
-        handleInput(buffer, bufferSize);
+        handleInput(buffer, bufferSize, true);  // true = on Wii U Menu
     }
 
     if (error) {
