@@ -4,6 +4,10 @@ build/
 *.map
 .DS_Store
 
+# CMake build directories
+tests/build/
+tools/preview/build/
+
 # Preview tool build artifacts (snapshots are intentionally tracked)
 tools/preview/preview_demo
 tools/preview/*.o
