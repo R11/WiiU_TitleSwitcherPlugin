@@ -50,6 +50,63 @@ constexpr int LIST_START_COL = 0;
 
 int sSelectedIndex = 1;     // Currently selected title
 int sScrollOffset = 0;      // First visible title
+int sSettingsIndex = 0;     // Currently selected setting
+int sSystemAppIndex = 0;    // Currently selected system app
+
+// =============================================================================
+// Settings Data (mirrors menu.cpp)
+// =============================================================================
+
+enum class SettingType {
+    TOGGLE,
+    COLOR,
+    BRIGHTNESS,
+    ACTION
+};
+
+struct SettingItem {
+    const char* name;
+    const char* descLine1;
+    const char* descLine2;
+    SettingType type;
+};
+
+const SettingItem sSettingItems[] = {
+    {"Gamepad Brightness", "Adjust Gamepad screen",   "brightness (1-5).",  SettingType::BRIGHTNESS},
+    {"System Apps",        "Launch system applications", "(Browser, Settings, etc.)", SettingType::ACTION},
+    {"Show Numbers",       "Show line numbers before", "each title in the list.", SettingType::TOGGLE},
+    {"Show Favorites",     "Show favorite marker (*)", "in the title list.",      SettingType::TOGGLE},
+    {"Background",         "Menu background color.",   "RGBA hex format.",        SettingType::COLOR},
+    {"Title Text",         "Normal title text color.", "RGBA hex format.",        SettingType::COLOR},
+    {"Highlighted",        "Selected title color.",    "RGBA hex format.",        SettingType::COLOR},
+    {"Favorite",           "Favorite marker color.",   "RGBA hex format.",        SettingType::COLOR},
+    {"Header",             "Header text color.",       "RGBA hex format.",        SettingType::COLOR},
+    {"Category",           "Category tab color.",      "RGBA hex format.",        SettingType::COLOR},
+    {"Manage Categories",  "Create, rename, or delete", "custom categories.",     SettingType::ACTION},
+    {"Debug Grid",         "Show grid overlay with",   "dimensions and positions.", SettingType::ACTION},
+};
+
+const int SETTINGS_ITEM_COUNT = sizeof(sSettingItems) / sizeof(sSettingItems[0]);
+
+struct SystemAppOption {
+    const char* name;
+    const char* description;
+};
+
+const SystemAppOption sSystemApps[] = {
+    {"Return to Menu",    "Exit game and return to Wii U Menu"},
+    {"Internet Browser",  "Open the Internet Browser"},
+    {"Nintendo eShop",    "Open the Nintendo eShop"},
+    {"Mii Maker",         "Open Mii Maker"},
+    {"System Settings",   "Open System Settings"},
+    {"Controller Sync",   "Sync controllers (Gamepad, Wiimotes)"},
+    {"Notifications",     "View system notifications"},
+    {"User Settings",     "Manage user accounts"},
+    {"Parental Controls", "Open Parental Controls"},
+    {"Daily Log",         "View play activity"},
+};
+
+const int SYSTEM_APP_COUNT = sizeof(sSystemApps) / sizeof(sSystemApps[0]);
 
 // =============================================================================
 // State Access
@@ -62,6 +119,11 @@ void SetSelection(int index, int scroll) {
 
 int GetSelectedIndex() { return sSelectedIndex; }
 int GetScrollOffset() { return sScrollOffset; }
+
+void SetSettingsIndex(int index) { sSettingsIndex = index; }
+void SetSystemAppIndex(int index) { sSystemAppIndex = index; }
+int GetSettingsIndex() { return sSettingsIndex; }
+int GetSystemAppIndex() { return sSystemAppIndex; }
 
 // =============================================================================
 // Helper: Clamp Selection (from menu.cpp)
@@ -307,6 +369,144 @@ void renderFrame(uint32_t bgColor) {
     Renderer::BeginFrame(bgColor);
     renderBrowseMode();
     Renderer::EndFrame();
+}
+
+// =============================================================================
+// Settings Mode Rendering
+// =============================================================================
+
+void renderSettingsMain() {
+    // Header
+    Renderer::DrawText(0, 0, "SETTINGS");
+
+    // Draw header line
+    int width = Renderer::GetGridWidth();
+    char line[256];
+    int len = std::min(width, (int)sizeof(line) - 1);
+    memset(line, '-', len);
+    line[len] = '\0';
+    Renderer::DrawText(0, HEADER_ROW, line);
+
+    // Divider
+    drawDivider();
+
+    // Left side: Settings list
+    int row = LIST_START_ROW;
+    int footerRow = Renderer::GetFooterRow();
+
+    for (int i = 0; i < SETTINGS_ITEM_COUNT && row < footerRow - 1; i++) {
+        const SettingItem& item = sSettingItems[i];
+        const char* cursor = (sSettingsIndex == i) ? ">" : " ";
+
+        switch (item.type) {
+            case SettingType::TOGGLE: {
+                // Show ON/OFF based on actual settings
+                bool value = (i == 2) ? Settings::Get().showNumbers : Settings::Get().showFavorites;
+                Renderer::DrawTextF(0, row++, "%s %s: %s", cursor, item.name, value ? "ON" : "OFF");
+                break;
+            }
+            case SettingType::COLOR: {
+                // Show hex color value
+                uint32_t value = 0x1E1E2EFF;  // Default placeholder
+                Renderer::DrawTextF(0, row++, "%s %s: %08X", cursor, item.name, value);
+                break;
+            }
+            case SettingType::BRIGHTNESS: {
+                // Draw brightness bar
+                int brightness = 3;  // Mock value
+                char bar[8] = "-----";
+                for (int b = 0; b < brightness && b < 5; b++) {
+                    bar[b] = '=';
+                }
+                Renderer::DrawTextF(0, row++, "%s %s: [%s] %d", cursor, item.name, bar, brightness);
+                break;
+            }
+            case SettingType::ACTION: {
+                if (i == 10) {  // Manage Categories
+                    Renderer::DrawTextF(0, row++, "%s %s (%d)", cursor, item.name, Settings::GetCategoryCount());
+                } else {
+                    Renderer::DrawTextF(0, row++, "%s %s", cursor, item.name);
+                }
+                break;
+            }
+        }
+    }
+
+    // Right side: Description
+    int detailsCol = Renderer::GetDetailsPanelCol();
+    Renderer::DrawText(detailsCol, LIST_START_ROW, "Description:");
+    Renderer::DrawText(detailsCol, LIST_START_ROW + 1, "------------");
+
+    // Show description for selected item
+    if (sSettingsIndex >= 0 && sSettingsIndex < SETTINGS_ITEM_COUNT) {
+        const SettingItem& selected = sSettingItems[sSettingsIndex];
+        Renderer::DrawText(detailsCol, LIST_START_ROW + 3, selected.descLine1);
+        Renderer::DrawText(detailsCol, LIST_START_ROW + 4, selected.descLine2);
+
+        // Show action hint based on type
+        const char* hint = "";
+        switch (selected.type) {
+            case SettingType::TOGGLE:     hint = "Press A to toggle"; break;
+            case SettingType::COLOR:      hint = "Press A to edit"; break;
+            case SettingType::BRIGHTNESS: hint = "Left/Right to adjust"; break;
+            case SettingType::ACTION:     hint = "Press A to open"; break;
+        }
+        Renderer::DrawText(detailsCol, LIST_START_ROW + 6, hint);
+    }
+
+    // Footer
+    Renderer::DrawTextF(0, footerRow, "%s:Edit %s:Back  [%d/%d]",
+                      Buttons::Actions::CONFIRM.label,
+                      Buttons::Actions::CANCEL.label,
+                      sSettingsIndex + 1, SETTINGS_ITEM_COUNT);
+}
+
+void renderSystemApps() {
+    // Header
+    Renderer::DrawText(0, 0, "SYSTEM APPS");
+
+    // Draw header line
+    int width = Renderer::GetGridWidth();
+    char line[256];
+    int len = std::min(width, (int)sizeof(line) - 1);
+    memset(line, '-', len);
+    line[len] = '\0';
+    Renderer::DrawText(0, HEADER_ROW, line);
+
+    // Divider
+    drawDivider();
+
+    // Left side: System app list
+    int row = LIST_START_ROW;
+    int footerRow = Renderer::GetFooterRow();
+
+    for (int i = 0; i < SYSTEM_APP_COUNT && row < footerRow - 1; i++) {
+        const SystemAppOption& app = sSystemApps[i];
+        const char* cursor = (sSystemAppIndex == i) ? ">" : " ";
+        Renderer::DrawTextF(0, row++, "%s %s", cursor, app.name);
+    }
+
+    // Right side: Description
+    int detailsCol = Renderer::GetDetailsPanelCol();
+    Renderer::DrawText(detailsCol, LIST_START_ROW, "Description:");
+    Renderer::DrawText(detailsCol, LIST_START_ROW + 1, "------------");
+
+    // Show description for selected app
+    if (sSystemAppIndex >= 0 && sSystemAppIndex < SYSTEM_APP_COUNT) {
+        const SystemAppOption& app = sSystemApps[sSystemAppIndex];
+        Renderer::DrawText(detailsCol, LIST_START_ROW + 3, app.description);
+    }
+
+    Renderer::DrawText(detailsCol, LIST_START_ROW + 5, "Press A to launch");
+    Renderer::DrawText(detailsCol, LIST_START_ROW + 7, "Note: The game will be");
+    Renderer::DrawText(detailsCol, LIST_START_ROW + 8, "suspended while the");
+    Renderer::DrawText(detailsCol, LIST_START_ROW + 9, "system app is open.");
+
+    // Footer
+    Renderer::DrawTextF(0, footerRow, "%s:Launch %s:Back  [%d/%d]",
+                      Buttons::Actions::CONFIRM.label,
+                      Buttons::Actions::CANCEL.label,
+                      sSystemAppIndex + 1, SYSTEM_APP_COUNT);
 }
 
 } // namespace MenuRender
