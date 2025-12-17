@@ -19,7 +19,7 @@
 #include <gd.h>
 
 // Wii U SDK for title meta directory
-#include <nn/acp.h>
+#include <nn/acp/title.h>
 
 namespace ImageLoader {
 
