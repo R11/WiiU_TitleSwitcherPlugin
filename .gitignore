@@ -3,3 +3,7 @@ build/
 *.elf
 *.map
 .DS_Store
+
+# Preview tool build artifacts (snapshots are intentionally tracked)
+tools/preview/preview_demo
+tools/preview/*.o
