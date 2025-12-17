@@ -110,6 +110,24 @@ void DrawBox(int col, int row, int width, int height, uint32_t color = 0xFFFFFFF
 std::string GetFrameOutput(bool useColor = true, bool useUnicode = true);
 
 /**
+ * Get a compact output scaled to fit within maxWidth columns.
+ * Useful for 80-column terminals (default 78 + 2 border = 80).
+ */
+std::string GetCompactOutput(int maxWidth = 78);
+
+/**
+ * Get the raw text buffer without borders or colors.
+ * Each row is newline-terminated.
+ */
+std::string GetRawText();
+
+/**
+ * Get text at a specific grid position.
+ * Useful for testing that expected text appears at expected positions.
+ */
+std::string GetTextAt(int col, int row, int length);
+
+/**
  * Coordinate conversion helpers.
  */
 int ColToPixelX(int col);

@@ -265,8 +265,168 @@ inline std::string GetFrameOutput(bool useColor = true) {
     return out.str();
 }
 
+// Helper to count display width of UTF-8 string
+inline int getDisplayWidth(const std::string& s) {
+    int width = 0;
+    for (size_t i = 0; i < s.size(); ) {
+        unsigned char c = s[i];
+        if ((c & 0x80) == 0) { width++; i++; }
+        else if ((c & 0xE0) == 0xC0) { width++; i += 2; }
+        else if ((c & 0xF0) == 0xE0) { width++; i += 3; }
+        else { width++; i += 4; }
+    }
+    return width;
+}
+
+// Check if a row is just a divider line (all dashes or spaces)
+inline bool isDividerRow(const std::string& s) {
+    for (char c : s) {
+        if (c != '-' && c != ' ') return false;
+    }
+    return true;
+}
+
+// Fixed-width output based on screen layout
+// DRC menu: 30 col list + 2 divider + 23 details = 55 columns
+inline int getMenuWidth() {
+    // Divider at 30% + details panel content width
+    int divider = (sConfig->gridCols * 30) / 100;  // 30 for DRC
+    return divider + 2 + 23;  // 55 for DRC
+}
+
+inline std::string GetTrimmedOutput() {
+    int cols = sConfig->gridCols;
+    int rows = sConfig->gridRows;
+    int width = getMenuWidth();
+
+    std::ostringstream out;
+
+    // Top border
+    out << "\u250C"; // ┌
+    for (int i = 0; i < width; i++) out << "\u2500"; // ─
+    out << "\u2510\n"; // ┐
+
+    // Content rows
+    for (int row = 0; row < rows; row++) {
+        out << "\u2502"; // │
+
+        for (int col = 0; col < width && col < cols; col++) {
+            const Cell& cell = sCharBuffer[row * cols + col];
+
+            // Check for pixel regions
+            int px = col * sConfig->charWidth;
+            int py = row * sConfig->charHeight;
+            bool inRegion = false;
+
+            for (int r = 0; r < sPixelRegionCount; r++) {
+                const PixelRegion& region = sPixelRegions[r];
+                if (px >= region.x && px < region.x + region.w &&
+                    py >= region.y && py < region.y + region.h) {
+                    inRegion = true;
+                    break;
+                }
+            }
+
+            out << (inRegion ? "\u2591" : std::string(1, cell.ch));  // ░ for regions
+        }
+
+        out << "\u2502\n"; // │
+    }
+
+    // Bottom border
+    out << "\u2514"; // └
+    for (int i = 0; i < width; i++) out << "\u2500"; // ─
+    out << "\u2518\n"; // ┘
+
+    return out.str();
+}
+
 inline void EndFrame() {
     std::cout << GetFrameOutput(true);
+}
+
+inline std::string GetCompactOutput(int maxWidth = 78) {
+    std::ostringstream out;
+
+    int cols = sConfig->gridCols;
+    int rows = sConfig->gridRows;
+
+    // Truncate to fit within maxWidth (default 78 to fit 80-col terminal with borders)
+    int displayCols = (maxWidth - 2 < cols) ? maxWidth - 2 : cols;
+    bool truncated = (displayCols < cols);
+
+    // Top border
+    out << "\u250C"; // ┌
+    for (int i = 0; i < displayCols; i++) out << "\u2500"; // ─
+    out << "\u2510\n"; // ┐
+
+    // Content rows
+    for (int row = 0; row < rows; row++) {
+        out << "\u2502"; // │
+
+        for (int col = 0; col < displayCols; col++) {
+            const Cell& cell = sCharBuffer[row * cols + col];
+
+            // Check for pixel regions
+            int px = col * sConfig->charWidth;
+            int py = row * sConfig->charHeight;
+            bool inRegion = false;
+
+            for (int r = 0; r < sPixelRegionCount; r++) {
+                const PixelRegion& region = sPixelRegions[r];
+                if (px >= region.x && px < region.x + region.w &&
+                    py >= region.y && py < region.y + region.h) {
+                    inRegion = true;
+                    break;
+                }
+            }
+
+            if (inRegion) {
+                out << "\u2591"; // ░
+            } else {
+                out << cell.ch;
+            }
+        }
+
+        out << "\u2502\n"; // │
+    }
+
+    // Bottom border
+    out << "\u2514"; // └
+    for (int i = 0; i < displayCols; i++) out << "\u2500"; // ─
+    out << "\u2518\n"; // ┘
+
+    if (truncated) {
+        out << "Truncated to " << displayCols << " cols (full: " << cols << " cols)\n";
+    }
+
+    return out.str();
+}
+
+inline std::string GetRawText() {
+    std::ostringstream out;
+    int cols = sConfig->gridCols;
+    int rows = sConfig->gridRows;
+
+    for (int row = 0; row < rows; row++) {
+        for (int col = 0; col < cols; col++) {
+            out << sCharBuffer[row * cols + col].ch;
+        }
+        out << '\n';
+    }
+    return out.str();
+}
+
+inline std::string GetTextAt(int col, int row, int length) {
+    if (row < 0 || row >= sConfig->gridRows) return "";
+    if (col < 0) col = 0;
+
+    std::string result;
+    int cols = sConfig->gridCols;
+    for (int i = 0; i < length && (col + i) < cols; i++) {
+        result += sCharBuffer[row * cols + col + i].ch;
+    }
+    return result;
 }
 
 // =============================================================================

@@ -1,0 +1,20 @@
+┌───────────────────────────────────────────────────────┐
+│[All]  Favorites   System   Games   Apps               │
+│-------------------------------------------------------│
+│  Super Mario 3D World        | Mario Kart 8           │
+│> Mario Kart 8                |                        │
+│  Splatoon                    |    ░░░░░░░░░░░░        │
+│  Super Smash Bros. for Wi    |    ░░░░░░░░░░░░        │
+│  The Legend of Zelda: Bre    |    ░░░░░░░░░░░░        │
+│  Bayonetta 2                 | ID: 000500001010EC00   │
+│  Pikmin 3                    | Favorite: Yes          │
+│  Xenoblade Chronicles X      |                        │
+│  Hyrule Warriors             | Categories:            │
+│  Donkey Kong Country: Tro    |   - Games              │
+│  Captain Toad: Treasure T    |                        │
+│  Yoshi's Woolly World        |                        │
+│  Star Fox Zero               |                        │
+│  NES Remix Pack              |                        │
+│  Mii Verse            [DOWN] |                        │
+│A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [2/20]  │
+└───────────────────────────────────────────────────────┘

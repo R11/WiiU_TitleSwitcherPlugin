@@ -225,6 +225,83 @@ std::string GetFrameOutput(bool useColor, bool useUnicode) {
     return out.str();
 }
 
+std::string GetCompactOutput(int maxWidth) {
+    if (!sInitialized) return "";
+
+    // Truncate to fit within maxWidth (default 78 to fit 80-col terminal with borders)
+    int displayCols = std::min(maxWidth - 2, sConfig->gridCols);  // -2 for borders
+    bool truncated = (displayCols < sConfig->gridCols);
+
+    std::ostringstream out;
+
+    // Draw top border
+    out << "┌";
+    for (int i = 0; i < displayCols; i++) out << "─";
+    out << "┐\n";
+
+    // Draw each row
+    for (int row = 0; row < sConfig->gridRows; row++) {
+        out << "│";
+
+        for (int col = 0; col < displayCols; col++) {
+            const Cell& cell = sCharBuffer[row * sConfig->gridCols + col];
+
+            // Check if this cell is covered by a pixel region
+            int px = col * sConfig->charWidth;
+            int py = row * sConfig->charHeight;
+
+            bool inRegion = false;
+            for (const auto& region : sPixelRegions) {
+                if (px >= region.x && px < region.x + region.w &&
+                    py >= region.y && py < region.y + region.h) {
+                    inRegion = true;
+                    break;
+                }
+            }
+
+            out << (inRegion ? "░" : std::string(1, cell.ch));
+        }
+
+        out << "│\n";
+    }
+
+    // Draw bottom border
+    out << "└";
+    for (int i = 0; i < displayCols; i++) out << "─";
+    out << "┘\n";
+
+    if (truncated) {
+        out << "Truncated to " << displayCols << " cols (full: " << sConfig->gridCols << " cols)\n";
+    }
+
+    return out.str();
+}
+
+std::string GetRawText() {
+    if (!sInitialized) return "";
+
+    std::ostringstream out;
+    for (int row = 0; row < sConfig->gridRows; row++) {
+        for (int col = 0; col < sConfig->gridCols; col++) {
+            out << sCharBuffer[row * sConfig->gridCols + col].ch;
+        }
+        out << '\n';
+    }
+    return out.str();
+}
+
+std::string GetTextAt(int col, int row, int length) {
+    if (!sInitialized) return "";
+    if (row < 0 || row >= sConfig->gridRows) return "";
+    if (col < 0) col = 0;
+
+    std::string result;
+    for (int i = 0; i < length && (col + i) < sConfig->gridCols; i++) {
+        result += sCharBuffer[row * sConfig->gridCols + col + i].ch;
+    }
+    return result;
+}
+
 void DrawText(int col, int row, const char* text, uint32_t color) {
     if (!sInitialized || !text) return;
     if (row < 0 || row >= sConfig->gridRows) return;
