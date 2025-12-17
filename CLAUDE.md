@@ -1,80 +1,135 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-## Build Commands
-
-Build the plugin (requires Docker):
-```bash
-./build.sh
-```
-
-This builds inside a Docker container with devkitPro/devkitPPC and outputs `TitleSwitcherPlugin.wps`.
-
-For debug builds, modify the Dockerfile to pass `DEBUG=1` to make.
+This file provides guidance for AI assistants working on this codebase.
 
 ## Project Overview
 
-TitleSwitcherPlugin is a Wii U Plugin System (WUPS) plugin for the Aroma homebrew environment. It provides a game launcher menu accessible via button combo (L+R+Minus) that allows switching between installed games without returning to the Wii U Menu.
+**Title Switcher Plugin** is a Wii U homebrew plugin for the Aroma environment that provides a quick game launcher menu accessible via button combo (L + R + Minus). It allows users to switch between installed titles without returning to the slow Wii U system menu.
+
+## Build System
+
+### Docker Build (Recommended)
+```bash
+./build.sh
+```
+This builds in a container with devkitPro/devkitPPC and produces `TitleSwitcherPlugin.wps`.
+
+### Direct Build (Requires devkitPro)
+```bash
+make -j$(nproc)
+```
+
+### Running Tests
+```bash
+cd tests && make && ./run_tests
+```
+Tests use Google Test framework with mocked WUPS/WUT APIs.
+
+### Preview Tool
+```bash
+cd tools/preview && make && ./preview_demo
+```
+ASCII renderer for validating UI layouts without hardware. Options: `--screen drc|tv1080|tv720|tv480`, `--no-color`, `--compact`.
 
 ## Architecture
 
-### Entry Point and Plugin Lifecycle (`src/main.cpp`)
-- Defines WUPS plugin metadata and lifecycle hooks
-- Hooks `VPADRead` to intercept GamePad input for combo detection
-- Separate hooks for game processes (`VPADRead_Game`) and Wii U Menu (`VPADRead_Menu`)
-- Application lifecycle hooks (`ON_APPLICATION_START`, `ON_APPLICATION_ENDS`, etc.) track state for safe menu opening
+```
+src/
+├── main.cpp           # Entry point, WUPS hooks, VPADRead interception
+├── input/
+│   ├── buttons.h      # Button mappings (constexpr, header-only)
+│   └── text_input.*   # Text input field for naming
+├── render/
+│   ├── renderer.*     # Abstract renderer (OSScreen backend)
+│   └── image_loader.* # PNG/JPG loading via libgd
+├── menu/
+│   ├── menu.*         # Main state machine and loop
+│   └── categories.*   # Category filtering (All, Favorites, System, custom)
+├── titles/
+│   └── titles.*       # Title enumeration via MCP/ACP APIs
+├── presets/
+│   └── title_presets.*# GameTDB metadata integration
+├── storage/
+│   └── settings.*     # Persistent storage via WUPS Storage API
+└── utils/
+    └── dc.h           # Display Controller register save/restore
+```
 
-### Core Modules
+## Key Patterns
 
-**Menu System (`src/menu/`)**
-- `menu.cpp/h`: Main menu loop, rendering, input handling
-- `categories.cpp/h`: Category filtering and display (All, Favorites, user-defined)
-- Split-screen layout: title list (left 30%), details panel (right 70%)
-- Modes: BROWSE (normal), EDIT (modify title categories), SETTINGS
+### Namespace Organization
+- `Buttons::` - Button definitions and combo detection
+- `Menu::` - Menu state and rendering
+- `Renderer::` - Screen abstraction layer
+- `Titles::` - Title management
+- `Settings::` - Persistent configuration
+- `Categories::` - Filtering logic
+- `TitlePresets::` - GameTDB preset metadata
 
-**Title Management (`src/titles/`)**
-- `titles.cpp/h`: Enumerates installed titles via `MCP_TitleListByAppType`
-- Retrieves names via `ACPGetTitleMetaXml`
-- Caches title list in memory (enumeration is slow)
-- Filters out currently running title
+### Button System
+All buttons defined in `src/input/buttons.h` as constexpr. Use semantic names like `Buttons::CONFIRM`, `Buttons::LAUNCH` rather than raw VPAD constants.
 
-**Rendering (`src/render/`)**
-- `renderer.cpp/h`: Abstract renderer interface (OSScreen backend currently)
-- `image_loader.cpp/h`: PNG/JPEG loading via libgd
-- Dynamic layout calculations for DRC vs TV screen sizes
+### Multi-Screen Support
+Dynamic layouts support: DRC GamePad (854x480), TV 1080p/720p/480p. Layout calculations in `menu.cpp` use screen dimensions for responsive positioning.
 
-**Storage (`src/storage/`)**
-- `settings.cpp/h`: WUPS Storage API wrapper
-- Saves to `sd:/wiiu/plugins/config/TitleSwitcher.json`
-- Stores favorites, custom categories, colors, last selection
+### Safety Systems
+- **Grace period**: 5-second delay after app start before menu can open
+- **Foreground tracking**: Menu disabled during app transitions
+- **ProcUI state checking**: Ensures stable app state
+- **DC register save/restore**: Clean graphics takeover
 
-**Presets (`src/presets/`)**
-- `title_presets.cpp/h`: GameTDB metadata integration
-- Loads from `sd:/wiiu/plugins/config/TitleSwitcher_presets.json`
-- Provides publisher/developer/genre/region data for category suggestions
-- Use `tools/convert_gametdb.py` to convert GameTDB XML to JSON
+### Storage Format
+WUPS Storage API writes to `sd:/wiiu/plugins/config/TitleSwitcher.json`. Version-based migration (CONFIG_VERSION = 2).
 
-**Input (`src/input/`)**
-- `buttons.h`: Centralized button mapping (change mappings in one place)
-- `text_input.cpp/h`: On-screen text input for category names
+### Presets System
+GameTDB metadata loaded from `sd:/wiiu/environments/aroma/plugins/config/TitleSwitcher_presets.json`. Provides publisher, developer, release date, genre, and region data. Use `tools/convert_gametdb.py` to generate from GameTDB XML.
 
-### Tools (`tools/`)
-- `convert_gametdb.py`: Converts GameTDB XML to presets JSON
-- `preview/`: Desktop preview tool for testing menu rendering (uses stubs)
+## Common Tasks
 
-## Key APIs Used
+### Adding a New Button Action
+1. Add constexpr in `src/input/buttons.h`
+2. Handle in `Menu::handleInput()` in `menu.cpp`
 
-- **WUPS**: Plugin framework, function hooking, storage API
-- **WUT**: Wii U Toolchain (VPADRead, OSScreen, MCP, ACP, SYSLaunchTitle)
-- **libnotifications**: Toast notifications
-- **libmappedmemory**: Memory allocation for large buffers
-- **libgd**: Image loading (PNG, JPEG)
+### Adding a Settings Field
+1. Add to `Settings` struct in `settings.h`
+2. Add load/save in `loadSettings()`/`saveSettings()`
+3. Increment CONFIG_VERSION if migration needed
 
-## Code Conventions
+### Adding a Category
+Built-in categories defined in `categories.cpp`. User categories stored in settings.
 
-- C++20 standard
-- Namespaces match module names (e.g., `Menu::`, `Titles::`, `Renderer::`)
-- Header files contain extensive documentation with usage examples
-- Colors in RGBA format: `0xRRGGBBAA`
-- Title IDs are 64-bit (`uint64_t`)
+## Git Hooks
+
+Install the pre-commit hook to automatically run tests and update snapshots:
+```bash
+./scripts/install-hooks.sh
+```
+
+The pre-commit hook will:
+- Run unit tests (abort commit if they fail)
+- Regenerate snapshots and stage any changes
+
+To skip temporarily: `git commit --no-verify`
+
+## Testing Changes
+
+1. Run unit tests: `cd tests && make && ./run_tests`
+2. Run preview tool: `cd tools/preview && make && ./preview_demo`
+3. Verify snapshots: `cd tools/preview && ./preview_demo --verify-snapshots`
+4. Build plugin: `./build.sh`
+5. Test on hardware or Cemu
+
+## Dependencies
+
+- **WUPS (Wii U Plugin System)** - Plugin framework
+- **WUT (Wii U Toolchain)** - System APIs
+- **libmappedmemory** - GX2-compatible memory
+- **libnotifications** - In-game notifications
+- **libgd, libpng, libjpeg** - Image loading
+
+## Color Palette
+
+Uses Catppuccin Mocha theme. Constants defined in `settings.h`:
+- `DEFAULT_BG_COLOR` = 0x1E1E2EFF (Base)
+- `DEFAULT_TITLE_COLOR` = 0xCDD6F4FF (Text)
+- `DEFAULT_HIGHLIGHTED_COLOR` = 0x89B4FAFF (Blue)

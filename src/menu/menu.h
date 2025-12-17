@@ -58,7 +58,8 @@ namespace Menu {
 enum class Mode {
     BROWSE,     // Normal browsing mode
     EDIT,       // Editing a title (categories, etc.)
-    SETTINGS    // Settings submenu
+    SETTINGS,   // Settings submenu
+    DEBUG_GRID  // Debug overlay showing grid dimensions
 };
 
 // =============================================================================
