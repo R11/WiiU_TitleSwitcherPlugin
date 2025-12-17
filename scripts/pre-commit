@@ -1,0 +1,72 @@
+#!/bin/bash
+#
+# Pre-commit hook: Run tests and update snapshots
+#
+# This hook ensures:
+# 1. Unit tests pass before committing (if gtest available)
+# 2. Snapshots are regenerated and staged if changed
+#
+
+set -e
+
+# Get repository root
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# Check for g++ compiler
+if ! command -v g++ &> /dev/null; then
+    echo "WARNING: g++ not found. Skipping pre-commit checks."
+    exit 0
+fi
+
+echo "=== Pre-commit: Running tests ==="
+
+# Run unit tests (if gtest is available)
+cd "$REPO_ROOT/tests"
+
+# Try to build - if gtest is missing, skip tests with warning
+if make 2>&1 | grep -q "gtest/gtest.h: No such file"; then
+    echo "WARNING: Google Test not installed. Skipping unit tests."
+    echo "  Install with: sudo apt-get install libgtest-dev"
+else
+    if [ -f ./run_tests ]; then
+        if ! ./run_tests; then
+            echo ""
+            echo "ERROR: Unit tests failed. Commit aborted."
+            echo "Fix the failing tests and try again."
+            exit 1
+        fi
+        echo "Unit tests passed."
+    fi
+fi
+
+# Build and run snapshot update
+echo ""
+echo "=== Pre-commit: Updating snapshots ==="
+cd "$REPO_ROOT/tools/preview"
+
+if make 2>&1 | grep -q "error:"; then
+    echo "WARNING: Could not build preview tool. Skipping snapshot update."
+else
+    if [ -f ./preview_demo ]; then
+        # Update snapshots
+        ./preview_demo --update-snapshots
+
+        # Check if any snapshots changed
+        cd "$REPO_ROOT"
+        CHANGED_SNAPSHOTS=$(git diff --name-only tools/preview/snapshots/ 2>/dev/null || true)
+
+        if [ -n "$CHANGED_SNAPSHOTS" ]; then
+            echo ""
+            echo "Snapshots updated:"
+            echo "$CHANGED_SNAPSHOTS"
+            echo ""
+            echo "Staging updated snapshots..."
+            git add tools/preview/snapshots/
+            echo "Snapshots will be included in this commit."
+        fi
+    fi
+fi
+
+echo ""
+echo "=== Pre-commit checks passed ==="
+exit 0

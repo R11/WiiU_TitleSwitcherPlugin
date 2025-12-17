@@ -92,12 +92,26 @@ WUPS Storage API writes to `sd:/wiiu/plugins/config/TitleSwitcher.json`. Version
 ### Adding a Category
 Built-in categories defined in `categories.cpp`. User categories stored in settings.
 
+## Git Hooks
+
+Install the pre-commit hook to automatically run tests and update snapshots:
+```bash
+./scripts/install-hooks.sh
+```
+
+The pre-commit hook will:
+- Run unit tests (abort commit if they fail)
+- Regenerate snapshots and stage any changes
+
+To skip temporarily: `git commit --no-verify`
+
 ## Testing Changes
 
 1. Run unit tests: `cd tests && make && ./run_tests`
 2. Run preview tool: `cd tools/preview && make && ./preview_demo`
-3. Build plugin: `./build.sh`
-4. Test on hardware or Cemu
+3. Verify snapshots: `cd tools/preview && ./preview_demo --verify-snapshots`
+4. Build plugin: `./build.sh`
+5. Test on hardware or Cemu
 
 ## Dependencies
 
