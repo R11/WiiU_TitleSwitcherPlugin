@@ -5,31 +5,21 @@
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │[All]  Favorites   System   Games   Apps                                                            │
 │----------------------------------------------------------------------------------------------------│
-│   1. * Super Mario 3D World  | Mar░░░░░░░░░░░░                                                     │
-│>  2. * Mario Kart 8          |    ░░░░░░░░░░░░                                                     │
+│   1. * Super Mario 3D World  | Mario Kart 8                                                        │
+│>  2. * Mario Kart 8          |                                                                     │
 │   3.   Splatoon              |    ░░░░░░░░░░░░                                                     │
 │   4. * Super Smash Bros. for |    ░░░░░░░░░░░░                                                     │
-│   5.   The Legend of Zelda:  |                                                                     │
-│   6.   Bayonetta 2           | ID: 000500001010EC00                                                │
-│   7.   Pikmin 3              | Favorite: Yes                                                       │
-│   8.   Xenoblade Chronicles  | Game ID: AMKP01                                                     │
-│   9.   Hyrule Warriors       |                                                                     │
-│  10.   Donkey Kong Country:  | Pub: Nintendo                                                       │
-│  11.   Captain Toad: Treasur | Dev: Nintendo EAD                                                   │
-│  12.   Yoshi's Woolly World  | Released: 2014-05-30                                                │
-│  13.   Star Fox Zero         | Racing / EUR                                                        │
-│  14.   NES Remix Pack        |                                                                     │
-│  15.   Mii Verse             | Categories:                                                         │
-│  16.   Nintendo eShop        |   - Games                                                           │
-│  17.   Internet Browser      |                                                                     │
-│  18.   Tokyo Mirage Sessions |                                                                     │
-│  19.   Pokken Tournament     |                                                                     │
-│  20.   Super Mario Maker     |                                                                     │
-│                              |                                                                     │
-│                              |                                                                     │
-│                              |                                                                     │
-│                              |                                                                     │
-│                              |                                                                     │
+│   5.   The Legend of Zelda:  |    ░░░░░░░░░░░░                                                     │
+│   6.   Bayonetta 2           |    ░░░░░░░░░░░░                                                     │
+│   7.   Pikmin 3              | ID: 000500001010EC00                                                │
+│   8.   Xenoblade Chronicles  | Favorite: Yes                                                       │
+│   9.   Hyrule Warriors       | Game ID: AMKP01                                                     │
+│  10.   Donkey Kong Country:  |                                                                     │
+│  11.   Captain Toad: Treasur | Pub: Nintendo                                                       │
+│  12.   Yoshi's Woolly World  | Dev: Nintendo EAD                                                   │
+│  13.   Star Fox Zero         |                                                                     │
+│  14.   NES Remix Pack        | Categories:                                                         │
+│  15.   Mii Verse      [DOWN] |                                                                     │
 │A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [2/20]                                               │
 └────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -48,7 +38,7 @@
 │   5.   The Legend of Zelda: Breath of the Wild | ░░░░░░░░░░░░░░░░                                                                                              │
 │   6.   Bayonetta 2                             | ░░░░░░░░░░░░░░░░                                                                                              │
 │   7.   Pikmin 3                                | ░░░░░░░░░░░░░░░░                                                                                              │
-│   8.   Xenoblade Chronicles X                  |                                                                                                               │
+│   8.   Xenoblade Chronicles X                  | ░░░░░░░░░░░░░░░░                                                                                              │
 │   9.   Hyrule Warriors                         | ID: 000500001010EC00                                                                                          │
 │  10.   Donkey Kong Country: Tropical Freeze    | Favorite: Yes                                                                                                 │
 │  11.   Captain Toad: Treasure Tracker          | Game ID: AMKP01                                                                                               │
@@ -74,15 +64,6 @@
 │                                                |                                                                                                               │
 │                                                |                                                                                                               │
 │                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
 │A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [2/20]                                                                                                           │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -95,7 +76,7 @@
 │[All]  Favorites   System   Games   Apps                                                                                │
 │------------------------------------------------------------------------------------------------------------------------│
 │   1. * Super Mario 3D World        | Mario Kart 8                                                                      │
-│>  2. * Mario Kart 8                |    ░░░░░░░░░░░░░                                                                  │
+│>  2. * Mario Kart 8                |                                                                                   │
 │   3.   Splatoon                    |    ░░░░░░░░░░░░░                                                                  │
 │   4. * Super Smash Bros. for Wii U |    ░░░░░░░░░░░░░                                                                  │
 │   5.   The Legend of Zelda: Breath |    ░░░░░░░░░░░░░                                                                  │
@@ -118,13 +99,6 @@
 │                                    |                                                                                   │
 │                                    |                                                                                   │
 │                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
 │A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [2/20]                                                                   │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -136,11 +110,11 @@
 ┌────────────────────────────────────────────────────────────────────────────────┐
 │[All]  Favorites   System   Games   Apps                                        │
 │--------------------------------------------------------------------------------│
-│   1. * Super Mario 3D  | ░░░░░░░░░░░░                                          │
+│   1. * Super Mario 3D  | Mario Kart 8                                          │
 │>  2. * Mario Kart 8    | ░░░░░░░░░░░░                                          │
 │   3.   Splatoon        | ░░░░░░░░░░░░                                          │
 │   4. * Super Smash Bro | ░░░░░░░░░░░░                                          │
-│   5.   The Legend of Z |                                                       │
+│   5.   The Legend of Z | ░░░░░░░░░░░░                                          │
 │   6.   Bayonetta 2     |                                                       │
 │   7.   Pikmin 3        | ID: 000500001010EC00                                  │
 │   8.   Xenoblade Chron | Favorite: Yes                                         │
@@ -152,16 +126,6 @@
 │  14.   NES Remix Pack  | Racing / EUR                                          │
 │  15.   Mii Verse       |                                                       │
 │  16.   Nintendo eShop  | Categories:                                           │
-│  17.   Internet Browse |   - Games                                             │
-│  18.   Tokyo Mirage Se |                                                       │
-│  19.   Pokken Tourname |                                                       │
-│  20.   Super Mario Mak |                                                       │
-│                        |                                                       │
-│                        |                                                       │
-│                        |                                                       │
-│                        |                                                       │
-│                        |                                                       │
-│                        |                                                       │
-│                        |                                                       │
+│  17.   Internet [DOWN] |                                                       │
 │A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [2/20]                           │
 └────────────────────────────────────────────────────────────────────────────────┘
