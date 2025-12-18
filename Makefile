@@ -44,7 +44,7 @@ CXXFLAGS += -DDEBUG -g
 CFLAGS += -DDEBUG -g
 endif
 
-LIBS	:= -lnotifications -lfunctionpatcher -lmappedmemory -lgd -lpng -ljpeg -lz -lwups -lwut
+LIBS	:= -lnotifications -lmappedmemory -lgd -lpng -ljpeg -lz -lwups -lwut
 
 #-------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level
