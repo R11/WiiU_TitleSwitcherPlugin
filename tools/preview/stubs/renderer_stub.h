@@ -97,7 +97,6 @@ inline std::vector<Cell> sCharBuffer;
 inline PixelRegion sPixelRegions[64];
 inline int sPixelRegionCount = 0;
 inline uint32_t sClearColor = 0x000000FF;
-inline bool sHardwareAccurate = false;  // Use real 30% divider when true
 
 // =============================================================================
 // Screen Configuration
@@ -107,13 +106,6 @@ inline void SetScreenType(ScreenType type) {
     sScreenType = type;
     sConfig = &SCREEN_CONFIGS[static_cast<int>(type)];
 }
-
-// Set hardware-accurate mode (uses real 30% divider instead of 38% visual approximation)
-inline void SetHardwareAccurate(bool accurate) {
-    sHardwareAccurate = accurate;
-}
-
-inline bool IsHardwareAccurate() { return sHardwareAccurate; }
 
 inline ScreenType GetScreenType() { return sScreenType; }
 inline const ScreenConfig& GetScreenConfig() { return *sConfig; }
@@ -503,12 +495,9 @@ inline int GetGridHeight() { return sConfig->gridRows; }
 // These return proportional values that adapt to different resolutions
 
 // Get the divider column (splits list from details panel)
-// Real renderer uses 30%. For ASCII preview, we use 38% because terminal chars
-// are ~square while OSScreen chars are narrow (8x24 = 1:3 ratio).
-// For HTML output with pixel-accurate rendering, use the real 30%.
+// Based on hardware observation, the divider appears at ~45% of screen width
 inline int GetDividerCol() {
-    int percent = sHardwareAccurate ? 30 : 38;
-    return (sConfig->gridCols * percent) / 100;
+    return (sConfig->gridCols * 45) / 100;
 }
 
 // Get the details panel start column

@@ -223,7 +223,6 @@ void printUsage() {
     std::cout << "  --width N       Set compact width (default: 78)\n";
     std::cout << "  --raw           Output raw text buffer (no borders/colors)\n";
     std::cout << "  --html [FILE]   Generate HTML preview (default: preview.html)\n";
-    std::cout << "  --accurate      Use hardware-accurate 30%% divider (auto for --html)\n";
     std::cout << "  --numbers       Enable line numbers\n";
     std::cout << "  --no-favs       Hide favorite markers\n";
     std::cout << "\n";
@@ -375,7 +374,6 @@ std::string renderDebugGridForScreen(Renderer::ScreenType screenType) {
 // Render debug grid as HTML for DRC screen
 std::string renderDebugGridHtml() {
     Renderer::SetScreenType(Renderer::ScreenType::DRC);
-    Renderer::SetHardwareAccurate(true);
     Renderer::Init();
 
     int gridWidth = Renderer::GetGridWidth();
@@ -456,9 +454,8 @@ std::string renderSnapshotHtml(const SnapshotConfig& config) {
         Categories::SelectCategory(config.category);
     }
 
-    // Use DRC with hardware-accurate mode for HTML
+    // Use DRC for HTML rendering
     Renderer::SetScreenType(Renderer::ScreenType::DRC);
-    Renderer::SetHardwareAccurate(true);
     Renderer::Init();
 
     Renderer::BeginFrame(Settings::Get().bgColor);
@@ -604,7 +601,6 @@ int main(int argc, char* argv[]) {
     OutputMode outputMode = OutputMode::Full;
     int compactWidth = 78;
     std::string htmlOutputFile = "preview.html";
-    bool hardwareAccurate = false;
 
     // Parse command line arguments
     for (int i = 1; i < argc; i++) {
@@ -621,13 +617,10 @@ int main(int argc, char* argv[]) {
             outputMode = OutputMode::Raw;
         } else if (arg == "--html") {
             outputMode = OutputMode::Html;
-            hardwareAccurate = true;  // HTML uses pixel-accurate rendering
             // Check if next arg is a filename (doesn't start with --)
             if (i + 1 < argc && argv[i + 1][0] != '-') {
                 htmlOutputFile = argv[++i];
             }
-        } else if (arg == "--accurate") {
-            hardwareAccurate = true;
         } else if (arg == "--width" && i + 1 < argc) {
             compactWidth = std::stoi(argv[++i]);
             outputMode = OutputMode::Compact;
@@ -651,7 +644,6 @@ int main(int argc, char* argv[]) {
 
     // Set screen type BEFORE initializing renderer
     Renderer::SetScreenType(screenType);
-    Renderer::SetHardwareAccurate(hardwareAccurate);
 
     // Initialize stubs
     Settings::Init();
