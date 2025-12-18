@@ -1,14 +1,16 @@
 # Title Switcher Plugin for Wii U
 
-A plugin for the Aroma homebrew environment that allows you to switch between games and apps directly from the Aroma config menu without returning to the slow Wii U Menu.
+A plugin for the Aroma homebrew environment that provides a quick game launcher menu accessible via button combo. Switch between installed titles without returning to the slow Wii U system menu.
 
 ## Features
 
-- Quick game/app switching from Aroma's config menu
-- Games organized alphabetically in categories: A-F, G-L, M-R, S-Z, # (numbers)
-- System Apps in separate category (including vWii Mode)
-- Excludes currently running title from the list
-- Press A to launch immediately
+- Quick overlay menu accessible from any app via **L + Minus + D-Pad Right**
+- Browse all installed games and apps
+- Favorites system for quick access to your most-played titles
+- User-defined categories for custom organization
+- System Apps category (including vWii Mode)
+- Multi-screen support (GamePad, TV 1080p/720p/480p)
+- Persistent settings saved to SD card
 
 ## Installation
 
@@ -20,22 +22,28 @@ A plugin for the Aroma homebrew environment that allows you to switch between ga
 
 ## Usage
 
-1. While in any application, press **L + D-Pad Down + Minus** to open Aroma's config menu
-2. Select **Title Switcher** from the plugin list
-3. Navigate to a category (A-F, G-L, etc. or System Apps)
-4. Select a game and press **A** to launch
+While in any application, press **L + Minus + D-Pad Right** to open the Title Switcher menu.
+
+### Controls
 
 | Button | Action |
 |--------|--------|
+| **L + - + Right** | Open/Close menu |
 | D-Pad Up/Down | Navigate list |
+| D-Pad Left/Right | Skip 5 items |
+| L/R | Skip 15 items (page) |
 | A | Launch selected title |
 | B | Back / Exit menu |
+| Y | Toggle favorite |
+| X | Edit mode |
+| + | Open settings |
+| ZL/ZR | Previous/Next category |
 
-## Categories
+### Categories
 
-- **A-F, G-L, M-R, S-Z** - Games sorted alphabetically
-- **# (0-9)** - Games starting with numbers/symbols
-- **System Apps** - System applications and vWii Mode
+- **All** - All installed titles
+- **Favorites** - Your favorited titles (toggle with Y)
+- **Custom** - Create your own categories in Edit mode
 
 ## Building
 
@@ -45,12 +53,34 @@ Requires Docker to build:
 ./build.sh
 ```
 
+Or with devkitPro installed locally:
+
+```bash
+make -j$(nproc)
+```
+
+### Running Tests
+
+```bash
+cd tests && make && ./run_tests
+```
+
+### Preview Tool
+
+ASCII renderer for validating UI layouts without hardware:
+
+```bash
+cd tools/preview && make && ./preview_demo
+```
+
 ## Technical Details
 
-- Integrates with WUPS Config API for menu interface
+- Integrates with WUPS for plugin framework and storage
 - Uses `MCP_TitleListByAppType` to enumerate games and system apps
 - Uses `ACPGetTitleMetaXml` to retrieve title names
 - Uses `SYSLaunchTitle` to switch titles
+- VPADRead interception for button combo detection
+- OSScreen backend for rendering overlay
 
 ## Requirements
 
@@ -64,10 +94,3 @@ GPLv3
 ## Author
 
 R11
-
-## Version History
-
-- 1.0.0 - Category-based browser with System Apps support
-- 0.8.0 - Single-item browser with L/R pagination
-- 0.7.0 - Config menu integration (full list)
-- 0.1.0 - Initial release
