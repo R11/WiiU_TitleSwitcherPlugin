@@ -318,14 +318,17 @@ void drawDetailsPanel()
             case ImageLoader::Status::READY:         statusStr = "READY"; break;
             case ImageLoader::Status::FAILED:        statusStr = "FAILED"; break;
         }
-        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 1, "Icon: %s", statusStr);
+        // Show debug info
+        int updateCalls = 0, queueSize = 0;
+        bool isInit = false;
+        ImageLoader::GetDebugInfo(&updateCalls, &queueSize, &isInit);
+        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 1,
+                           "Icon: %s q=%d upd=%d init=%d", statusStr, queueSize, updateCalls, isInit ? 1 : 0);
 
-        // Show error details if failed
-        if (status == ImageLoader::Status::FAILED) {
-            const char* err = ImageLoader::GetLastError();
-            if (err && err[0] != '\0') {
-                Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 2, "Err: %s", err);
-            }
+        // Show error details if failed or other issue
+        const char* err = ImageLoader::GetLastError();
+        if (err && err[0] != '\0') {
+            Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 2, "Err: %s", err);
         }
     }
 
