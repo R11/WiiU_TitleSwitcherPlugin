@@ -270,5 +270,45 @@ inline int GetSelectedIndex(const State& state) {
     return state.itemCount > 0 ? state.selectedIndex : -1;
 }
 
+// =============================================================================
+// Config Factory Functions
+// =============================================================================
+// Pre-configured Config objects for common use cases.
+// These reduce boilerplate and ensure consistent layout across screens.
+
+/**
+ * Create a Config for the left panel (title list, settings, categories).
+ *
+ * Layout: Full left panel from LIST_START_ROW to footer.
+ * Features: Scroll indicators enabled.
+ *
+ * @param visibleRows  Override visible rows (-1 for auto-calculate)
+ * @return Config ready for left panel rendering
+ */
+Config LeftPanelConfig(int visibleRows = -1);
+
+/**
+ * Create a Config for the details/right panel.
+ *
+ * Layout: Right side of screen, starting at specified row offset.
+ * Features: Scroll indicators enabled.
+ *
+ * @param rowOffset    Row offset from LIST_START_ROW
+ * @param visibleRows  Number of visible rows
+ * @return Config ready for details panel rendering
+ */
+Config DetailsPanelConfig(int rowOffset, int visibleRows);
+
+/**
+ * Create a Config for input handling only (no rendering).
+ *
+ * Use when you handle rendering separately but want ListView
+ * to manage navigation and actions.
+ *
+ * @param visibleRows  Number of visible rows (for scroll calculations)
+ * @return Config ready for input handling
+ */
+Config InputOnlyConfig(int visibleRows);
+
 } // namespace ListView
 } // namespace UI

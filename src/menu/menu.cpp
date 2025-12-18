@@ -231,14 +231,10 @@ void drawTitleList()
     int count = Categories::GetFilteredCount();
     sTitleListState.itemCount = count;
 
-    // Configure list view
-    UI::ListView::Config listConfig;
-    listConfig.col = LIST_START_COL;
-    listConfig.row = LIST_START_ROW;
-    listConfig.width = Renderer::GetListWidth();
-    listConfig.visibleRows = Renderer::GetVisibleRows();
+    // Configure list view using factory, then customize
+    UI::ListView::Config listConfig = UI::ListView::LeftPanelConfig(Renderer::GetVisibleRows());
+    listConfig.width = Renderer::GetListWidth();  // Use full list width
     listConfig.showLineNumbers = Settings::Get().showNumbers;
-    listConfig.showScrollIndicators = true;
 
     // Render using ListView
     UI::ListView::Render(sTitleListState, listConfig, [](int index, bool isSelected) {
@@ -427,8 +423,7 @@ uint64_t handleBrowseModeInput(uint32_t pressed)
     sTitleListState.itemCount = count;
 
     // Configure ListView for navigation
-    UI::ListView::Config listConfig;
-    listConfig.visibleRows = Renderer::GetVisibleRows();
+    UI::ListView::Config listConfig = UI::ListView::InputOnlyConfig(Renderer::GetVisibleRows());
     listConfig.smallSkip = Buttons::Skip::SMALL;
     listConfig.largeSkip = Buttons::Skip::LARGE;
     listConfig.canFavorite = true;  // Y for favorite toggle
@@ -548,12 +543,9 @@ void renderEditMode()
         Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_CONTENT_LINE2,
                          "Create in Settings (+)");
     } else {
-        UI::ListView::Config listConfig;
-        listConfig.col = Renderer::GetDetailsPanelCol();
-        listConfig.row = LIST_START_ROW + Measurements::ROW_OFFSET_SECTION_START;
-        listConfig.width = Renderer::GetGridWidth() - Renderer::GetDetailsPanelCol() - 1;
-        listConfig.visibleRows = Measurements::CATEGORY_EDIT_VISIBLE_ROWS;
-        listConfig.showScrollIndicators = true;
+        UI::ListView::Config listConfig = UI::ListView::DetailsPanelConfig(
+            Measurements::ROW_OFFSET_SECTION_START,
+            Measurements::CATEGORY_EDIT_VISIBLE_ROWS);
         listConfig.canToggle = true;
 
         sEditCatsListState.itemCount = catCount;
@@ -603,8 +595,7 @@ void handleEditModeInput(uint32_t pressed)
     int catCount = Settings::GetCategoryCount();
 
     // Configure ListView for checkbox-style list
-    UI::ListView::Config listConfig;
-    listConfig.visibleRows = Measurements::CATEGORY_EDIT_VISIBLE_ROWS;
+    UI::ListView::Config listConfig = UI::ListView::InputOnlyConfig(Measurements::CATEGORY_EDIT_VISIBLE_ROWS);
     listConfig.canToggle = true;
     listConfig.canCancel = true;
 
@@ -680,12 +671,7 @@ void renderSettingsMain()
     drawDivider();
 
     // --- Left side: Settings list using ListView ---
-    UI::ListView::Config listConfig;
-    listConfig.col = LIST_START_COL;
-    listConfig.row = LIST_START_ROW;
-    listConfig.width = Renderer::GetDividerCol() - 1;
-    listConfig.visibleRows = Renderer::GetFooterRow() - LIST_START_ROW - 1;
-    listConfig.showScrollIndicators = true;
+    UI::ListView::Config listConfig = UI::ListView::LeftPanelConfig();
 
     sSettingsListState.itemCount = SETTINGS_ITEM_COUNT;
 
@@ -772,12 +758,7 @@ void renderManageCategories()
     const auto& categories = Settings::Get().categories;
 
     // --- Left side: Category list using ListView ---
-    UI::ListView::Config listConfig;
-    listConfig.col = LIST_START_COL;
-    listConfig.row = LIST_START_ROW;
-    listConfig.width = Renderer::GetDividerCol() - 1;
-    listConfig.visibleRows = Measurements::CATEGORY_MANAGE_VISIBLE_ROWS;
-    listConfig.showScrollIndicators = true;
+    UI::ListView::Config listConfig = UI::ListView::LeftPanelConfig(Measurements::CATEGORY_MANAGE_VISIBLE_ROWS);
     listConfig.canReorder = true;
     listConfig.canDelete = true;
 
@@ -905,12 +886,7 @@ void renderSystemApps()
     drawDivider();
 
     // --- Left side: System app list using ListView ---
-    UI::ListView::Config listConfig;
-    listConfig.col = LIST_START_COL;
-    listConfig.row = LIST_START_ROW;
-    listConfig.width = Renderer::GetDividerCol() - 1;
-    listConfig.visibleRows = Renderer::GetFooterRow() - LIST_START_ROW - 1;
-    listConfig.showScrollIndicators = true;
+    UI::ListView::Config listConfig = UI::ListView::LeftPanelConfig();
 
     sSystemAppsListState.itemCount = SYSTEM_APP_COUNT;
 
@@ -974,8 +950,8 @@ void renderSettingsMode()
 void handleSettingsMainInput(uint32_t pressed)
 {
     // Configure ListView for navigation
-    UI::ListView::Config listConfig;
-    listConfig.visibleRows = Renderer::GetFooterRow() - LIST_START_ROW - 1;
+    UI::ListView::Config listConfig = UI::ListView::InputOnlyConfig(
+        Renderer::GetFooterRow() - LIST_START_ROW - 1);
     listConfig.canConfirm = true;
     listConfig.canCancel = true;
     // Disable skip navigation - we use Left/Right for brightness adjustment
@@ -1068,8 +1044,7 @@ void handleManageCategoriesInput(uint32_t pressed)
     const auto& categories = Settings::Get().categories;
 
     // Configure ListView
-    UI::ListView::Config listConfig;
-    listConfig.visibleRows = Measurements::CATEGORY_MANAGE_VISIBLE_ROWS;
+    UI::ListView::Config listConfig = UI::ListView::InputOnlyConfig(Measurements::CATEGORY_MANAGE_VISIBLE_ROWS);
     listConfig.canConfirm = true;
     listConfig.canCancel = true;
     listConfig.canReorder = true;
@@ -1278,8 +1253,8 @@ void launchSystemApp(int appId)
 void handleSystemAppsInput(uint32_t pressed)
 {
     // Configure ListView for input handling
-    UI::ListView::Config listConfig;
-    listConfig.visibleRows = Renderer::GetFooterRow() - LIST_START_ROW - 1;
+    UI::ListView::Config listConfig = UI::ListView::InputOnlyConfig(
+        Renderer::GetFooterRow() - LIST_START_ROW - 1);
     listConfig.canConfirm = true;
     listConfig.canCancel = true;
 
