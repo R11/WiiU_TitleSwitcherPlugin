@@ -127,6 +127,20 @@ To skip temporarily: `git commit --no-verify`
 - **libnotifications** - In-game notifications
 - **libgd, libpng, libjpeg** - Image loading
 
+## Code Style
+
+### Comments
+- Keep comments to 1-2 lines maximum
+- Never put comments on the same line as code
+- Prefer descriptive variable/function names over comments
+- Delete comments that restate what code already expresses
+- No ASCII art diagrams or lengthy documentation blocks in source files
+
+### Variable Naming
+- Use verbose, self-explanatory names (e.g., `categoryIndex` not `catIdx`)
+- Iterator names should describe what they iterate (e.g., `requestIterator` not `it`)
+- Boolean variables should read as questions (e.g., `isVisible`, `hasLoaded`)
+
 ## Color Palette
 
 Uses Catppuccin Mocha theme. Constants defined in `settings.h`:
