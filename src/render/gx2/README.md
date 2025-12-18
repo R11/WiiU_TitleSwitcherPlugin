@@ -27,7 +27,8 @@ Currently disabled via `#ifdef ENABLE_GX2_RENDERING`. To enable:
 1. Compile shader source code to GPU7 binaries
 2. Embed font data
 3. Add `-DENABLE_GX2_RENDERING` to CFLAGS in Makefile
-4. Test on hardware
+4. Add `-lfunctionpatcher` to LIBS in Makefile
+5. Test on hardware
 
 ## Architecture
 
