@@ -21,9 +21,6 @@
 // Wii U SDK for title meta directory
 #include <nn/acp/title.h>
 
-// Notifications for diagnostic logging
-#include <notifications/notifications.h>
-
 namespace ImageLoader {
 
 // =============================================================================
@@ -37,6 +34,9 @@ bool sInitialized = false;
 
 // Maximum cache size
 int sCacheCapacity = DEFAULT_CACHE_SIZE;
+
+// Last error message for debugging (displayed on menu)
+char sLastError[128] = "";
 
 // Request tracking
 struct RequestInfo {
@@ -126,7 +126,7 @@ bool loadImageFromFile(const char* path, Renderer::ImageHandle& outHandle)
     // Open file
     FILE* file = fopen(path, "rb");
     if (!file) {
-        NotificationModule_AddInfoNotification("loadImageFromFile: fopen failed");
+        snprintf(sLastError, sizeof(sLastError), "fopen failed");
         return false;
     }
 
@@ -137,9 +137,7 @@ bool loadImageFromFile(const char* path, Renderer::ImageHandle& outHandle)
 
     if (fileSize <= 8) {
         fclose(file);
-        char msg[64];
-        snprintf(msg, sizeof(msg), "loadImageFromFile: file too small (%ld bytes)", fileSize);
-        NotificationModule_AddInfoNotification(msg);
+        snprintf(sLastError, sizeof(sLastError), "file too small (%ld)", fileSize);
         return false;
     }
 
@@ -147,37 +145,34 @@ bool loadImageFromFile(const char* path, Renderer::ImageHandle& outHandle)
     uint8_t* buffer = (uint8_t*)malloc(fileSize);
     if (!buffer) {
         fclose(file);
-        NotificationModule_AddInfoNotification("loadImageFromFile: malloc failed");
+        snprintf(sLastError, sizeof(sLastError), "malloc failed");
         return false;
     }
 
     if (fread(buffer, 1, fileSize, file) != (size_t)fileSize) {
         free(buffer);
         fclose(file);
-        NotificationModule_AddInfoNotification("loadImageFromFile: fread failed");
+        snprintf(sLastError, sizeof(sLastError), "fread failed");
         return false;
     }
     fclose(file);
 
-    // Log first bytes for format detection debugging
-    char hdrMsg[80];
-    snprintf(hdrMsg, sizeof(hdrMsg), "loadImageFromFile: header=%02X %02X %02X %02X, size=%ld",
-             buffer[0], buffer[1], buffer[2], buffer[3], fileSize);
-    NotificationModule_AddInfoNotification(hdrMsg);
+    // Save header bytes for error reporting (before we potentially free buffer)
+    uint8_t hdr[4] = { buffer[0], buffer[1], buffer[2], buffer[3] };
 
     // Detect format and load with libgd
     gdImagePtr gdImg = nullptr;
     const char* detectedFormat = "unknown";
 
-    if (buffer[0] == 0x89 && buffer[1] == 'P' && buffer[2] == 'N' && buffer[3] == 'G') {
+    if (hdr[0] == 0x89 && hdr[1] == 'P' && hdr[2] == 'N' && hdr[3] == 'G') {
         // PNG
         detectedFormat = "PNG";
         gdImg = gdImageCreateFromPngPtr(fileSize, buffer);
-    } else if (buffer[0] == 0xFF && buffer[1] == 0xD8) {
+    } else if (hdr[0] == 0xFF && hdr[1] == 0xD8) {
         // JPEG
         detectedFormat = "JPEG";
         gdImg = gdImageCreateFromJpegPtr(fileSize, buffer);
-    } else if (buffer[0] == 'B' && buffer[1] == 'M') {
+    } else if (hdr[0] == 'B' && hdr[1] == 'M') {
         // BMP
         detectedFormat = "BMP";
         gdImg = gdImageCreateFromBmpPtr(fileSize, buffer);
@@ -190,9 +185,8 @@ bool loadImageFromFile(const char* path, Renderer::ImageHandle& outHandle)
     free(buffer);
 
     if (!gdImg) {
-        char msg[64];
-        snprintf(msg, sizeof(msg), "loadImageFromFile: libgd failed (format=%s)", detectedFormat);
-        NotificationModule_AddInfoNotification(msg);
+        snprintf(sLastError, sizeof(sLastError), "libgd failed, hdr=%02X%02X%02X%02X fmt=%s",
+                 hdr[0], hdr[1], hdr[2], hdr[3], detectedFormat);
         return false;
     }
 
@@ -245,7 +239,7 @@ bool loadImage(uint64_t titleId, Renderer::ImageHandle& outHandle)
 
     // Cannot load images if renderer doesn't support them
     if (!Renderer::SupportsImages()) {
-        NotificationModule_AddInfoNotification("ImageLoader: SupportsImages=false");
+        snprintf(sLastError, sizeof(sLastError), "SupportsImages=false");
         return false;
     }
 
@@ -254,9 +248,7 @@ bool loadImage(uint64_t titleId, Renderer::ImageHandle& outHandle)
 
     ACPResult result = ACPGetTitleMetaDir(titleId, metaPath, sizeof(metaPath));
     if (result != ACP_RESULT_SUCCESS) {
-        char msg[64];
-        snprintf(msg, sizeof(msg), "ImageLoader: ACPGetTitleMetaDir failed=%d", (int)result);
-        NotificationModule_AddInfoNotification(msg);
+        snprintf(sLastError, sizeof(sLastError), "ACPGetTitleMetaDir=%d", (int)result);
         return false;
     }
 
@@ -264,14 +256,8 @@ bool loadImage(uint64_t titleId, Renderer::ImageHandle& outHandle)
     char iconPath[280];
     snprintf(iconPath, sizeof(iconPath), "%s/iconTex.tga", metaPath);
 
-    // Load the image
-    bool loaded = loadImageFromFile(iconPath, outHandle);
-    if (!loaded) {
-        char msg[96];
-        snprintf(msg, sizeof(msg), "ImageLoader: loadImageFromFile failed: %.60s", iconPath);
-        NotificationModule_AddInfoNotification(msg);
-    }
-    return loaded;
+    // Load the image (loadImageFromFile sets sLastError on failure)
+    return loadImageFromFile(iconPath, outHandle);
 }
 
 } // anonymous namespace
@@ -283,7 +269,6 @@ bool loadImage(uint64_t titleId, Renderer::ImageHandle& outHandle)
 bool Init(int cacheSize)
 {
     if (sInitialized) {
-        NotificationModule_AddInfoNotification("ImageLoader::Init: already initialized");
         return true;
     }
 
@@ -291,9 +276,9 @@ bool Init(int cacheSize)
     sRequests.clear();
     sLoadQueue.clear();
     sCacheOrder.clear();
+    sLastError[0] = '\0';
 
     sInitialized = true;
-    NotificationModule_AddInfoNotification("ImageLoader::Init: initialized");
     return true;
 }
 
@@ -317,25 +302,11 @@ void Shutdown()
     sInitialized = false;
 }
 
-// Track if we've logged Update state (to avoid spam)
-static bool sUpdateLogged = false;
-
 void Update()
 {
-    if (!sInitialized) {
-        if (!sUpdateLogged) {
-            NotificationModule_AddInfoNotification("ImageLoader::Update: not initialized");
-            sUpdateLogged = true;
-        }
+    if (!sInitialized || sLoadQueue.empty()) {
         return;
     }
-
-    if (sLoadQueue.empty()) {
-        return;  // Normal case, don't log
-    }
-
-    // Reset log flag when we have work to do
-    sUpdateLogged = false;
 
     // Process one item from the queue per frame
     sortLoadQueue();
@@ -345,41 +316,30 @@ void Update()
 
     auto it = sRequests.find(titleId);
     if (it == sRequests.end()) {
-        NotificationModule_AddInfoNotification("ImageLoader::Update: request not found");
         return;
     }
 
     it->second.status = Status::LOADING;
 
-    NotificationModule_AddInfoNotification("ImageLoader::Update: loading image...");
-
     Renderer::ImageHandle handle;
     if (loadImage(titleId, handle)) {
         it->second.status = Status::READY;
         it->second.handle = handle;
+        sLastError[0] = '\0';  // Clear error on success
         touchCache(titleId);
         evictIfNeeded();
-        NotificationModule_AddInfoNotification("ImageLoader::Update: load SUCCESS");
     } else {
         it->second.status = Status::FAILED;
         it->second.handle = Renderer::INVALID_IMAGE;
-        // loadImage already logged the specific failure
+        // sLastError already set by loadImage
     }
 }
-
-// Track if we've logged Request state (to avoid spam)
-static bool sRequestLogged = false;
 
 void Request(uint64_t titleId, Priority priority)
 {
     if (!sInitialized) {
-        if (!sRequestLogged) {
-            NotificationModule_AddInfoNotification("ImageLoader::Request: not initialized!");
-            sRequestLogged = true;
-        }
         return;
     }
-    sRequestLogged = false;
 
     auto it = sRequests.find(titleId);
     if (it != sRequests.end()) {
@@ -409,10 +369,6 @@ void Request(uint64_t titleId, Priority priority)
 
     sRequests[titleId] = info;
     sLoadQueue.push_back(titleId);
-
-    char msg[64];
-    snprintf(msg, sizeof(msg), "ImageLoader::Request: queued, queue size=%d", (int)sLoadQueue.size());
-    NotificationModule_AddInfoNotification(msg);
 }
 
 void Cancel(uint64_t titleId)
@@ -476,6 +432,11 @@ Renderer::ImageHandle Get(uint64_t titleId)
         return it->second.handle;
     }
     return Renderer::INVALID_IMAGE;
+}
+
+const char* GetLastError()
+{
+    return sLastError;
 }
 
 void ClearCache()
