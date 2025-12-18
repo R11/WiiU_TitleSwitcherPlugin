@@ -195,7 +195,7 @@ void drawCategoryBar()
     char line[80];
     int col = 0;
 
-    const Settings::Settings& settings = Settings::Get();
+    const Settings::PluginSettings& settings = Settings::Get();
 
     // Draw each visible category tab
     int catCount = Categories::GetTotalCategoryCount();
@@ -266,7 +266,7 @@ void drawTitleList()
         view.prefix = isSelected ? "> " : "  ";
 
         // Apply colors from settings
-        const Settings::Settings& settings = Settings::Get();
+        const Settings::PluginSettings& settings = Settings::Get();
         bool isFavorite = Settings::IsFavorite(title->titleId);
 
         if (isSelected) {
@@ -301,7 +301,7 @@ void drawDetailsPanel()
     const Titles::TitleInfo* title = Categories::GetFilteredTitle(selectedIdx);
     if (!title) return;
 
-    const Settings::Settings& settings = Settings::Get();
+    const Settings::PluginSettings& settings = Settings::Get();
 
     // Request icon loading (will be cached if already loaded)
     ImageLoader::Request(title->titleId, ImageLoader::Priority::HIGH);
