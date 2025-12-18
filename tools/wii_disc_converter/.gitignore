@@ -1,0 +1,13 @@
+# Dependencies (downloaded by setup)
+deps/
+.cache/
+.tmp/
+
+# Output directory
+output/
+
+# Sensitive files
+common_key.txt
+
+# Wine prefix (large, machine-specific)
+wine_prefix/
