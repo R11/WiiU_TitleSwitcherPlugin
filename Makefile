@@ -22,9 +22,9 @@ WUMS_ROOT := $(DEVKITPRO)/wums
 #-------------------------------------------------------------------------------
 TARGET		:=	TitleSwitcherPlugin
 BUILD		:=	build
-SOURCES		:=	src src/input src/render src/titles src/storage src/menu src/utils src/editor src/presets
+SOURCES		:=	src src/input src/render src/titles src/storage src/menu src/utils src/editor src/presets src/ui
 DATA		:=	data
-INCLUDES	:=	src src/input src/render src/titles src/storage src/menu src/utils src/editor src/presets
+INCLUDES	:=	src src/input src/render src/titles src/storage src/menu src/utils src/editor src/presets src/ui
 
 #-------------------------------------------------------------------------------
 # options for code generation
