@@ -195,6 +195,8 @@ void drawCategoryBar()
     char line[80];
     int col = 0;
 
+    const Settings::Settings& settings = Settings::Get();
+
     // Draw each visible category tab
     int catCount = Categories::GetTotalCategoryCount();
     int currentCat = Categories::GetCurrentCategoryIndex();
@@ -206,15 +208,18 @@ void drawCategoryBar()
         }
 
         const char* name = Categories::GetCategoryName(i);
+        uint32_t color;
 
         if (i == currentCat) {
-            // Highlighted category
+            // Highlighted category - use highlight color
             snprintf(line, sizeof(line), "[%s] ", name);
+            color = settings.highlightedTitleColor;
         } else {
             snprintf(line, sizeof(line), " %s  ", name);
+            color = settings.categoryColor;
         }
 
-        Renderer::DrawText(col, CATEGORY_ROW, line);
+        Renderer::DrawText(col, CATEGORY_ROW, line, color);
         col += strlen(line);
     }
 }
@@ -260,8 +265,21 @@ void drawTitleList()
         view.text = title->name;
         view.prefix = isSelected ? "> " : "  ";
 
+        // Apply colors from settings
+        const Settings::Settings& settings = Settings::Get();
+        bool isFavorite = Settings::IsFavorite(title->titleId);
+
+        if (isSelected) {
+            view.textColor = settings.highlightedTitleColor;
+            view.prefixColor = settings.highlightedTitleColor;
+        } else if (isFavorite) {
+            view.textColor = settings.favoriteColor;
+        } else {
+            view.textColor = settings.titleColor;
+        }
+
         // Favorite marker as suffix if enabled
-        if (Settings::Get().showFavorites && Settings::IsFavorite(title->titleId)) {
+        if (settings.showFavorites && isFavorite) {
             view.suffix = " *";
         }
 
@@ -283,11 +301,13 @@ void drawDetailsPanel()
     const Titles::TitleInfo* title = Categories::GetFilteredTitle(selectedIdx);
     if (!title) return;
 
+    const Settings::Settings& settings = Settings::Get();
+
     // Request icon loading (will be cached if already loaded)
     ImageLoader::Request(title->titleId, ImageLoader::Priority::HIGH);
 
-    // Title name (left-aligned with details panel)
-    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW, title->name);
+    // Title name (left-aligned with details panel) - highlighted
+    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW, title->name, settings.headerColor);
 
     // Draw icon below title
     // Position calculated from screen percentages for accuracy
@@ -319,9 +339,11 @@ void drawDetailsPanel()
              static_cast<unsigned long long>(title->titleId));
     Renderer::DrawText(Renderer::GetDetailsPanelCol(), currentRow++, idStr);
 
-    // Favorite status
-    const char* favStatus = Settings::IsFavorite(title->titleId) ? "Yes" : "No";
-    Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), currentRow++, "Favorite: %s", favStatus);
+    // Favorite status - yellow if favorite
+    bool isFav = Settings::IsFavorite(title->titleId);
+    const char* favStatus = isFav ? "Yes" : "No";
+    uint32_t favColor = isFav ? settings.favoriteColor : settings.titleColor;
+    Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), currentRow++, favColor, "Favorite: %s", favStatus);
 
     // Game ID (product code) for debugging preset matching
     if (title->productCode[0] != '\0') {
