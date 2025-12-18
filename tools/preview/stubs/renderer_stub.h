@@ -495,9 +495,10 @@ inline int GetGridHeight() { return sConfig->gridRows; }
 // These return proportional values that adapt to different resolutions
 
 // Get the divider column (splits list from details panel)
-// 30% of screen width for list (matches real renderer)
+// Real renderer uses 30% but terminal chars are ~square while OSScreen chars
+// are narrow (8x24 = 1:3 ratio). Using 38% gives similar visual proportions.
 inline int GetDividerCol() {
-    return (sConfig->gridCols * 30) / 100;
+    return (sConfig->gridCols * 38) / 100;
 }
 
 // Get the details panel start column

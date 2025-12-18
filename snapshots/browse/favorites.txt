@@ -5,21 +5,21 @@
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ All  [Favorites]  System   Games   Apps                                                            │
 │----------------------------------------------------------------------------------------------------│
-│> * Super Mario 3D World      | Super Mario 3D World                                                │
-│  * Mario Kart 8              |                                                                     │
-│  * Super Smash Bros. for Wi  |    ░░░░░░░░░░░░                                                     │
-│                              |    ░░░░░░░░░░░░                                                     │
-│                              |    ░░░░░░░░░░░░                                                     │
-│                              |    ░░░░░░░░░░░░                                                     │
-│                              | ID: 0005000010145D00                                                │
-│                              | Favorite: Yes                                                       │
-│                              | Game ID: ARDP01                                                     │
-│                              |                                                                     │
-│                              | Pub: Nintendo                                                       │
-│                              | Dev: Nintendo EAD Tokyo                                             │
-│                              |                                                                     │
-│                              | Categories:                                                         │
-│                              |                                                                     │
+│> * Super Mario 3D World              | Super Mario 3D World                                        │
+│  * Mario Kart 8                      |                                                             │
+│  * Super Smash Bros. for Wii U       |    ░░░░░░░░░░░░                                             │
+│                                      |    ░░░░░░░░░░░░                                             │
+│                                      |    ░░░░░░░░░░░░                                             │
+│                                      |    ░░░░░░░░░░░░                                             │
+│                                      | ID: 0005000010145D00                                        │
+│                                      | Favorite: Yes                                               │
+│                                      | Game ID: ARDP01                                             │
+│                                      |                                                             │
+│                                      | Pub: Nintendo                                               │
+│                                      | Dev: Nintendo EAD Tokyo                                     │
+│                                      |                                                             │
+│                                      | Categories:                                                 │
+│                                      |                                                             │
 │A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [1/3]                                                │
 └────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -31,39 +31,39 @@
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ All  [Favorites]  System   Games   Apps                                                                                                                        │
 │----------------------------------------------------------------------------------------------------------------------------------------------------------------│
-│> * Super Mario 3D World                        | Super Mario 3D World                                                                                          │
-│  * Mario Kart 8                                | ░░░░░░░░░░░░░░░░                                                                                              │
-│  * Super Smash Bros. for Wii U                 | ░░░░░░░░░░░░░░░░                                                                                              │
-│                                                | ░░░░░░░░░░░░░░░░                                                                                              │
-│                                                | ░░░░░░░░░░░░░░░░                                                                                              │
-│                                                | ░░░░░░░░░░░░░░░░                                                                                              │
-│                                                | ░░░░░░░░░░░░░░░░                                                                                              │
-│                                                | ░░░░░░░░░░░░░░░░                                                                                              │
-│                                                | ID: 0005000010145D00                                                                                          │
-│                                                | Favorite: Yes                                                                                                 │
-│                                                | Game ID: ARDP01                                                                                               │
-│                                                |                                                                                                               │
-│                                                | Pub: Nintendo                                                                                                 │
-│                                                | Dev: Nintendo EAD Tokyo                                                                                       │
-│                                                | Released: 2013-11-22                                                                                          │
-│                                                | Platformer / EUR                                                                                              │
-│                                                |                                                                                                               │
-│                                                | Categories:                                                                                                   │
-│                                                |   - Games                                                                                                     │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
+│> * Super Mario 3D World                                    | Super Mario 3D World                                                                              │
+│  * Mario Kart 8                                            | ░░░░░░░░░░░░░░░░                                                                                  │
+│  * Super Smash Bros. for Wii U                             | ░░░░░░░░░░░░░░░░                                                                                  │
+│                                                            | ░░░░░░░░░░░░░░░░                                                                                  │
+│                                                            | ░░░░░░░░░░░░░░░░                                                                                  │
+│                                                            | ░░░░░░░░░░░░░░░░                                                                                  │
+│                                                            | ░░░░░░░░░░░░░░░░                                                                                  │
+│                                                            | ░░░░░░░░░░░░░░░░                                                                                  │
+│                                                            | ID: 0005000010145D00                                                                              │
+│                                                            | Favorite: Yes                                                                                     │
+│                                                            | Game ID: ARDP01                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            | Pub: Nintendo                                                                                     │
+│                                                            | Dev: Nintendo EAD Tokyo                                                                           │
+│                                                            | Released: 2013-11-22                                                                              │
+│                                                            | Platformer / EUR                                                                                  │
+│                                                            |                                                                                                   │
+│                                                            | Categories:                                                                                       │
+│                                                            |   - Games                                                                                         │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
 │A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [1/3]                                                                                                            │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -75,30 +75,30 @@
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ All  [Favorites]  System   Games   Apps                                                                                │
 │------------------------------------------------------------------------------------------------------------------------│
-│> * Super Mario 3D World            | Super Mario 3D World                                                              │
-│  * Mario Kart 8                    |                                                                                   │
-│  * Super Smash Bros. for Wii U     |    ░░░░░░░░░░░░░                                                                  │
-│                                    |    ░░░░░░░░░░░░░                                                                  │
-│                                    |    ░░░░░░░░░░░░░                                                                  │
-│                                    |    ░░░░░░░░░░░░░                                                                  │
-│                                    | ID: 0005000010145D00                                                              │
-│                                    | Favorite: Yes                                                                     │
-│                                    | Game ID: ARDP01                                                                   │
-│                                    |                                                                                   │
-│                                    | Pub: Nintendo                                                                     │
-│                                    | Dev: Nintendo EAD Tokyo                                                           │
-│                                    | Released: 2013-11-22                                                              │
-│                                    | Platformer / EUR                                                                  │
-│                                    |                                                                                   │
-│                                    | Categories:                                                                       │
-│                                    |   - Games                                                                         │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
+│> * Super Mario 3D World                     | Super Mario 3D World                                                     │
+│  * Mario Kart 8                             |                                                                          │
+│  * Super Smash Bros. for Wii U              |     ░░░░░░░░░░░░                                                         │
+│                                             |     ░░░░░░░░░░░░                                                         │
+│                                             |     ░░░░░░░░░░░░                                                         │
+│                                             |     ░░░░░░░░░░░░                                                         │
+│                                             | ID: 0005000010145D00                                                     │
+│                                             | Favorite: Yes                                                            │
+│                                             | Game ID: ARDP01                                                          │
+│                                             |                                                                          │
+│                                             | Pub: Nintendo                                                            │
+│                                             | Dev: Nintendo EAD Tokyo                                                  │
+│                                             | Released: 2013-11-22                                                     │
+│                                             | Platformer / EUR                                                         │
+│                                             |                                                                          │
+│                                             | Categories:                                                              │
+│                                             |   - Games                                                                │
+│                                             |                                                                          │
+│                                             |                                                                          │
+│                                             |                                                                          │
+│                                             |                                                                          │
+│                                             |                                                                          │
+│                                             |                                                                          │
+│                                             |                                                                          │
 │A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [1/3]                                                                    │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -110,22 +110,22 @@
 ┌────────────────────────────────────────────────────────────────────────────────┐
 │ All  [Favorites]  System   Games   Apps                                        │
 │--------------------------------------------------------------------------------│
-│> * Super Mario 3D Wor  | Super Mario 3D World                                  │
-│  * Mario Kart 8        | ░░░░░░░░░░░░                                          │
-│  * Super Smash Bros.   | ░░░░░░░░░░░░                                          │
-│                        | ░░░░░░░░░░░░                                          │
-│                        | ░░░░░░░░░░░░                                          │
-│                        |                                                       │
-│                        | ID: 0005000010145D00                                  │
-│                        | Favorite: Yes                                         │
-│                        | Game ID: ARDP01                                       │
-│                        |                                                       │
-│                        | Pub: Nintendo                                         │
-│                        | Dev: Nintendo EAD Tokyo                               │
-│                        | Released: 2013-11-22                                  │
-│                        | Platformer / EUR                                      │
-│                        |                                                       │
-│                        | Categories:                                           │
-│                        |                                                       │
+│> * Super Mario 3D World      | Super Mario 3D World                            │
+│  * Mario Kart 8              | ░░░░░░░░░░░░                                    │
+│  * Super Smash Bros. for Wi  | ░░░░░░░░░░░░                                    │
+│                              | ░░░░░░░░░░░░                                    │
+│                              | ░░░░░░░░░░░░                                    │
+│                              |                                                 │
+│                              | ID: 0005000010145D00                            │
+│                              | Favorite: Yes                                   │
+│                              | Game ID: ARDP01                                 │
+│                              |                                                 │
+│                              | Pub: Nintendo                                   │
+│                              | Dev: Nintendo EAD Tokyo                         │
+│                              | Released: 2013-11-22                            │
+│                              | Platformer / EUR                                │
+│                              |                                                 │
+│                              | Categories:                                     │
+│                              |                                                 │
 │A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [1/3]                            │
 └────────────────────────────────────────────────────────────────────────────────┘

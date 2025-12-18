@@ -5,21 +5,21 @@
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │[All]  Favorites   System   Games   Apps                                                            │
 │----------------------------------------------------------------------------------------------------│
-│    Bayonetta 2          [UP] | Captain Toad: Treasure Tracker                                      │
-│    Pikmin 3                  |                                                                     │
-│    Xenoblade Chronicles X    |    ░░░░░░░░░░░░                                                     │
-│    Hyrule Warriors           |    ░░░░░░░░░░░░                                                     │
-│    Donkey Kong Country: Tro  |    ░░░░░░░░░░░░                                                     │
-│>   Captain Toad: Treasure T  |    ░░░░░░░░░░░░                                                     │
-│    Yoshi's Woolly World      | ID: 0005000010175B00                                                │
-│    Star Fox Zero             | Favorite: No                                                        │
-│    NES Remix Pack            | Game ID: AKBP01                                                     │
-│    Mii Verse                 |                                                                     │
-│    Nintendo eShop            | Categories:                                                         │
-│    Internet Browser          |   (none)                                                            │
-│    Tokyo Mirage Sessions FE  |                                                                     │
-│    Pokken Tournament         |                                                                     │
-│    Super Mario Maker         |                                                                     │
+│    Bayonetta 2                  [UP] | Captain Toad: Treasure Tracker                              │
+│    Pikmin 3                          |                                                             │
+│    Xenoblade Chronicles X            |    ░░░░░░░░░░░░                                             │
+│    Hyrule Warriors                   |    ░░░░░░░░░░░░                                             │
+│    Donkey Kong Country: Tropical Fr  |    ░░░░░░░░░░░░                                             │
+│>   Captain Toad: Treasure Tracker    |    ░░░░░░░░░░░░                                             │
+│    Yoshi's Woolly World              | ID: 0005000010175B00                                        │
+│    Star Fox Zero                     | Favorite: No                                                │
+│    NES Remix Pack                    | Game ID: AKBP01                                             │
+│    Mii Verse                         |                                                             │
+│    Nintendo eShop                    | Categories:                                                 │
+│    Internet Browser                  |   (none)                                                    │
+│    Tokyo Mirage Sessions FE          |                                                             │
+│    Pokken Tournament                 |                                                             │
+│    Super Mario Maker                 |                                                             │
 │A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [11/20]                                              │
 └────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -31,39 +31,39 @@
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │[All]  Favorites   System   Games   Apps                                                                                                                        │
 │----------------------------------------------------------------------------------------------------------------------------------------------------------------│
-│    Bayonetta 2                            [UP] | Captain Toad: Treasure Tracker                                                                                │
-│    Pikmin 3                                    | ░░░░░░░░░░░░░░░░                                                                                              │
-│    Xenoblade Chronicles X                      | ░░░░░░░░░░░░░░░░                                                                                              │
-│    Hyrule Warriors                             | ░░░░░░░░░░░░░░░░                                                                                              │
-│    Donkey Kong Country: Tropical Freeze        | ░░░░░░░░░░░░░░░░                                                                                              │
-│>   Captain Toad: Treasure Tracker              | ░░░░░░░░░░░░░░░░                                                                                              │
-│    Yoshi's Woolly World                        | ░░░░░░░░░░░░░░░░                                                                                              │
-│    Star Fox Zero                               | ░░░░░░░░░░░░░░░░                                                                                              │
-│    NES Remix Pack                              | ID: 0005000010175B00                                                                                          │
-│    Mii Verse                                   | Favorite: No                                                                                                  │
-│    Nintendo eShop                              | Game ID: AKBP01                                                                                               │
-│    Internet Browser                            |                                                                                                               │
-│    Tokyo Mirage Sessions FE                    | Categories:                                                                                                   │
-│    Pokken Tournament                           |   (none)                                                                                                      │
-│    Super Mario Maker                           |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
+│    Bayonetta 2                                        [UP] | Captain Toad: Treasure Tracker                                                                    │
+│    Pikmin 3                                                | ░░░░░░░░░░░░░░░░                                                                                  │
+│    Xenoblade Chronicles X                                  | ░░░░░░░░░░░░░░░░                                                                                  │
+│    Hyrule Warriors                                         | ░░░░░░░░░░░░░░░░                                                                                  │
+│    Donkey Kong Country: Tropical Freeze                    | ░░░░░░░░░░░░░░░░                                                                                  │
+│>   Captain Toad: Treasure Tracker                          | ░░░░░░░░░░░░░░░░                                                                                  │
+│    Yoshi's Woolly World                                    | ░░░░░░░░░░░░░░░░                                                                                  │
+│    Star Fox Zero                                           | ░░░░░░░░░░░░░░░░                                                                                  │
+│    NES Remix Pack                                          | ID: 0005000010175B00                                                                              │
+│    Mii Verse                                               | Favorite: No                                                                                      │
+│    Nintendo eShop                                          | Game ID: AKBP01                                                                                   │
+│    Internet Browser                                        |                                                                                                   │
+│    Tokyo Mirage Sessions FE                                | Categories:                                                                                       │
+│    Pokken Tournament                                       |   (none)                                                                                          │
+│    Super Mario Maker                                       |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
 │A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [11/20]                                                                                                          │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -75,30 +75,30 @@
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │[All]  Favorites   System   Games   Apps                                                                                │
 │------------------------------------------------------------------------------------------------------------------------│
-│    Bayonetta 2                [UP] | Captain Toad: Treasure Tracker                                                    │
-│    Pikmin 3                        |                                                                                   │
-│    Xenoblade Chronicles X          |    ░░░░░░░░░░░░░                                                                  │
-│    Hyrule Warriors                 |    ░░░░░░░░░░░░░                                                                  │
-│    Donkey Kong Country: Tropical   |    ░░░░░░░░░░░░░                                                                  │
-│>   Captain Toad: Treasure Tracker  |    ░░░░░░░░░░░░░                                                                  │
-│    Yoshi's Woolly World            | ID: 0005000010175B00                                                              │
-│    Star Fox Zero                   | Favorite: No                                                                      │
-│    NES Remix Pack                  | Game ID: AKBP01                                                                   │
-│    Mii Verse                       |                                                                                   │
-│    Nintendo eShop                  | Categories:                                                                       │
-│    Internet Browser                |   (none)                                                                          │
-│    Tokyo Mirage Sessions FE        |                                                                                   │
-│    Pokken Tournament               |                                                                                   │
-│    Super Mario Maker               |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
+│    Bayonetta 2                         [UP] | Captain Toad: Treasure Tracker                                           │
+│    Pikmin 3                                 |                                                                          │
+│    Xenoblade Chronicles X                   |     ░░░░░░░░░░░░                                                         │
+│    Hyrule Warriors                          |     ░░░░░░░░░░░░                                                         │
+│    Donkey Kong Country: Tropical Freeze     |     ░░░░░░░░░░░░                                                         │
+│>   Captain Toad: Treasure Tracker           |     ░░░░░░░░░░░░                                                         │
+│    Yoshi's Woolly World                     | ID: 0005000010175B00                                                     │
+│    Star Fox Zero                            | Favorite: No                                                             │
+│    NES Remix Pack                           | Game ID: AKBP01                                                          │
+│    Mii Verse                                |                                                                          │
+│    Nintendo eShop                           | Categories:                                                              │
+│    Internet Browser                         |   (none)                                                                 │
+│    Tokyo Mirage Sessions FE                 |                                                                          │
+│    Pokken Tournament                        |                                                                          │
+│    Super Mario Maker                        |                                                                          │
+│                                             |                                                                          │
+│                                             |                                                                          │
+│                                             |                                                                          │
+│                                             |                                                                          │
+│                                             |                                                                          │
+│                                             |                                                                          │
+│                                             |                                                                          │
+│                                             |                                                                          │
+│                                             |                                                                          │
 │A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [11/20]                                                                  │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -110,22 +110,22 @@
 ┌────────────────────────────────────────────────────────────────────────────────┐
 │[All]  Favorites   System   Games   Apps                                        │
 │--------------------------------------------------------------------------------│
-│    Bayonetta 2    [UP] | Captain Toad: Treasure Tracker                        │
-│    Pikmin 3            | ░░░░░░░░░░░░                                          │
-│    Xenoblade Chronicl  | ░░░░░░░░░░░░                                          │
-│    Hyrule Warriors     | ░░░░░░░░░░░░                                          │
-│    Donkey Kong Countr  | ░░░░░░░░░░░░                                          │
-│>   Captain Toad: Trea  |                                                       │
-│    Yoshi's Woolly Wor  | ID: 0005000010175B00                                  │
-│    Star Fox Zero       | Favorite: No                                          │
-│    NES Remix Pack      | Game ID: AKBP01                                       │
-│    Mii Verse           |                                                       │
-│    Nintendo eShop      | Categories:                                           │
-│    Internet Browser    |   (none)                                              │
-│    Tokyo Mirage Sessi  |                                                       │
-│    Pokken Tournament   |                                                       │
-│    Super Mario Maker   |                                                       │
-│                        |                                                       │
-│                        |                                                       │
+│    Bayonetta 2          [UP] | Captain Toad: Treasure Tracker                  │
+│    Pikmin 3                  | ░░░░░░░░░░░░                                    │
+│    Xenoblade Chronicles X    | ░░░░░░░░░░░░                                    │
+│    Hyrule Warriors           | ░░░░░░░░░░░░                                    │
+│    Donkey Kong Country: Tro  | ░░░░░░░░░░░░                                    │
+│>   Captain Toad: Treasure T  |                                                 │
+│    Yoshi's Woolly World      | ID: 0005000010175B00                            │
+│    Star Fox Zero             | Favorite: No                                    │
+│    NES Remix Pack            | Game ID: AKBP01                                 │
+│    Mii Verse                 |                                                 │
+│    Nintendo eShop            | Categories:                                     │
+│    Internet Browser          |   (none)                                        │
+│    Tokyo Mirage Sessions FE  |                                                 │
+│    Pokken Tournament         |                                                 │
+│    Super Mario Maker         |                                                 │
+│                              |                                                 │
+│                              |                                                 │
 │A:Go B:Close Y:Fav X:Edit +:Settings ZL/ZR:Cat [11/20]                          │
 └────────────────────────────────────────────────────────────────────────────────┘

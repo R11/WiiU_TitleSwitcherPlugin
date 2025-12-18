@@ -5,21 +5,21 @@
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │SETTINGS                                                                                            │
 │----------------------------------------------------------------------------------------------------│
-│  Gamepad Brightness: [===--] 3 Description:                                                        │
-│> System Apps                 | ------------                                                        │
-│  Show Numbers: OFF           |                                                                     │
-│  Show Favorites: ON          | Launch system applications                                          │
-│  Background: 1E1E2EFF        | (Browser, Settings, etc.)                                           │
-│  Title Text: 1E1E2EFF        |                                                                     │
-│  Highlighted: 1E1E2EFF       | Press A to open                                                     │
-│  Favorite: 1E1E2EFF          |                                                                     │
-│  Header: 1E1E2EFF            |                                                                     │
-│  Category: 1E1E2EFF          |                                                                     │
-│  Manage Categories (2)       |                                                                     │
-│  Debug Grid                  |                                                                     │
-│                              |                                                                     │
-│                              |                                                                     │
-│                              |                                                                     │
+│  Gamepad Brightness: [===--] 3       | Description:                                                │
+│> System Apps                         | ------------                                                │
+│  Show Numbers: OFF                   |                                                             │
+│  Show Favorites: ON                  | Launch system applications                                  │
+│  Background: 1E1E2EFF                | (Browser, Settings, etc.)                                   │
+│  Title Text: 1E1E2EFF                |                                                             │
+│  Highlighted: 1E1E2EFF               | Press A to open                                             │
+│  Favorite: 1E1E2EFF                  |                                                             │
+│  Header: 1E1E2EFF                    |                                                             │
+│  Category: 1E1E2EFF                  |                                                             │
+│  Manage Categories (2)               |                                                             │
+│  Debug Grid                          |                                                             │
+│                                      |                                                             │
+│                                      |                                                             │
+│                                      |                                                             │
 │A:Edit B:Back  [2/12]                                                                               │
 └────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -31,39 +31,39 @@
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │SETTINGS                                                                                                                                                        │
 │----------------------------------------------------------------------------------------------------------------------------------------------------------------│
-│  Gamepad Brightness: [===--] 3                 | Description:                                                                                                  │
-│> System Apps                                   | ------------                                                                                                  │
-│  Show Numbers: OFF                             |                                                                                                               │
-│  Show Favorites: ON                            | Launch system applications                                                                                    │
-│  Background: 1E1E2EFF                          | (Browser, Settings, etc.)                                                                                     │
-│  Title Text: 1E1E2EFF                          |                                                                                                               │
-│  Highlighted: 1E1E2EFF                         | Press A to open                                                                                               │
-│  Favorite: 1E1E2EFF                            |                                                                                                               │
-│  Header: 1E1E2EFF                              |                                                                                                               │
-│  Category: 1E1E2EFF                            |                                                                                                               │
-│  Manage Categories (2)                         |                                                                                                               │
-│  Debug Grid                                    |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
-│                                                |                                                                                                               │
+│  Gamepad Brightness: [===--] 3                             | Description:                                                                                      │
+│> System Apps                                               | ------------                                                                                      │
+│  Show Numbers: OFF                                         |                                                                                                   │
+│  Show Favorites: ON                                        | Launch system applications                                                                        │
+│  Background: 1E1E2EFF                                      | (Browser, Settings, etc.)                                                                         │
+│  Title Text: 1E1E2EFF                                      |                                                                                                   │
+│  Highlighted: 1E1E2EFF                                     | Press A to open                                                                                   │
+│  Favorite: 1E1E2EFF                                        |                                                                                                   │
+│  Header: 1E1E2EFF                                          |                                                                                                   │
+│  Category: 1E1E2EFF                                        |                                                                                                   │
+│  Manage Categories (2)                                     |                                                                                                   │
+│  Debug Grid                                                |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
+│                                                            |                                                                                                   │
 │A:Edit B:Back  [2/12]                                                                                                                                           │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -75,30 +75,30 @@
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │SETTINGS                                                                                                                │
 │------------------------------------------------------------------------------------------------------------------------│
-│  Gamepad Brightness: [===--] 3     | Description:                                                                      │
-│> System Apps                       | ------------                                                                      │
-│  Show Numbers: OFF                 |                                                                                   │
-│  Show Favorites: ON                | Launch system applications                                                        │
-│  Background: 1E1E2EFF              | (Browser, Settings, etc.)                                                         │
-│  Title Text: 1E1E2EFF              |                                                                                   │
-│  Highlighted: 1E1E2EFF             | Press A to open                                                                   │
-│  Favorite: 1E1E2EFF                |                                                                                   │
-│  Header: 1E1E2EFF                  |                                                                                   │
-│  Category: 1E1E2EFF                |                                                                                   │
-│  Manage Categories (2)             |                                                                                   │
-│  Debug Grid                        |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
-│                                    |                                                                                   │
+│  Gamepad Brightness: [===--] 3              | Description:                                                             │
+│> System Apps                                | ------------                                                             │
+│  Show Numbers: OFF                          |                                                                          │
+│  Show Favorites: ON                         | Launch system applications                                               │
+│  Background: 1E1E2EFF                       | (Browser, Settings, etc.)                                                │
+│  Title Text: 1E1E2EFF                       |                                                                          │
+│  Highlighted: 1E1E2EFF                      | Press A to open                                                          │
+│  Favorite: 1E1E2EFF                         |                                                                          │
+│  Header: 1E1E2EFF                           |                                                                          │
+│  Category: 1E1E2EFF                         |                                                                          │
+│  Manage Categories (2)                      |                                                                          │
+│  Debug Grid                                 |                                                                          │
+│                                             |                                                                          │
+│                                             |                                                                          │
+│                                             |                                                                          │
+│                                             |                                                                          │
+│                                             |                                                                          │
+│                                             |                                                                          │
+│                                             |                                                                          │
+│                                             |                                                                          │
+│                                             |                                                                          │
+│                                             |                                                                          │
+│                                             |                                                                          │
+│                                             |                                                                          │
 │A:Edit B:Back  [2/12]                                                                                                   │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -110,22 +110,22 @@
 ┌────────────────────────────────────────────────────────────────────────────────┐
 │SETTINGS                                                                        │
 │--------------------------------------------------------------------------------│
-│  Gamepad Brightness: [===Description:                                          │
-│> System Apps           | ------------                                          │
-│  Show Numbers: OFF     |                                                       │
-│  Show Favorites: ON    | Launch system applications                            │
-│  Background: 1E1E2EFF  | (Browser, Settings, etc.)                             │
-│  Title Text: 1E1E2EFF  |                                                       │
-│  Highlighted: 1E1E2EFF | Press A to open                                       │
-│  Favorite: 1E1E2EFF    |                                                       │
-│  Header: 1E1E2EFF      |                                                       │
-│  Category: 1E1E2EFF    |                                                       │
-│  Manage Categories (2) |                                                       │
-│  Debug Grid            |                                                       │
-│                        |                                                       │
-│                        |                                                       │
-│                        |                                                       │
-│                        |                                                       │
-│                        |                                                       │
+│  Gamepad Brightness: [===--] 3 Description:                                    │
+│> System Apps                 | ------------                                    │
+│  Show Numbers: OFF           |                                                 │
+│  Show Favorites: ON          | Launch system applications                      │
+│  Background: 1E1E2EFF        | (Browser, Settings, etc.)                       │
+│  Title Text: 1E1E2EFF        |                                                 │
+│  Highlighted: 1E1E2EFF       | Press A to open                                 │
+│  Favorite: 1E1E2EFF          |                                                 │
+│  Header: 1E1E2EFF            |                                                 │
+│  Category: 1E1E2EFF          |                                                 │
+│  Manage Categories (2)       |                                                 │
+│  Debug Grid                  |                                                 │
+│                              |                                                 │
+│                              |                                                 │
+│                              |                                                 │
+│                              |                                                 │
+│                              |                                                 │
 │A:Edit B:Back  [2/12]                                                           │
 └────────────────────────────────────────────────────────────────────────────────┘
