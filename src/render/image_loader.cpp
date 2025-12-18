@@ -126,6 +126,7 @@ bool loadImageFromFile(const char* path, Renderer::ImageHandle& outHandle)
     // Open file
     FILE* file = fopen(path, "rb");
     if (!file) {
+        NotificationModule_AddInfoNotification("loadImageFromFile: fopen failed");
         return false;
     }
 
@@ -136,6 +137,9 @@ bool loadImageFromFile(const char* path, Renderer::ImageHandle& outHandle)
 
     if (fileSize <= 8) {
         fclose(file);
+        char msg[64];
+        snprintf(msg, sizeof(msg), "loadImageFromFile: file too small (%ld bytes)", fileSize);
+        NotificationModule_AddInfoNotification(msg);
         return false;
     }
 
@@ -143,36 +147,52 @@ bool loadImageFromFile(const char* path, Renderer::ImageHandle& outHandle)
     uint8_t* buffer = (uint8_t*)malloc(fileSize);
     if (!buffer) {
         fclose(file);
+        NotificationModule_AddInfoNotification("loadImageFromFile: malloc failed");
         return false;
     }
 
     if (fread(buffer, 1, fileSize, file) != (size_t)fileSize) {
         free(buffer);
         fclose(file);
+        NotificationModule_AddInfoNotification("loadImageFromFile: fread failed");
         return false;
     }
     fclose(file);
 
+    // Log first bytes for format detection debugging
+    char hdrMsg[80];
+    snprintf(hdrMsg, sizeof(hdrMsg), "loadImageFromFile: header=%02X %02X %02X %02X, size=%ld",
+             buffer[0], buffer[1], buffer[2], buffer[3], fileSize);
+    NotificationModule_AddInfoNotification(hdrMsg);
+
     // Detect format and load with libgd
     gdImagePtr gdImg = nullptr;
+    const char* detectedFormat = "unknown";
 
     if (buffer[0] == 0x89 && buffer[1] == 'P' && buffer[2] == 'N' && buffer[3] == 'G') {
         // PNG
+        detectedFormat = "PNG";
         gdImg = gdImageCreateFromPngPtr(fileSize, buffer);
     } else if (buffer[0] == 0xFF && buffer[1] == 0xD8) {
         // JPEG
+        detectedFormat = "JPEG";
         gdImg = gdImageCreateFromJpegPtr(fileSize, buffer);
     } else if (buffer[0] == 'B' && buffer[1] == 'M') {
         // BMP
+        detectedFormat = "BMP";
         gdImg = gdImageCreateFromBmpPtr(fileSize, buffer);
-    } else if (buffer[0] == 0x00) {
-        // TGA (usually starts with 0x00)
+    } else {
+        // Try TGA for any other format (TGA has no reliable magic number)
+        detectedFormat = "TGA";
         gdImg = gdImageCreateFromTgaPtr(fileSize, buffer);
     }
 
     free(buffer);
 
     if (!gdImg) {
+        char msg[64];
+        snprintf(msg, sizeof(msg), "loadImageFromFile: libgd failed (format=%s)", detectedFormat);
+        NotificationModule_AddInfoNotification(msg);
         return false;
     }
 
@@ -263,6 +283,7 @@ bool loadImage(uint64_t titleId, Renderer::ImageHandle& outHandle)
 bool Init(int cacheSize)
 {
     if (sInitialized) {
+        NotificationModule_AddInfoNotification("ImageLoader::Init: already initialized");
         return true;
     }
 
@@ -272,6 +293,7 @@ bool Init(int cacheSize)
     sCacheOrder.clear();
 
     sInitialized = true;
+    NotificationModule_AddInfoNotification("ImageLoader::Init: initialized");
     return true;
 }
 
@@ -295,11 +317,25 @@ void Shutdown()
     sInitialized = false;
 }
 
+// Track if we've logged Update state (to avoid spam)
+static bool sUpdateLogged = false;
+
 void Update()
 {
-    if (!sInitialized || sLoadQueue.empty()) {
+    if (!sInitialized) {
+        if (!sUpdateLogged) {
+            NotificationModule_AddInfoNotification("ImageLoader::Update: not initialized");
+            sUpdateLogged = true;
+        }
         return;
     }
+
+    if (sLoadQueue.empty()) {
+        return;  // Normal case, don't log
+    }
+
+    // Reset log flag when we have work to do
+    sUpdateLogged = false;
 
     // Process one item from the queue per frame
     sortLoadQueue();
@@ -309,10 +345,13 @@ void Update()
 
     auto it = sRequests.find(titleId);
     if (it == sRequests.end()) {
+        NotificationModule_AddInfoNotification("ImageLoader::Update: request not found");
         return;
     }
 
     it->second.status = Status::LOADING;
+
+    NotificationModule_AddInfoNotification("ImageLoader::Update: loading image...");
 
     Renderer::ImageHandle handle;
     if (loadImage(titleId, handle)) {
@@ -320,17 +359,27 @@ void Update()
         it->second.handle = handle;
         touchCache(titleId);
         evictIfNeeded();
+        NotificationModule_AddInfoNotification("ImageLoader::Update: load SUCCESS");
     } else {
         it->second.status = Status::FAILED;
         it->second.handle = Renderer::INVALID_IMAGE;
+        // loadImage already logged the specific failure
     }
 }
+
+// Track if we've logged Request state (to avoid spam)
+static bool sRequestLogged = false;
 
 void Request(uint64_t titleId, Priority priority)
 {
     if (!sInitialized) {
+        if (!sRequestLogged) {
+            NotificationModule_AddInfoNotification("ImageLoader::Request: not initialized!");
+            sRequestLogged = true;
+        }
         return;
     }
+    sRequestLogged = false;
 
     auto it = sRequests.find(titleId);
     if (it != sRequests.end()) {
@@ -348,6 +397,7 @@ void Request(uint64_t titleId, Priority priority)
             }
             return;
         }
+        // Status is FAILED or NOT_REQUESTED - will re-queue below
     }
 
     // Create new request
@@ -359,6 +409,10 @@ void Request(uint64_t titleId, Priority priority)
 
     sRequests[titleId] = info;
     sLoadQueue.push_back(titleId);
+
+    char msg[64];
+    snprintf(msg, sizeof(msg), "ImageLoader::Request: queued, queue size=%d", (int)sLoadQueue.size());
+    NotificationModule_AddInfoNotification(msg);
 }
 
 void Cancel(uint64_t titleId)
