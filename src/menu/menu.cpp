@@ -258,8 +258,135 @@ void drawTitleList()
     });
 }
 
+// =============================================================================
+// Details Panel Helpers
+// =============================================================================
+// These functions render individual sections of the details panel.
+// Each takes the title and a currentRow reference to track vertical position.
+
+/**
+ * Draw the title name and icon.
+ */
+void drawDetailsPanelHeader(const Titles::TitleInfo* title)
+{
+    // Title name at top of panel
+    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW, title->name);
+
+    // Request icon loading (will be cached if already loaded)
+    ImageLoader::Request(title->titleId, ImageLoader::Priority::HIGH);
+
+    // Draw icon below title
+    int iconX = Measurements::GetIconPixelX(Renderer::GetDetailsPanelCol());
+    int iconY = Measurements::GetIconPixelY();
+
+    if (ImageLoader::IsReady(title->titleId)) {
+        Renderer::ImageHandle icon = ImageLoader::Get(title->titleId);
+        Renderer::DrawImage(iconX, iconY, icon, Measurements::ICON_SIZE, Measurements::ICON_SIZE);
+    } else {
+        Renderer::DrawPlaceholder(iconX, iconY, Measurements::ICON_SIZE, Measurements::ICON_SIZE, 0x333333FF);
+    }
+}
+
+/**
+ * Draw basic title info: ID, favorite status, game ID.
+ */
+void drawDetailsPanelBasicInfo(const Titles::TitleInfo* title, int& currentRow)
+{
+    int col = Renderer::GetDetailsPanelCol();
+
+    // Title ID
+    char idStr[32];
+    snprintf(idStr, sizeof(idStr), "ID: %016llX",
+             static_cast<unsigned long long>(title->titleId));
+    Renderer::DrawText(col, currentRow++, idStr);
+
+    // Favorite status
+    const char* favStatus = Settings::IsFavorite(title->titleId) ? "Yes" : "No";
+    Renderer::DrawTextF(col, currentRow++, "Favorite: %s", favStatus);
+
+    // Game ID (product code)
+    if (title->productCode[0] != '\0') {
+        Renderer::DrawTextF(col, currentRow++, "Game ID: %s", title->productCode);
+    } else {
+        Renderer::DrawText(col, currentRow++, "Game ID: (none)");
+    }
+}
+
+/**
+ * Draw preset metadata: publisher, developer, release date, genre/region.
+ */
+void drawDetailsPanelPreset(const TitlePresets::TitlePreset* preset, int& currentRow)
+{
+    if (!preset) return;
+
+    int col = Renderer::GetDetailsPanelCol();
+    int maxRow = Renderer::GetFooterRow() - 3;
+
+    currentRow++;  // Blank line before preset info
+
+    if (preset->publisher[0] != '\0') {
+        Renderer::DrawTextF(col, currentRow++, "Pub: %s", preset->publisher);
+    }
+
+    if (preset->developer[0] != '\0' && currentRow < maxRow) {
+        Renderer::DrawTextF(col, currentRow++, "Dev: %s", preset->developer);
+    }
+
+    // Release date
+    if (preset->releaseYear > 0 && currentRow < maxRow) {
+        if (preset->releaseMonth > 0 && preset->releaseDay > 0) {
+            Renderer::DrawTextF(col, currentRow++, "Released: %04d-%02d-%02d",
+                               preset->releaseYear, preset->releaseMonth, preset->releaseDay);
+        } else if (preset->releaseMonth > 0) {
+            Renderer::DrawTextF(col, currentRow++, "Released: %04d-%02d",
+                               preset->releaseYear, preset->releaseMonth);
+        } else {
+            Renderer::DrawTextF(col, currentRow++, "Released: %04d", preset->releaseYear);
+        }
+    }
+
+    // Genre and region
+    if (currentRow < maxRow) {
+        if (preset->genre[0] != '\0' && preset->region[0] != '\0') {
+            Renderer::DrawTextF(col, currentRow++, "%s / %s", preset->genre, preset->region);
+        } else if (preset->genre[0] != '\0') {
+            Renderer::DrawTextF(col, currentRow++, "Genre: %s", preset->genre);
+        } else if (preset->region[0] != '\0') {
+            Renderer::DrawTextF(col, currentRow++, "Region: %s", preset->region);
+        }
+    }
+}
+
+/**
+ * Draw category assignments for this title.
+ */
+void drawDetailsPanelCategories(uint64_t titleId, int& currentRow)
+{
+    if (currentRow >= Renderer::GetFooterRow() - 2) return;
+
+    int col = Renderer::GetDetailsPanelCol();
+
+    currentRow++;  // Blank line before categories
+    Renderer::DrawText(col, currentRow++, "Categories:");
+
+    uint16_t catIds[Settings::MAX_CATEGORIES];
+    int catCount = Settings::GetCategoriesForTitle(titleId, catIds, Settings::MAX_CATEGORIES);
+
+    if (catCount == 0) {
+        Renderer::DrawText(col + Measurements::INDENT_SUB_ITEM, currentRow, "(none)");
+    } else {
+        for (int i = 0; i < catCount && currentRow < Renderer::GetFooterRow() - 1; i++) {
+            const Settings::Category* cat = Settings::GetCategory(catIds[i]);
+            if (cat) {
+                Renderer::DrawTextF(col + Measurements::INDENT_SUB_ITEM, currentRow++, "- %s", cat->name);
+            }
+        }
+    }
+}
+
 /**
  * Draw the details panel on the right side.
+ * Orchestrates the individual section renderers.
  */
 void drawDetailsPanel()
 {
@@ -272,108 +399,24 @@ void drawDetailsPanel()
     const Titles::TitleInfo* title = Categories::GetFilteredTitle(selectedIdx);
     if (!title) return;
 
-    // Request icon loading (will be cached if already loaded)
-    ImageLoader::Request(title->titleId, ImageLoader::Priority::HIGH);
+    // Header: title name and icon
+    drawDetailsPanelHeader(title);
 
-    // Title name (left-aligned with details panel)
-    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW, title->name);
-
-    // Draw icon below title
-    int iconX = Measurements::GetIconPixelX(Renderer::GetDetailsPanelCol());
-    int iconY = Measurements::GetIconPixelY();
-
-    if (ImageLoader::IsReady(title->titleId)) {
-        Renderer::ImageHandle icon = ImageLoader::Get(title->titleId);
-        Renderer::DrawImage(iconX, iconY, icon, Measurements::ICON_SIZE, Measurements::ICON_SIZE);
-    } else {
-        // Draw placeholder while loading
-        Renderer::DrawPlaceholder(iconX, iconY, Measurements::ICON_SIZE, Measurements::ICON_SIZE, 0x333333FF);
-    }
-
-    // Info starts after icon (icon is ~5-6 rows at 24px/row)
+    // Info sections start after icon area
     int currentRow = Measurements::GetInfoStartRow(LIST_START_ROW);
 
-    // Title ID
-    char idStr[32];
-    snprintf(idStr, sizeof(idStr), "ID: %016llX",
-             static_cast<unsigned long long>(title->titleId));
-    Renderer::DrawText(Renderer::GetDetailsPanelCol(), currentRow++, idStr);
+    // Basic info: ID, favorite, game ID
+    drawDetailsPanelBasicInfo(title, currentRow);
 
-    // Favorite status
-    const char* favStatus = Settings::IsFavorite(title->titleId) ? "Yes" : "No";
-    Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), currentRow++, "Favorite: %s", favStatus);
-
-    // Game ID (product code) for debugging preset matching
-    if (title->productCode[0] != '\0') {
-        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), currentRow++, "Game ID: %s", title->productCode);
-    } else {
-        Renderer::DrawText(Renderer::GetDetailsPanelCol(), currentRow++, "Game ID: (none)");
-    }
-
-    // Look up preset metadata if available
+    // Preset metadata (if available)
     const TitlePresets::TitlePreset* preset = nullptr;
     if (title->productCode[0] != '\0') {
         preset = TitlePresets::GetPresetByGameId(title->productCode);
     }
+    drawDetailsPanelPreset(preset, currentRow);
 
-    // Display preset metadata if found
-    if (preset) {
-        currentRow++;  // Blank line before preset info
-
-        if (preset->publisher[0] != '\0') {
-            Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), currentRow++, "Pub: %s", preset->publisher);
-        }
-
-        if (preset->developer[0] != '\0' && currentRow < Renderer::GetFooterRow() - 3) {
-            Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), currentRow++, "Dev: %s", preset->developer);
-        }
-
-        // Release date
-        if (preset->releaseYear > 0 && currentRow < Renderer::GetFooterRow() - 3) {
-            if (preset->releaseMonth > 0 && preset->releaseDay > 0) {
-                Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), currentRow++, "Released: %04d-%02d-%02d",
-                                   preset->releaseYear, preset->releaseMonth, preset->releaseDay);
-            } else if (preset->releaseMonth > 0) {
-                Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), currentRow++, "Released: %04d-%02d",
-                                   preset->releaseYear, preset->releaseMonth);
-            } else {
-                Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), currentRow++, "Released: %04d",
-                                   preset->releaseYear);
-            }
-        }
-
-        // Genre and region combined if space allows
-        if (currentRow < Renderer::GetFooterRow() - 3) {
-            if (preset->genre[0] != '\0' && preset->region[0] != '\0') {
-                Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), currentRow++, "%s / %s",
-                                   preset->genre, preset->region);
-            } else if (preset->genre[0] != '\0') {
-                Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), currentRow++, "Genre: %s", preset->genre);
-            } else if (preset->region[0] != '\0') {
-                Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), currentRow++, "Region: %s", preset->region);
-            }
-        }
-    }
-
-    // Categories this title belongs to (only if there's room)
-    if (currentRow < Renderer::GetFooterRow() - 2) {
-        currentRow++;  // Blank line before categories
-        Renderer::DrawText(Renderer::GetDetailsPanelCol(), currentRow++, "Categories:");
-
-        uint16_t catIds[Settings::MAX_CATEGORIES];
-        int catCount = Settings::GetCategoriesForTitle(title->titleId, catIds, Settings::MAX_CATEGORIES);
-
-        if (catCount == 0) {
-            Renderer::DrawText(Renderer::GetDetailsPanelCol() + 2, currentRow, "(none)");
-        } else {
-            for (int i = 0; i < catCount && currentRow < Renderer::GetFooterRow() - 1; i++) {
-                const Settings::Category* cat = Settings::GetCategory(catIds[i]);
-                if (cat) {
-                    Renderer::DrawTextF(Renderer::GetDetailsPanelCol() + 2, currentRow++, "- %s", cat->name);
-                }
-            }
-        }
-    }
+    // Category assignments
+    drawDetailsPanelCategories(title->titleId, currentRow);
 }
 
 /**
