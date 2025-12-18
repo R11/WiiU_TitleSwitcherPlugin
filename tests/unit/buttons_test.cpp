@@ -130,21 +130,21 @@ TEST(ButtonsTest, Button_Label_IsCorrect) {
 TEST(ButtonsTest, MenuOpenCombo_ContainsExpectedButtons) {
     uint32_t combo = Buttons::Actions::MENU_OPEN_COMBO;
     EXPECT_TRUE((combo & VPAD_BUTTON_L) != 0);
-    EXPECT_TRUE((combo & VPAD_BUTTON_R) != 0);
     EXPECT_TRUE((combo & VPAD_BUTTON_MINUS) != 0);
+    EXPECT_TRUE((combo & VPAD_BUTTON_RIGHT) != 0);
 }
 
 TEST(ButtonsTest, MenuOpenCombo_ExactMatch) {
-    uint32_t expected = VPAD_BUTTON_L | VPAD_BUTTON_R | VPAD_BUTTON_MINUS;
+    uint32_t expected = VPAD_BUTTON_L | VPAD_BUTTON_MINUS | VPAD_BUTTON_RIGHT;
     EXPECT_EQ(Buttons::Actions::MENU_OPEN_COMBO, expected);
 }
 
 TEST(ButtonsTest, MenuOpenCombo_DetectedCorrectly) {
     uint32_t combo = Buttons::Actions::MENU_OPEN_COMBO;
-    uint32_t held = VPAD_BUTTON_L | VPAD_BUTTON_R | VPAD_BUTTON_MINUS;
+    uint32_t held = VPAD_BUTTON_L | VPAD_BUTTON_MINUS | VPAD_BUTTON_RIGHT;
     EXPECT_TRUE(Buttons::IsComboPressed(held, combo));
 
-    held = VPAD_BUTTON_L | VPAD_BUTTON_R;
+    held = VPAD_BUTTON_L | VPAD_BUTTON_MINUS;
     EXPECT_FALSE(Buttons::IsComboPressed(held, combo));
 }
 
