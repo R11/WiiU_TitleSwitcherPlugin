@@ -20,8 +20,178 @@
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <filesystem>
+
+// =============================================================================
+// HTML Output Generation
+// =============================================================================
+
+std::string generateHtmlPreview(bool includeDebugInfo = false) {
+    const auto& config = Renderer::GetScreenConfig();
+    int cols = config.gridCols;
+    int rows = config.gridRows;
+    int charWidth = config.charWidth;
+    int charHeight = config.charHeight;
+    int screenWidth = config.pixelWidth;
+    int screenHeight = config.pixelHeight;
+
+    std::ostringstream html;
+
+    html << R"(<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wii U Menu Preview - )" << config.name << R"(</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: #cdd6f4;
+        }
+        h1 {
+            margin-bottom: 10px;
+            font-size: 1.5rem;
+        }
+        .info {
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            color: #a6adc8;
+        }
+        .screen-container {
+            border: 3px solid #45475a;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        .screen {
+            width: )" << screenWidth << R"(px;
+            height: )" << screenHeight << R"(px;
+            background: #1e1e2e;
+            position: relative;
+            font-family: monospace;
+            font-size: )" << charHeight << R"(px;
+            line-height: )" << charHeight << R"(px;
+            letter-spacing: 0;
+            overflow: hidden;
+        }
+        .row {
+            position: absolute;
+            left: 0;
+            white-space: pre;
+            height: )" << charHeight << R"(px;
+        }
+        .char {
+            display: inline-block;
+            width: )" << charWidth << R"(px;
+            text-align: center;
+        }
+        .icon-placeholder {
+            position: absolute;
+            background: #45475a;
+            border: 1px solid #585b70;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #6c7086;
+        }
+        .legend {
+            margin-top: 20px;
+            font-size: 0.85rem;
+            color: #a6adc8;
+        }
+        .legend-item {
+            display: inline-block;
+            margin-right: 20px;
+        }
+        .legend-color {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            margin-right: 5px;
+            vertical-align: middle;
+            border: 1px solid #45475a;
+        }
+    </style>
+</head>
+<body>
+    <h1>Wii U Menu Preview</h1>
+    <div class="info">
+        )" << config.name << R"( &bull;
+        )" << screenWidth << R"(&times;)" << screenHeight << R"( pixels &bull;
+        )" << cols << R"(&times;)" << rows << R"( characters &bull;
+        )" << charWidth << R"(&times;)" << charHeight << R"(px per char
+    </div>
+    <div class="screen-container">
+        <div class="screen">
+)";
+
+    // Get the character buffer from renderer
+    for (int row = 0; row < rows; row++) {
+        int y = row * charHeight;
+        html << "            <div class=\"row\" style=\"top:" << y << "px;\">";
+
+        for (int col = 0; col < cols; col++) {
+            std::string text = Renderer::GetTextAt(col, row, 1);
+            char ch = text.empty() ? ' ' : text[0];
+
+            // Get color for this cell (approximate from buffer)
+            // For now, use default colors based on content
+            std::string color = "#cdd6f4"; // Default text color
+
+            // Escape HTML special characters
+            std::string charStr;
+            if (ch == '<') charStr = "&lt;";
+            else if (ch == '>') charStr = "&gt;";
+            else if (ch == '&') charStr = "&amp;";
+            else if (ch == ' ') charStr = "&nbsp;";
+            else charStr = std::string(1, ch);
+
+            html << "<span class=\"char\">" << charStr << "</span>";
+        }
+
+        html << "</div>\n";
+    }
+
+    // Add icon placeholder if there are pixel regions
+    // Icon position based on details panel
+    int iconX = Renderer::ColToPixelX(Renderer::GetDetailsPanelCol()) + 50;
+    int iconY = Renderer::RowToPixelY(3);
+    int iconSize = Renderer::GetIconSize();
+
+    html << R"(            <div class="icon-placeholder" style="left:)" << iconX
+         << R"(px;top:)" << iconY
+         << R"(px;width:)" << iconSize
+         << R"(px;height:)" << iconSize << R"(px;">ICON</div>
+)";
+
+    html << R"(        </div>
+    </div>
+    <div class="legend">
+        <span class="legend-item"><span class="legend-color" style="background:#1e1e2e;"></span>Background</span>
+        <span class="legend-item"><span class="legend-color" style="background:#cdd6f4;"></span>Text</span>
+        <span class="legend-item"><span class="legend-color" style="background:#89b4fa;"></span>Highlighted</span>
+        <span class="legend-item"><span class="legend-color" style="background:#f9e2af;"></span>Favorite</span>
+    </div>
+</body>
+</html>
+)";
+
+    return html.str();
+}
 
 void printUsage() {
     std::cout << "\n";
@@ -44,6 +214,8 @@ void printUsage() {
     std::cout << "  --compact       Scale to 78 columns (fits 80-col terminal)\n";
     std::cout << "  --width N       Set compact width (default: 78)\n";
     std::cout << "  --raw           Output raw text buffer (no borders/colors)\n";
+    std::cout << "  --html [FILE]   Generate HTML preview (default: preview.html)\n";
+    std::cout << "  --accurate      Use hardware-accurate 30%% divider (auto for --html)\n";
     std::cout << "  --numbers       Enable line numbers\n";
     std::cout << "  --no-favs       Hide favorite markers\n";
     std::cout << "\n";
@@ -383,7 +555,7 @@ Renderer::ScreenType parseScreenType(const std::string& arg) {
     return Renderer::ScreenType::DRC;  // Default
 }
 
-enum class OutputMode { Full, Compact, Raw };
+enum class OutputMode { Full, Compact, Raw, Html };
 
 int main(int argc, char* argv[]) {
     bool useColor = true;
@@ -395,6 +567,8 @@ int main(int argc, char* argv[]) {
     Renderer::ScreenType screenType = Renderer::ScreenType::DRC;
     OutputMode outputMode = OutputMode::Full;
     int compactWidth = 78;
+    std::string htmlOutputFile = "preview.html";
+    bool hardwareAccurate = false;
 
     // Parse command line arguments
     for (int i = 1; i < argc; i++) {
@@ -409,6 +583,15 @@ int main(int argc, char* argv[]) {
             outputMode = OutputMode::Compact;
         } else if (arg == "--raw") {
             outputMode = OutputMode::Raw;
+        } else if (arg == "--html") {
+            outputMode = OutputMode::Html;
+            hardwareAccurate = true;  // HTML uses pixel-accurate rendering
+            // Check if next arg is a filename (doesn't start with --)
+            if (i + 1 < argc && argv[i + 1][0] != '-') {
+                htmlOutputFile = argv[++i];
+            }
+        } else if (arg == "--accurate") {
+            hardwareAccurate = true;
         } else if (arg == "--width" && i + 1 < argc) {
             compactWidth = std::stoi(argv[++i]);
             outputMode = OutputMode::Compact;
@@ -432,6 +615,7 @@ int main(int argc, char* argv[]) {
 
     // Set screen type BEFORE initializing renderer
     Renderer::SetScreenType(screenType);
+    Renderer::SetHardwareAccurate(hardwareAccurate);
 
     // Initialize stubs
     Settings::Init();
@@ -454,7 +638,7 @@ int main(int argc, char* argv[]) {
     // Set menu state
     MenuRender::SetSelection(selectedIndex, scrollOffset);
 
-    if (outputMode != OutputMode::Raw) {
+    if (outputMode != OutputMode::Raw && outputMode != OutputMode::Html) {
         std::cout << "\n=== Wii U Menu Preview ===\n";
         std::cout << "(Using actual menu.cpp rendering code)\n\n";
     }
@@ -469,15 +653,30 @@ int main(int argc, char* argv[]) {
     switch (outputMode) {
         case OutputMode::Full:
             output = Renderer::GetFrameOutput(useColor);
+            std::cout << output;
             break;
         case OutputMode::Compact:
             output = Renderer::GetCompactOutput(compactWidth);
+            std::cout << output;
             break;
         case OutputMode::Raw:
             output = Renderer::GetRawText();
+            std::cout << output;
             break;
+        case OutputMode::Html: {
+            output = generateHtmlPreview();
+            std::ofstream htmlFile(htmlOutputFile);
+            if (htmlFile) {
+                htmlFile << output;
+                std::cout << "HTML preview generated: " << htmlOutputFile << "\n";
+                std::cout << "Open in a browser to view the preview with correct proportions.\n";
+            } else {
+                std::cerr << "Error: Could not write to " << htmlOutputFile << "\n";
+                return 1;
+            }
+            break;
+        }
     }
-    std::cout << output;
 
     Renderer::Shutdown();
 
