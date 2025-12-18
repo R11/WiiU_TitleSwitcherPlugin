@@ -256,23 +256,23 @@ struct SnapshotConfig {
 
 const SnapshotConfig SNAPSHOTS[] = {
     // Browse mode snapshots
-    {"browse", "default.txt",       SnapshotMode::BROWSE, 1,  0, 0, false, true,  0, 0},
-    {"browse", "scrolled.txt",      SnapshotMode::BROWSE, 10, 5, 0, false, true,  0, 0},
-    {"browse", "at_bottom.txt",     SnapshotMode::BROWSE, 19, 10, 0, false, true, 0, 0},
-    {"browse", "favorites.txt",     SnapshotMode::BROWSE, 0,  0, 1, false, true,  0, 0},
-    {"browse", "games.txt",         SnapshotMode::BROWSE, 0,  0, 2, false, true,  0, 0},
-    {"browse", "with_numbers.txt",  SnapshotMode::BROWSE, 1,  0, 0, true,  true,  0, 0},
-    {"browse", "no_favorites.txt",  SnapshotMode::BROWSE, 1,  0, 0, false, false, 0, 0},
+    {"browse", "default.html",       SnapshotMode::BROWSE, 1,  0, 0, false, true,  0, 0},
+    {"browse", "scrolled.html",      SnapshotMode::BROWSE, 10, 5, 0, false, true,  0, 0},
+    {"browse", "at_bottom.html",     SnapshotMode::BROWSE, 19, 10, 0, false, true, 0, 0},
+    {"browse", "favorites.html",     SnapshotMode::BROWSE, 0,  0, 1, false, true,  0, 0},
+    {"browse", "games.html",         SnapshotMode::BROWSE, 0,  0, 2, false, true,  0, 0},
+    {"browse", "with_numbers.html",  SnapshotMode::BROWSE, 1,  0, 0, true,  true,  0, 0},
+    {"browse", "no_favorites.html",  SnapshotMode::BROWSE, 1,  0, 0, false, false, 0, 0},
 
     // Settings mode snapshots
-    {"settings", "main.txt",              SnapshotMode::SETTINGS_MAIN, 0, 0, 0, false, true, 0, 0},
-    {"settings", "main_brightness.txt",   SnapshotMode::SETTINGS_MAIN, 0, 0, 0, false, true, 0, 0},
-    {"settings", "main_system_apps.txt",  SnapshotMode::SETTINGS_MAIN, 0, 0, 0, false, true, 1, 0},
-    {"settings", "system_apps.txt",       SnapshotMode::SETTINGS_SYSTEM_APPS, 0, 0, 0, false, true, 0, 0},
-    {"settings", "system_apps_browser.txt", SnapshotMode::SETTINGS_SYSTEM_APPS, 0, 0, 0, false, true, 0, 1},
+    {"settings", "main.html",              SnapshotMode::SETTINGS_MAIN, 0, 0, 0, false, true, 0, 0},
+    {"settings", "main_brightness.html",   SnapshotMode::SETTINGS_MAIN, 0, 0, 0, false, true, 0, 0},
+    {"settings", "main_system_apps.html",  SnapshotMode::SETTINGS_MAIN, 0, 0, 0, false, true, 1, 0},
+    {"settings", "system_apps.html",       SnapshotMode::SETTINGS_SYSTEM_APPS, 0, 0, 0, false, true, 0, 0},
+    {"settings", "system_apps_browser.html", SnapshotMode::SETTINGS_SYSTEM_APPS, 0, 0, 0, false, true, 0, 1},
 
     // Debug snapshots
-    {"debug", "grid.txt",           SnapshotMode::DEBUG_GRID, 0, 0, 0, false, true, 0, 0},
+    {"debug", "grid.html",           SnapshotMode::DEBUG_GRID, 0, 0, 0, false, true, 0, 0},
 };
 
 const int SNAPSHOT_COUNT = sizeof(SNAPSHOTS) / sizeof(SNAPSHOTS[0]);
@@ -364,31 +364,80 @@ std::string renderDebugGridForScreen(Renderer::ScreenType screenType) {
     return output;
 }
 
-// Render debug grid for all screen types
-std::string renderDebugGridSnapshot() {
-    std::string output;
+// Render debug grid as HTML for DRC screen
+std::string renderDebugGridHtml() {
+    Renderer::SetScreenType(Renderer::ScreenType::DRC);
+    Renderer::SetHardwareAccurate(true);
+    Renderer::Init();
 
-    for (int i = 0; i < SCREEN_TYPE_COUNT; i++) {
-        const auto& screen = SCREEN_TYPES[i];
+    int gridWidth = Renderer::GetGridWidth();
+    int gridHeight = Renderer::GetGridHeight();
+    int screenWidth = Renderer::GetScreenWidth();
+    int screenHeight = Renderer::GetScreenHeight();
 
-        // Add separator header
-        output += "================================================================================\n";
-        output += "  " + std::string(screen.name) + "\n";
-        output += "================================================================================\n\n";
+    Renderer::BeginFrame(0x1E1E2EFF);  // Dark background
 
-        // Render debug grid for this screen type
-        output += renderDebugGridForScreen(screen.type);
+    // Draw header info
+    char header[128];
+    snprintf(header, sizeof(header), "DEBUG GRID - Screen: %dx%d px  Grid: %dx%d chars",
+             screenWidth, screenHeight, gridWidth, gridHeight);
+    Renderer::DrawText(0, 0, header, 0xFFFF00FF);
 
-        // Add spacing between screens (except after last)
-        if (i < SCREEN_TYPE_COUNT - 1) {
-            output += "\n\n";
+    // Draw column markers every 10 columns
+    for (int col = 0; col < gridWidth; col += 10) {
+        char colNum[8];
+        snprintf(colNum, sizeof(colNum), "%d", col);
+        Renderer::DrawText(col, 1, colNum, 0x00FF00FF);
+    }
+
+    // Draw horizontal line at row 2
+    for (int col = 0; col < gridWidth; col++) {
+        Renderer::DrawText(col, 2, "-", 0x888888FF);
+    }
+
+    // Draw row markers and grid lines
+    int dividerCol = Renderer::GetDividerCol();
+    int detailsCol = Renderer::GetDetailsPanelCol();
+
+    for (int row = 3; row < gridHeight - 1; row++) {
+        // Row number on left
+        char rowNum[8];
+        snprintf(rowNum, sizeof(rowNum), "%2d", row);
+        Renderer::DrawText(0, row, rowNum, 0x00FF00FF);
+
+        // Mark divider column (red)
+        Renderer::DrawText(dividerCol, row, "|", 0xFF0000FF);
+
+        // Mark details panel start (cyan)
+        if (detailsCol < gridWidth) {
+            Renderer::DrawText(detailsCol, row, ">", 0x00FFFFFF);
+        }
+
+        // Light grid every 10 columns
+        for (int col = 10; col < gridWidth; col += 10) {
+            if (col != dividerCol && col != detailsCol) {
+                Renderer::DrawText(col, row, ".", 0x444444FF);
+            }
         }
     }
+
+    // Draw footer with layout info
+    int footerRow = gridHeight - 1;
+    int visibleRows = Renderer::GetVisibleRows();
+
+    char footer[128];
+    snprintf(footer, sizeof(footer), "Divider:%d Details:%d VisRows:%d",
+             dividerCol, detailsCol, visibleRows);
+    Renderer::DrawText(0, footerRow, footer, 0xFFFFFFFF);
+
+    std::string output = generateHtmlPreview();
+    Renderer::Shutdown();
 
     return output;
 }
 
-std::string renderForScreen(const SnapshotConfig& config, Renderer::ScreenType screenType) {
+// Render a snapshot as HTML for DRC screen (pixel-accurate)
+std::string renderSnapshotHtml(const SnapshotConfig& config) {
     // Reset state
     Settings::Init();
     Settings::Get().showNumbers = config.showNumbers;
@@ -399,7 +448,9 @@ std::string renderForScreen(const SnapshotConfig& config, Renderer::ScreenType s
         Categories::SelectCategory(config.category);
     }
 
-    Renderer::SetScreenType(screenType);
+    // Use DRC with hardware-accurate mode for HTML
+    Renderer::SetScreenType(Renderer::ScreenType::DRC);
+    Renderer::SetHardwareAccurate(true);
     Renderer::Init();
 
     Renderer::BeginFrame(Settings::Get().bgColor);
@@ -427,31 +478,8 @@ std::string renderForScreen(const SnapshotConfig& config, Renderer::ScreenType s
             break;
     }
 
-    std::string output = Renderer::GetTrimmedOutput();
+    std::string output = generateHtmlPreview();
     Renderer::Shutdown();
-
-    return output;
-}
-
-std::string renderSnapshot(const SnapshotConfig& config) {
-    std::string output;
-
-    for (int i = 0; i < SCREEN_TYPE_COUNT; i++) {
-        const auto& screen = SCREEN_TYPES[i];
-
-        // Add separator header
-        output += "================================================================================\n";
-        output += "  " + std::string(screen.name) + "\n";
-        output += "================================================================================\n\n";
-
-        // Render for this screen type
-        output += renderForScreen(config, screen.type);
-
-        // Add spacing between screens (except after last)
-        if (i < SCREEN_TYPE_COUNT - 1) {
-            output += "\n\n";
-        }
-    }
 
     return output;
 }
@@ -466,16 +494,16 @@ int updateSnapshots() {
     fs::create_directories(baseDir + "/edit");
     fs::create_directories(baseDir + "/debug");
 
-    std::cout << "Updating " << SNAPSHOT_COUNT << " snapshots...\n";
+    std::cout << "Updating " << SNAPSHOT_COUNT << " HTML snapshots...\n";
 
     for (int i = 0; i < SNAPSHOT_COUNT; i++) {
         const auto& config = SNAPSHOTS[i];
 
         std::string output;
         if (config.mode == SnapshotMode::DEBUG_GRID) {
-            output = renderDebugGridSnapshot();
+            output = renderDebugGridHtml();
         } else {
-            output = renderSnapshot(config);
+            output = renderSnapshotHtml(config);
         }
 
         std::string path = baseDir + "/" + config.folder + "/" + config.filename;
@@ -502,7 +530,7 @@ int verifySnapshots() {
         return 1;
     }
 
-    std::cout << "Verifying " << SNAPSHOT_COUNT << " snapshots...\n";
+    std::cout << "Verifying " << SNAPSHOT_COUNT << " HTML snapshots...\n";
 
     int passed = 0;
     int failed = 0;
@@ -512,9 +540,9 @@ int verifySnapshots() {
 
         std::string current;
         if (config.mode == SnapshotMode::DEBUG_GRID) {
-            current = renderDebugGridSnapshot();
+            current = renderDebugGridHtml();
         } else {
-            current = renderSnapshot(config);
+            current = renderSnapshotHtml(config);
         }
 
         std::string displayName = std::string(config.folder) + "/" + config.filename;
