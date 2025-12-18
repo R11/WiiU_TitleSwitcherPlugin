@@ -14,13 +14,13 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <sys/stat.h>
 
 // libgd for image loading
 #include <gd.h>
 
-// Wii U SDK for title meta directory
+// Wii U SDK
 #include <nn/acp/title.h>
-#include <coreinit/time.h>
 
 namespace ImageLoader {
 
@@ -36,8 +36,6 @@ bool sInitialized = false;
 // Maximum cache size
 int sCacheCapacity = DEFAULT_CACHE_SIZE;
 
-// Last error message for debugging (displayed on menu)
-char sLastError[128] = "";
 
 // Debug: track Update() calls
 int sUpdateCallCount = 0;
@@ -60,9 +58,6 @@ std::vector<uint64_t> sLoadQueue;
 // Cache tracking (LRU order - most recently used at end)
 std::vector<uint64_t> sCacheOrder;
 
-/**
- * Sort the load queue by priority (HIGH first).
- */
 void sortLoadQueue()
 {
     std::sort(sLoadQueue.begin(), sLoadQueue.end(),
@@ -128,70 +123,49 @@ bool loadImageFromFile(const char* path, Renderer::ImageHandle& outHandle)
 {
     outHandle = Renderer::INVALID_IMAGE;
 
-    // Open file
     FILE* file = fopen(path, "rb");
     if (!file) {
-        snprintf(sLastError, sizeof(sLastError), "fopen failed");
         return false;
     }
 
-    // Get file size
     fseek(file, 0, SEEK_END);
     long fileSize = ftell(file);
     fseek(file, 0, SEEK_SET);
 
     if (fileSize <= 8) {
         fclose(file);
-        snprintf(sLastError, sizeof(sLastError), "file too small (%ld)", fileSize);
         return false;
     }
 
-    // Read file into memory
     uint8_t* buffer = (uint8_t*)malloc(fileSize);
     if (!buffer) {
         fclose(file);
-        snprintf(sLastError, sizeof(sLastError), "malloc failed");
         return false;
     }
 
     if (fread(buffer, 1, fileSize, file) != (size_t)fileSize) {
         free(buffer);
         fclose(file);
-        snprintf(sLastError, sizeof(sLastError), "fread failed");
         return false;
     }
     fclose(file);
 
-    // Save header bytes for error reporting (before we potentially free buffer)
     uint8_t hdr[4] = { buffer[0], buffer[1], buffer[2], buffer[3] };
 
-    // Detect format and load with libgd
     gdImagePtr gdImg = nullptr;
-    const char* detectedFormat = "unknown";
-
     if (hdr[0] == 0x89 && hdr[1] == 'P' && hdr[2] == 'N' && hdr[3] == 'G') {
-        // PNG
-        detectedFormat = "PNG";
         gdImg = gdImageCreateFromPngPtr(fileSize, buffer);
     } else if (hdr[0] == 0xFF && hdr[1] == 0xD8) {
-        // JPEG
-        detectedFormat = "JPEG";
         gdImg = gdImageCreateFromJpegPtr(fileSize, buffer);
     } else if (hdr[0] == 'B' && hdr[1] == 'M') {
-        // BMP
-        detectedFormat = "BMP";
         gdImg = gdImageCreateFromBmpPtr(fileSize, buffer);
     } else {
-        // Try TGA for any other format (TGA has no reliable magic number)
-        detectedFormat = "TGA";
         gdImg = gdImageCreateFromTgaPtr(fileSize, buffer);
     }
 
     free(buffer);
 
     if (!gdImg) {
-        snprintf(sLastError, sizeof(sLastError), "libgd failed, hdr=%02X%02X%02X%02X fmt=%s",
-                 hdr[0], hdr[1], hdr[2], hdr[3], detectedFormat);
         return false;
     }
 
@@ -235,62 +209,62 @@ bool loadImageFromFile(const char* path, Renderer::ImageHandle& outHandle)
     return true;
 }
 
-/**
- * Load icon for a title using ACPGetTitleMetaDir.
- */
-bool loadImage(uint64_t titleId, Renderer::ImageHandle& outHandle)
+constexpr const char* ConfigDirectory = "sd:/wiiu/environments/aroma/plugins/config/TitleSwitcher";
+constexpr const char* IconsDirectory = "sd:/wiiu/environments/aroma/plugins/config/TitleSwitcher/icons";
+
+void copyFileToSDCard(const char* srcPath, uint64_t titleId)
+{
+    FILE* src = fopen(srcPath, "rb");
+    if (!src) return;
+
+    char dstPath[160];
+    snprintf(dstPath, sizeof(dstPath), "%s/%016llX.tga", IconsDirectory,
+             static_cast<unsigned long long>(titleId));
+
+    FILE* dst = fopen(dstPath, "wb");
+    if (!dst) {
+        fclose(src);
+        return;
+    }
+
+    char buffer[4096];
+    size_t bytes;
+    while ((bytes = fread(buffer, 1, sizeof(buffer), src)) > 0) {
+        fwrite(buffer, 1, bytes, dst);
+    }
+
+    fclose(dst);
+    fclose(src);
+}
+
+bool loadImage(uint64_t titleId, Renderer::ImageHandle& outHandle, bool checkRenderer = true)
 {
     outHandle = Renderer::INVALID_IMAGE;
 
-    // Cannot load images if renderer doesn't support them
-    if (!Renderer::SupportsImages()) {
-        snprintf(sLastError, sizeof(sLastError), "SupportsImages=false");
+    if (checkRenderer && !Renderer::SupportsImages()) {
         return false;
     }
 
-    // Get meta directory for this title
+    // Try SD card cache first
+    char sdPath[160];
+    snprintf(sdPath, sizeof(sdPath), "%s/%016llX.tga", IconsDirectory,
+             static_cast<unsigned long long>(titleId));
+    if (loadImageFromFile(sdPath, outHandle)) {
+        return true;
+    }
+
+    // Try title meta directory
     char metaPath[256];
-
-    ACPResult result = ACPGetTitleMetaDir(titleId, metaPath, sizeof(metaPath));
-    if (result != ACP_RESULT_SUCCESS) {
-        snprintf(sLastError, sizeof(sLastError), "ACPGetTitleMetaDir=%d", (int)result);
-        return false;
-    }
-
-    // Construct path to icon
-    char iconPath[280];
-    snprintf(iconPath, sizeof(iconPath), "%s/iconTex.tga", metaPath);
-
-    // Load the image
-    // USB storage can be slow to become accessible after app transitions,
-    // so retry a few times with small delays if fopen fails
-    FILE* file = nullptr;
-    constexpr int MAX_RETRIES = 3;
-    for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
-        file = fopen(iconPath, "rb");
-        if (file) {
-            break;
-        }
-        // Small delay before retry (only if not last attempt)
-        if (attempt < MAX_RETRIES - 1) {
-            OSSleepTicks(OSMillisecondsToTicks(50));
+    if (ACPGetTitleMetaDir(titleId, metaPath, sizeof(metaPath)) == ACP_RESULT_SUCCESS) {
+        char iconPath[280];
+        snprintf(iconPath, sizeof(iconPath), "%s/iconTex.tga", metaPath);
+        if (loadImageFromFile(iconPath, outHandle)) {
+            copyFileToSDCard(iconPath, titleId);
+            return true;
         }
     }
 
-    if (!file) {
-        // Show the path that failed - show end of path if too long
-        int pathLen = strlen(iconPath);
-        if (pathLen > 90) {
-            snprintf(sLastError, sizeof(sLastError), "fopen:...%s", iconPath + pathLen - 90);
-        } else {
-            snprintf(sLastError, sizeof(sLastError), "fopen: %s", iconPath);
-        }
-        return false;
-    }
-
-    // File opened successfully, pass to loadImageFromFile logic
-    fclose(file);
-    return loadImageFromFile(iconPath, outHandle);
+    return false;
 }
 
 } // anonymous namespace
@@ -309,7 +283,9 @@ bool Init(int cacheSize)
     sRequests.clear();
     sLoadQueue.clear();
     sCacheOrder.clear();
-    sLastError[0] = '\0';
+
+    mkdir(ConfigDirectory, 0755);
+    mkdir(IconsDirectory, 0755);
 
     sInitialized = true;
     return true;
@@ -340,16 +316,10 @@ void Update()
     sUpdateCallCount++;
     sQueueSize = static_cast<int>(sLoadQueue.size());
 
-    if (!sInitialized) {
-        snprintf(sLastError, sizeof(sLastError), "Update: not init, calls=%d", sUpdateCallCount);
+    if (!sInitialized || sLoadQueue.empty()) {
         return;
     }
 
-    if (sLoadQueue.empty()) {
-        return;
-    }
-
-    // Process one item from the queue per frame
     sortLoadQueue();
 
     uint64_t titleId = sLoadQueue.front();
@@ -366,13 +336,11 @@ void Update()
     if (loadImage(titleId, handle)) {
         it->second.status = Status::READY;
         it->second.handle = handle;
-        sLastError[0] = '\0';  // Clear error on success
         touchCache(titleId);
         evictIfNeeded();
     } else {
         it->second.status = Status::FAILED;
         it->second.handle = Renderer::INVALID_IMAGE;
-        // sLastError already set by loadImage
     }
 }
 
@@ -475,11 +443,6 @@ Renderer::ImageHandle Get(uint64_t titleId)
     return Renderer::INVALID_IMAGE;
 }
 
-const char* GetLastError()
-{
-    return sLastError;
-}
-
 void GetDebugInfo(int* outUpdateCalls, int* outQueueSize, bool* outInitialized)
 {
     if (outUpdateCalls) *outUpdateCalls = sUpdateCallCount;
@@ -549,6 +512,33 @@ void Prefetch(const uint64_t* titleIds, int count)
 
     for (int i = 0; i < count; i++) {
         Request(titleIds[i], Priority::LOW);
+    }
+}
+
+void LoadAllSync()
+{
+    if (!sInitialized) {
+        return;
+    }
+
+    while (!sLoadQueue.empty()) {
+        uint64_t titleId = sLoadQueue.front();
+        sLoadQueue.erase(sLoadQueue.begin());
+
+        auto it = sRequests.find(titleId);
+        if (it == sRequests.end()) {
+            continue;
+        }
+
+        Renderer::ImageHandle handle;
+        if (loadImage(titleId, handle, false)) {
+            it->second.status = Status::READY;
+            it->second.handle = handle;
+            touchCache(titleId);
+        } else {
+            it->second.status = Status::FAILED;
+            it->second.handle = Renderer::INVALID_IMAGE;
+        }
     }
 }
 

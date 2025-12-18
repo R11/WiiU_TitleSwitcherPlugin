@@ -56,7 +56,8 @@ namespace ImageLoader {
 // =============================================================================
 
 // Maximum number of images to keep in cache
-constexpr int DEFAULT_CACHE_SIZE = 32;
+// Set high to hold all title icons (loaded at plugin init)
+constexpr int DEFAULT_CACHE_SIZE = 500;
 
 // Icon dimensions (Wii U standard)
 constexpr int ICON_WIDTH = 128;
@@ -176,13 +177,6 @@ bool IsReady(uint64_t titleId);
 Renderer::ImageHandle Get(uint64_t titleId);
 
 /**
- * Get the last error message for debugging.
- *
- * @return Pointer to static error string (do not free)
- */
-const char* GetLastError();
-
-/**
  * Get debug info about the image loader state.
  */
 void GetDebugInfo(int* outUpdateCalls, int* outQueueSize, bool* outInitialized);
@@ -230,5 +224,8 @@ int GetCacheCapacity();
  * @param count     Number of IDs in array
  */
 void Prefetch(const uint64_t* titleIds, int count);
+
+// Process entire queue synchronously (blocks until complete)
+void LoadAllSync();
 
 } // namespace ImageLoader

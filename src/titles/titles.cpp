@@ -5,11 +5,12 @@
  */
 
 #include "titles.h"
+#include "../render/image_loader.h"
 
 // Wii U SDK headers
-#include <coreinit/mcp.h>         // MCP_Open, MCP_TitleListByAppType, etc.
-#include <coreinit/title.h>       // OSGetTitleID
-#include <nn/acp/title.h>         // ACPGetTitleMetaXml, ACPMetaXml
+#include <coreinit/mcp.h>
+#include <coreinit/title.h>
+#include <nn/acp/title.h>
 
 // Standard library
 #include <cstring>                // strncpy, memset
@@ -222,6 +223,9 @@ void Load(bool forceReload)
             getTitleMetadataFromSystem(titleId,
                                        sTitles[sTitleCount].name, MAX_NAME_LENGTH,
                                        sTitles[sTitleCount].productCode, MAX_PRODUCT_CODE);
+
+            // Queue icon for loading (loads when in Wii U Menu context)
+            ImageLoader::Request(titleId, ImageLoader::Priority::LOW);
 
             sTitleCount++;
         }
