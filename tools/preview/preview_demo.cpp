@@ -37,6 +37,12 @@ std::string generateHtmlPreview(bool includeDebugInfo = false) {
     int screenWidth = config.pixelWidth;
     int screenHeight = config.pixelHeight;
 
+    // Calculate horizontal scale factor to compress monospace font to OSScreen's narrow chars
+    // Typical monospace fonts have width:height ratio of ~0.6, so at 24px height = ~14.4px wide
+    // OSScreen uses 8px wide chars at 24px height, so we need scaleX(8/14.4) ≈ 0.55
+    double naturalCharWidth = charHeight * 0.6;
+    double scaleX = (double)charWidth / naturalCharWidth;
+
     std::ostringstream html;
 
     html << R"(<!DOCTYPE html>
@@ -92,10 +98,12 @@ std::string generateHtmlPreview(bool includeDebugInfo = false) {
             left: 0;
             white-space: pre;
             height: )" << charHeight << R"(px;
+            transform: scaleX()" << scaleX << R"();
+            transform-origin: left;
         }
         .char {
             display: inline-block;
-            width: )" << charWidth << R"(px;
+            width: )" << naturalCharWidth << R"(px;
             text-align: center;
         }
         .icon-placeholder {
