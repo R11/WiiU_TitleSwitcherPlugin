@@ -182,6 +182,11 @@ Renderer::ImageHandle Get(uint64_t titleId);
  */
 const char* GetLastError();
 
+/**
+ * Get debug info about the image loader state.
+ */
+void GetDebugInfo(int* outUpdateCalls, int* outQueueSize, bool* outInitialized);
+
 // =============================================================================
 // Cache Management
 // =============================================================================

@@ -38,6 +38,10 @@ int sCacheCapacity = DEFAULT_CACHE_SIZE;
 // Last error message for debugging (displayed on menu)
 char sLastError[128] = "";
 
+// Debug: track Update() calls
+int sUpdateCallCount = 0;
+int sQueueSize = 0;
+
 // Request tracking
 struct RequestInfo {
     uint64_t titleId;
@@ -304,7 +308,15 @@ void Shutdown()
 
 void Update()
 {
-    if (!sInitialized || sLoadQueue.empty()) {
+    sUpdateCallCount++;
+    sQueueSize = static_cast<int>(sLoadQueue.size());
+
+    if (!sInitialized) {
+        snprintf(sLastError, sizeof(sLastError), "Update: not init, calls=%d", sUpdateCallCount);
+        return;
+    }
+
+    if (sLoadQueue.empty()) {
         return;
     }
 
@@ -437,6 +449,13 @@ Renderer::ImageHandle Get(uint64_t titleId)
 const char* GetLastError()
 {
     return sLastError;
+}
+
+void GetDebugInfo(int* outUpdateCalls, int* outQueueSize, bool* outInitialized)
+{
+    if (outUpdateCalls) *outUpdateCalls = sUpdateCallCount;
+    if (outQueueSize) *outQueueSize = sQueueSize;
+    if (outInitialized) *outInitialized = sInitialized;
 }
 
 void ClearCache()
