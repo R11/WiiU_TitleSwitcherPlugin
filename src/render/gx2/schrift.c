@@ -129,12 +129,17 @@ struct SFT_Font
 
 /* function declarations */
 /* generic utility functions */
+#if !defined(__WIIU__)
+/* devkitPPC already provides reallocarray in stdlib.h */
 static void *reallocarray(void *optr, size_t nmemb, size_t size);
+#endif
 static inline int fast_floor(double x);
 static inline int fast_ceil (double x);
 /* file loading */
 static int  map_file  (SFT_Font *font, const char *filename);
+#if !defined(__WIIU__)
 static void unmap_file(SFT_Font *font);
+#endif
 static int  init_font (SFT_Font *font);
 /* simple mathematical operations */
 static Point midpoint(Point a, Point b);
@@ -412,6 +417,8 @@ failure:
 
 /* This is sqrt(SIZE_MAX+1), as s1*s2 <= SIZE_MAX
  * if both s1 < MUL_NO_OVERFLOW and s2 < MUL_NO_OVERFLOW */
+#if !defined(__WIIU__)
+/* devkitPPC already provides reallocarray in stdlib.h */
 #define MUL_NO_OVERFLOW	((size_t)1 << (sizeof(size_t) * 4))
 
 /* OpenBSD's reallocarray() standard libary function.
@@ -427,6 +434,7 @@ reallocarray(void *optr, size_t nmemb, size_t size)
 	}
 	return realloc(optr, size * nmemb);
 }
+#endif
 
 /* TODO maybe we should use long here instead of int. */
 static inline int
@@ -454,12 +462,7 @@ map_file(SFT_Font *font, const char *filename)
 	return -1; /* Not supported on Wii U */
 }
 
-static void
-unmap_file(SFT_Font *font)
-{
-	(void)font;
-	/* Nothing to do */
-}
+/* unmap_file not needed on Wii U - sft_freefont doesn't call it */
 
 #elif defined(_WIN32)
 
