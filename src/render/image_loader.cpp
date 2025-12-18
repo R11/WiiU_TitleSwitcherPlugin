@@ -263,8 +263,13 @@ bool loadImage(uint64_t titleId, Renderer::ImageHandle& outHandle)
     // Load the image
     FILE* file = fopen(iconPath, "rb");
     if (!file) {
-        // Show the path that failed so we can debug
-        snprintf(sLastError, sizeof(sLastError), "fopen: %.100s", iconPath);
+        // Show the path that failed - show end of path if too long
+        int pathLen = strlen(iconPath);
+        if (pathLen > 90) {
+            snprintf(sLastError, sizeof(sLastError), "fopen:...%s", iconPath + pathLen - 90);
+        } else {
+            snprintf(sLastError, sizeof(sLastError), "fopen: %s", iconPath);
+        }
         return false;
     }
 
