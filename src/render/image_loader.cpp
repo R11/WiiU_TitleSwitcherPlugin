@@ -20,6 +20,7 @@
 
 // Wii U SDK for title meta directory
 #include <nn/acp/title.h>
+#include <coreinit/time.h>
 
 namespace ImageLoader {
 
@@ -261,7 +262,21 @@ bool loadImage(uint64_t titleId, Renderer::ImageHandle& outHandle)
     snprintf(iconPath, sizeof(iconPath), "%s/iconTex.tga", metaPath);
 
     // Load the image
-    FILE* file = fopen(iconPath, "rb");
+    // USB storage can be slow to become accessible after app transitions,
+    // so retry a few times with small delays if fopen fails
+    FILE* file = nullptr;
+    constexpr int MAX_RETRIES = 3;
+    for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        file = fopen(iconPath, "rb");
+        if (file) {
+            break;
+        }
+        // Small delay before retry (only if not last attempt)
+        if (attempt < MAX_RETRIES - 1) {
+            OSSleepTicks(OSMillisecondsToTicks(50));
+        }
+    }
+
     if (!file) {
         // Show the path that failed - show end of path if too long
         int pathLen = strlen(iconPath);
