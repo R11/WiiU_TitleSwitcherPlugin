@@ -21,9 +21,6 @@
 // Wii U SDK for title meta directory
 #include <nn/acp/title.h>
 
-// Notifications for diagnostic logging
-#include <notifications/notifications.h>
-
 namespace ImageLoader {
 
 // =============================================================================
@@ -37,6 +34,9 @@ bool sInitialized = false;
 
 // Maximum cache size
 int sCacheCapacity = DEFAULT_CACHE_SIZE;
+
+// Last error message for debugging (displayed on menu)
+char sLastError[128] = "";
 
 // Request tracking
 struct RequestInfo {
@@ -126,6 +126,7 @@ bool loadImageFromFile(const char* path, Renderer::ImageHandle& outHandle)
     // Open file
     FILE* file = fopen(path, "rb");
     if (!file) {
+        snprintf(sLastError, sizeof(sLastError), "fopen failed");
         return false;
     }
 
@@ -136,6 +137,7 @@ bool loadImageFromFile(const char* path, Renderer::ImageHandle& outHandle)
 
     if (fileSize <= 8) {
         fclose(file);
+        snprintf(sLastError, sizeof(sLastError), "file too small (%ld)", fileSize);
         return false;
     }
 
@@ -143,36 +145,48 @@ bool loadImageFromFile(const char* path, Renderer::ImageHandle& outHandle)
     uint8_t* buffer = (uint8_t*)malloc(fileSize);
     if (!buffer) {
         fclose(file);
+        snprintf(sLastError, sizeof(sLastError), "malloc failed");
         return false;
     }
 
     if (fread(buffer, 1, fileSize, file) != (size_t)fileSize) {
         free(buffer);
         fclose(file);
+        snprintf(sLastError, sizeof(sLastError), "fread failed");
         return false;
     }
     fclose(file);
 
+    // Save header bytes for error reporting (before we potentially free buffer)
+    uint8_t hdr[4] = { buffer[0], buffer[1], buffer[2], buffer[3] };
+
     // Detect format and load with libgd
     gdImagePtr gdImg = nullptr;
+    const char* detectedFormat = "unknown";
 
-    if (buffer[0] == 0x89 && buffer[1] == 'P' && buffer[2] == 'N' && buffer[3] == 'G') {
+    if (hdr[0] == 0x89 && hdr[1] == 'P' && hdr[2] == 'N' && hdr[3] == 'G') {
         // PNG
+        detectedFormat = "PNG";
         gdImg = gdImageCreateFromPngPtr(fileSize, buffer);
-    } else if (buffer[0] == 0xFF && buffer[1] == 0xD8) {
+    } else if (hdr[0] == 0xFF && hdr[1] == 0xD8) {
         // JPEG
+        detectedFormat = "JPEG";
         gdImg = gdImageCreateFromJpegPtr(fileSize, buffer);
-    } else if (buffer[0] == 'B' && buffer[1] == 'M') {
+    } else if (hdr[0] == 'B' && hdr[1] == 'M') {
         // BMP
+        detectedFormat = "BMP";
         gdImg = gdImageCreateFromBmpPtr(fileSize, buffer);
-    } else if (buffer[0] == 0x00) {
-        // TGA (usually starts with 0x00)
+    } else {
+        // Try TGA for any other format (TGA has no reliable magic number)
+        detectedFormat = "TGA";
         gdImg = gdImageCreateFromTgaPtr(fileSize, buffer);
     }
 
     free(buffer);
 
     if (!gdImg) {
+        snprintf(sLastError, sizeof(sLastError), "libgd failed, hdr=%02X%02X%02X%02X fmt=%s",
+                 hdr[0], hdr[1], hdr[2], hdr[3], detectedFormat);
         return false;
     }
 
@@ -225,7 +239,7 @@ bool loadImage(uint64_t titleId, Renderer::ImageHandle& outHandle)
 
     // Cannot load images if renderer doesn't support them
     if (!Renderer::SupportsImages()) {
-        NotificationModule_AddInfoNotification("ImageLoader: SupportsImages=false");
+        snprintf(sLastError, sizeof(sLastError), "SupportsImages=false");
         return false;
     }
 
@@ -234,9 +248,7 @@ bool loadImage(uint64_t titleId, Renderer::ImageHandle& outHandle)
 
     ACPResult result = ACPGetTitleMetaDir(titleId, metaPath, sizeof(metaPath));
     if (result != ACP_RESULT_SUCCESS) {
-        char msg[64];
-        snprintf(msg, sizeof(msg), "ImageLoader: ACPGetTitleMetaDir failed=%d", (int)result);
-        NotificationModule_AddInfoNotification(msg);
+        snprintf(sLastError, sizeof(sLastError), "ACPGetTitleMetaDir=%d", (int)result);
         return false;
     }
 
@@ -244,14 +256,8 @@ bool loadImage(uint64_t titleId, Renderer::ImageHandle& outHandle)
     char iconPath[280];
     snprintf(iconPath, sizeof(iconPath), "%s/iconTex.tga", metaPath);
 
-    // Load the image
-    bool loaded = loadImageFromFile(iconPath, outHandle);
-    if (!loaded) {
-        char msg[96];
-        snprintf(msg, sizeof(msg), "ImageLoader: loadImageFromFile failed: %.60s", iconPath);
-        NotificationModule_AddInfoNotification(msg);
-    }
-    return loaded;
+    // Load the image (loadImageFromFile sets sLastError on failure)
+    return loadImageFromFile(iconPath, outHandle);
 }
 
 } // anonymous namespace
@@ -270,6 +276,7 @@ bool Init(int cacheSize)
     sRequests.clear();
     sLoadQueue.clear();
     sCacheOrder.clear();
+    sLastError[0] = '\0';
 
     sInitialized = true;
     return true;
@@ -318,11 +325,13 @@ void Update()
     if (loadImage(titleId, handle)) {
         it->second.status = Status::READY;
         it->second.handle = handle;
+        sLastError[0] = '\0';  // Clear error on success
         touchCache(titleId);
         evictIfNeeded();
     } else {
         it->second.status = Status::FAILED;
         it->second.handle = Renderer::INVALID_IMAGE;
+        // sLastError already set by loadImage
     }
 }
 
@@ -348,6 +357,7 @@ void Request(uint64_t titleId, Priority priority)
             }
             return;
         }
+        // Status is FAILED or NOT_REQUESTED - will re-queue below
     }
 
     // Create new request
@@ -422,6 +432,11 @@ Renderer::ImageHandle Get(uint64_t titleId)
         return it->second.handle;
     }
     return Renderer::INVALID_IMAGE;
+}
+
+const char* GetLastError()
+{
+    return sLastError;
 }
 
 void ClearCache()

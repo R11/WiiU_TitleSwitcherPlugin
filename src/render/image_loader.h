@@ -175,6 +175,13 @@ bool IsReady(uint64_t titleId);
  */
 Renderer::ImageHandle Get(uint64_t titleId);
 
+/**
+ * Get the last error message for debugging.
+ *
+ * @return Pointer to static error string (do not free)
+ */
+const char* GetLastError();
+
 // =============================================================================
 // Cache Management
 // =============================================================================

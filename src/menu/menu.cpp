@@ -307,6 +307,26 @@ void drawDetailsPanel()
     } else {
         // Draw placeholder while loading
         Renderer::DrawPlaceholder(iconX, iconY, ICON_SIZE, ICON_SIZE, 0x333333FF);
+
+        // Debug: show image loading status
+        ImageLoader::Status status = ImageLoader::GetStatus(title->titleId);
+        const char* statusStr = "UNKNOWN";
+        switch (status) {
+            case ImageLoader::Status::NOT_REQUESTED: statusStr = "NOT_REQUESTED"; break;
+            case ImageLoader::Status::QUEUED:        statusStr = "QUEUED"; break;
+            case ImageLoader::Status::LOADING:       statusStr = "LOADING"; break;
+            case ImageLoader::Status::READY:         statusStr = "READY"; break;
+            case ImageLoader::Status::FAILED:        statusStr = "FAILED"; break;
+        }
+        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 1, "Icon: %s", statusStr);
+
+        // Show error details if failed
+        if (status == ImageLoader::Status::FAILED) {
+            const char* err = ImageLoader::GetLastError();
+            if (err && err[0] != '\0') {
+                Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 2, "Err: %s", err);
+            }
+        }
     }
 
     // Info starts after icon (icon is ~5-6 rows at 24px/row)
