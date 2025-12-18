@@ -207,8 +207,8 @@ constexpr Button PANEL_RIGHT   = { VPAD_BUTTON_RIGHT, "Right" };
 
 // Button combination to open the menu (all must be held)
 // Note: This is a bitmask of buttons that must ALL be pressed
-constexpr uint32_t MENU_OPEN_COMBO = VPAD_BUTTON_L | VPAD_BUTTON_R | VPAD_BUTTON_MINUS;
-constexpr const char* MENU_OPEN_COMBO_LABEL = "L+R+-";
+constexpr uint32_t MENU_OPEN_COMBO = VPAD_BUTTON_L | VPAD_BUTTON_MINUS | VPAD_BUTTON_RIGHT;
+constexpr const char* MENU_OPEN_COMBO_LABEL = "L+-+Right";
 
 } // namespace Actions
 
