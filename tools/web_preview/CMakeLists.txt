@@ -11,7 +11,7 @@ if(EMSCRIPTEN)
     # Emscripten flags
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s WASM=1")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s ALLOW_MEMORY_GROWTH=1")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s EXPORTED_FUNCTIONS='[\"_main\",\"_onKeyDown\",\"_onKeyUp\",\"_setScreenType\"]'")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s EXPORTED_FUNCTIONS='[\"_main\",\"_onKeyDown\",\"_onKeyUp\",\"_setTvResolution\",\"_selectScreen\"]'")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s EXPORTED_RUNTIME_METHODS='[\"ccall\",\"cwrap\"]'")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_SDL=0")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --shell-file ${CMAKE_SOURCE_DIR}/shell.html")

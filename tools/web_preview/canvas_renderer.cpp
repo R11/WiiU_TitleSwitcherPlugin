@@ -1,8 +1,8 @@
 /**
- * Canvas Renderer Backend
+ * Canvas Renderer Backend - Dual Screen Support
  *
  * Implements the Renderer interface using HTML Canvas via Emscripten.
- * Draws to a pixel buffer which is then copied to the canvas each frame.
+ * Supports simultaneous rendering to both TV and GamePad (DRC) screens.
  */
 
 #include "render/renderer.h"
@@ -20,75 +20,89 @@
 
 namespace Renderer {
 
-// Screen dimensions (DRC resolution)
-static constexpr int SCREEN_WIDTH = 854;
-static constexpr int SCREEN_HEIGHT = 480;
+// =============================================================================
+// Screen Configuration
+// =============================================================================
 
-// Character grid dimensions
+// Screen type for dual-screen rendering
+enum class Screen {
+    DRC,    // GamePad (always 854x480)
+    TV      // TV (variable resolution)
+};
+
+// DRC dimensions (fixed)
+static constexpr int DRC_WIDTH = 854;
+static constexpr int DRC_HEIGHT = 480;
+
+// TV dimensions (variable, default 720p)
+static int sTvWidth = 1280;
+static int sTvHeight = 720;
+
+// Character grid dimensions (based on 8x24 character cells)
 static constexpr int CHAR_WIDTH = 8;
-static constexpr int CHAR_HEIGHT = 24;  // OSScreen uses 24px row height
-static constexpr int GRID_COLS = SCREEN_WIDTH / CHAR_WIDTH;    // ~106
-static constexpr int GRID_ROWS = SCREEN_HEIGHT / CHAR_HEIGHT;  // 20
+static constexpr int CHAR_HEIGHT = 24;
 
-// Framebuffer (RGBA format)
-static uint32_t* sFramebuffer = nullptr;
+// Current screen being rendered
+static Screen sCurrentScreen = Screen::DRC;
+
+// Framebuffers (RGBA format)
+static uint32_t* sDrcFramebuffer = nullptr;
+static uint32_t* sTvFramebuffer = nullptr;
 static bool sInitialized = false;
 static uint32_t sBgColor = 0x1E1E2EFF;
 
-/**
- * Initialize the renderer
- */
-bool Init() {
-    if (sInitialized) return true;
+// =============================================================================
+// Helper Functions
+// =============================================================================
 
-    sFramebuffer = new uint32_t[SCREEN_WIDTH * SCREEN_HEIGHT];
-    if (!sFramebuffer) return false;
+static int getCurrentWidth() {
+    return (sCurrentScreen == Screen::DRC) ? DRC_WIDTH : sTvWidth;
+}
 
-    std::memset(sFramebuffer, 0, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(uint32_t));
-    sInitialized = true;
-    return true;
+static int getCurrentHeight() {
+    return (sCurrentScreen == Screen::DRC) ? DRC_HEIGHT : sTvHeight;
+}
+
+static uint32_t* getCurrentFramebuffer() {
+    return (sCurrentScreen == Screen::DRC) ? sDrcFramebuffer : sTvFramebuffer;
+}
+
+static int getGridCols() {
+    return getCurrentWidth() / CHAR_WIDTH;
+}
+
+static int getGridRows() {
+    return getCurrentHeight() / CHAR_HEIGHT;
 }
 
 /**
- * Shutdown the renderer
- */
-void Shutdown() {
-    if (sFramebuffer) {
-        delete[] sFramebuffer;
-        sFramebuffer = nullptr;
-    }
-    sInitialized = false;
-}
-
-/**
- * Check if initialized
- */
-bool IsInitialized() {
-    return sInitialized;
-}
-
-/**
- * Set a single pixel in the framebuffer
+ * Set a single pixel in the current framebuffer
  */
 static void setPixel(int x, int y, uint32_t color) {
-    if (x < 0 || x >= SCREEN_WIDTH || y < 0 || y >= SCREEN_HEIGHT) return;
+    int width = getCurrentWidth();
+    int height = getCurrentHeight();
+    uint32_t* fb = getCurrentFramebuffer();
 
-    // Color is RGBA, need to convert for Canvas (which expects ABGR in memory)
+    if (x < 0 || x >= width || y < 0 || y >= height || !fb) return;
+
+    // Color is RGBA, convert to ABGR for Canvas ImageData
     uint8_t r = (color >> 24) & 0xFF;
     uint8_t g = (color >> 16) & 0xFF;
     uint8_t b = (color >> 8) & 0xFF;
     uint8_t a = color & 0xFF;
 
-    // Store as ABGR for Canvas ImageData
-    sFramebuffer[y * SCREEN_WIDTH + x] = (a << 24) | (b << 16) | (g << 8) | r;
+    fb[y * width + x] = (a << 24) | (b << 16) | (g << 8) | r;
 }
 
 /**
  * Fill a rectangle
  */
 static void fillRect(int x, int y, int w, int h, uint32_t color) {
-    for (int py = y; py < y + h && py < SCREEN_HEIGHT; py++) {
-        for (int px = x; px < x + w && px < SCREEN_WIDTH; px++) {
+    int width = getCurrentWidth();
+    int height = getCurrentHeight();
+
+    for (int py = y; py < y + h && py < height; py++) {
+        for (int px = x; px < x + w && px < width; px++) {
             if (px >= 0 && py >= 0) {
                 setPixel(px, py, color);
             }
@@ -96,40 +110,122 @@ static void fillRect(int x, int y, int w, int h, uint32_t color) {
     }
 }
 
-/**
- * Begin a new frame
- */
+// =============================================================================
+// Lifecycle
+// =============================================================================
+
+bool Init() {
+    if (sInitialized) return true;
+
+    // Allocate DRC framebuffer
+    sDrcFramebuffer = new uint32_t[DRC_WIDTH * DRC_HEIGHT];
+    if (!sDrcFramebuffer) return false;
+    std::memset(sDrcFramebuffer, 0, DRC_WIDTH * DRC_HEIGHT * sizeof(uint32_t));
+
+    // Allocate TV framebuffer (max size for 1080p)
+    sTvFramebuffer = new uint32_t[1920 * 1080];
+    if (!sTvFramebuffer) {
+        delete[] sDrcFramebuffer;
+        sDrcFramebuffer = nullptr;
+        return false;
+    }
+    std::memset(sTvFramebuffer, 0, 1920 * 1080 * sizeof(uint32_t));
+
+    sInitialized = true;
+    return true;
+}
+
+void Shutdown() {
+    if (sDrcFramebuffer) {
+        delete[] sDrcFramebuffer;
+        sDrcFramebuffer = nullptr;
+    }
+    if (sTvFramebuffer) {
+        delete[] sTvFramebuffer;
+        sTvFramebuffer = nullptr;
+    }
+    sInitialized = false;
+}
+
+bool IsInitialized() {
+    return sInitialized;
+}
+
+// =============================================================================
+// Screen Selection
+// =============================================================================
+
+void SelectScreen(int screen) {
+    sCurrentScreen = (screen == 0) ? Screen::DRC : Screen::TV;
+}
+
+void SetTvResolution(int resolution) {
+    switch (resolution) {
+        case 1080:
+            sTvWidth = 1920;
+            sTvHeight = 1080;
+            break;
+        case 720:
+            sTvWidth = 1280;
+            sTvHeight = 720;
+            break;
+        case 480:
+        default:
+            sTvWidth = 854;
+            sTvHeight = 480;
+            break;
+    }
+}
+
+// =============================================================================
+// Frame Management
+// =============================================================================
+
 void BeginFrame(uint32_t bgColor) {
     sBgColor = bgColor;
-    // Fill entire screen with background color
-    for (int y = 0; y < SCREEN_HEIGHT; y++) {
-        for (int x = 0; x < SCREEN_WIDTH; x++) {
+    int width = getCurrentWidth();
+    int height = getCurrentHeight();
+
+    // Fill current screen with background color
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
             setPixel(x, y, bgColor);
         }
     }
 }
 
-/**
- * End frame and display
- */
 void EndFrame() {
 #ifdef __EMSCRIPTEN__
-    // Push framebuffer to Canvas
+    // Push DRC framebuffer
     EM_ASM({
-        const canvas = document.getElementById('screen');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        const imageData = ctx.createImageData($0, $1);
-        const data = new Uint8ClampedArray(Module.HEAPU8.buffer, $2, $0 * $1 * 4);
-        imageData.data.set(data);
-        ctx.putImageData(imageData, 0, 0);
-    }, SCREEN_WIDTH, SCREEN_HEIGHT, sFramebuffer);
+        const canvas = document.getElementById('screen-drc');
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.createImageData($0, $1);
+            const data = new Uint8ClampedArray(Module.HEAPU8.buffer, $2, $0 * $1 * 4);
+            imageData.data.set(data);
+            ctx.putImageData(imageData, 0, 0);
+        }
+    }, DRC_WIDTH, DRC_HEIGHT, sDrcFramebuffer);
+
+    // Push TV framebuffer
+    EM_ASM({
+        const canvas = document.getElementById('screen-tv');
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.createImageData($0, $1);
+            const data = new Uint8ClampedArray(Module.HEAPU8.buffer, $2, $0 * $1 * 4);
+            imageData.data.set(data);
+            ctx.putImageData(imageData, 0, 0);
+        }
+    }, sTvWidth, sTvHeight, sTvFramebuffer);
 #endif
 }
 
-/**
- * Draw text using the bitmap font
- */
+// =============================================================================
+// Text Rendering
+// =============================================================================
+
 void DrawText(int col, int row, const char* text, uint32_t color) {
     if (!sInitialized || !text) return;
 
@@ -151,9 +247,6 @@ void DrawText(int col, int row, const char* text, uint32_t color) {
     }
 }
 
-/**
- * Draw formatted text
- */
 void DrawTextF(int col, int row, const char* fmt, ...) {
     char buffer[256];
     va_list args;
@@ -163,9 +256,6 @@ void DrawTextF(int col, int row, const char* fmt, ...) {
     DrawText(col, row, buffer, 0xFFFFFFFF);
 }
 
-/**
- * Draw formatted text with color
- */
 void DrawTextF(int col, int row, uint32_t color, const char* fmt, ...) {
     char buffer[256];
     va_list args;
@@ -175,9 +265,10 @@ void DrawTextF(int col, int row, uint32_t color, const char* fmt, ...) {
     DrawText(col, row, buffer, color);
 }
 
-/**
- * Draw a placeholder rectangle (for images)
- */
+// =============================================================================
+// Image Rendering
+// =============================================================================
+
 void DrawPlaceholder(int x, int y, int width, int height, uint32_t color) {
     fillRect(x, y, width, height, color);
 
@@ -193,47 +284,66 @@ void DrawPlaceholder(int x, int y, int width, int height, uint32_t color) {
     }
 }
 
-/**
- * Draw image - for web preview, just draw placeholder
- */
 void DrawImage(int x, int y, ImageHandle handle, int width, int height) {
-    // In web preview, we don't have actual images yet
-    // Just draw a colored placeholder
     (void)handle;
     if (width <= 0) width = 64;
     if (height <= 0) height = 64;
     DrawPlaceholder(x, y, width, height, 0x444444FF);
 }
 
-// Image support stubs
 bool SupportsImages() { return false; }
 
-// Screen info functions
-int GetScreenWidth() { return SCREEN_WIDTH; }
-int GetScreenHeight() { return SCREEN_HEIGHT; }
-int GetGridWidth() { return GRID_COLS; }
-int GetGridHeight() { return GRID_ROWS; }
+// =============================================================================
+// Screen Info Functions
+// =============================================================================
 
-// Coordinate conversion
+int GetScreenWidth() { return getCurrentWidth(); }
+int GetScreenHeight() { return getCurrentHeight(); }
+int GetGridWidth() { return getGridCols(); }
+int GetGridHeight() { return getGridRows(); }
+
 int ColToPixelX(int col) { return col * CHAR_WIDTH; }
 int RowToPixelY(int row) { return row * CHAR_HEIGHT; }
 
-// Layout functions (matching OSScreen layout)
-int GetDividerCol() { return GRID_COLS * 30 / 100; }  // 30% from left
+// =============================================================================
+// Layout Functions
+// =============================================================================
+
+int GetDividerCol() { return getGridCols() * 30 / 100; }
 int GetDetailsPanelCol() { return GetDividerCol() + 2; }
 int GetListWidth() { return GetDividerCol() - 1; }
-int GetVisibleRows() { return GRID_ROWS - 4; }  // Header + footer
-int GetFooterRow() { return GRID_ROWS - 1; }
+int GetVisibleRows() { return getGridRows() - 4; }
+int GetFooterRow() { return getGridRows() - 1; }
+
 int GetTitleNameWidth(bool showNumbers) {
-    int width = GetListWidth() - 4;  // Base width minus prefix
+    int width = GetListWidth() - 4;
     if (showNumbers) {
-        width -= 4;  // Reserve space for line numbers "001."
+        width -= 4;
     }
     return width;
 }
 
-// Backend selection (only Canvas for web)
+// =============================================================================
+// Backend Selection
+// =============================================================================
+
 void SetBackend(Backend backend) { (void)backend; }
 Backend GetBackend() { return Backend::OS_SCREEN; }
 
 } // namespace Renderer
+
+// =============================================================================
+// Exported Functions for JavaScript
+// =============================================================================
+
+extern "C" {
+
+void selectScreen(int screen) {
+    Renderer::SelectScreen(screen);
+}
+
+void setTvResolution(int resolution) {
+    Renderer::SetTvResolution(resolution);
+}
+
+}

@@ -34,7 +34,14 @@
             font-size: 14px;
         }
 
-        #canvas-container {
+        .screens-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .screen-wrapper {
             position: relative;
             border: 3px solid #313244;
             border-radius: 8px;
@@ -42,7 +49,15 @@
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }
 
-        #screen {
+        .screen-wrapper.tv {
+            border-color: #45475a;
+        }
+
+        .screen-wrapper.drc {
+            border-color: #89b4fa;
+        }
+
+        .screen-wrapper canvas {
             display: block;
             image-rendering: pixelated;
             image-rendering: crisp-edges;
@@ -53,17 +68,26 @@
             top: 10px;
             left: 10px;
             background: rgba(0, 0, 0, 0.7);
-            color: #f5c2e7;
             padding: 4px 8px;
             border-radius: 4px;
             font-size: 12px;
             font-family: monospace;
         }
 
+        .screen-wrapper.tv .screen-label {
+            color: #a6e3a1;
+        }
+
+        .screen-wrapper.drc .screen-label {
+            color: #f5c2e7;
+        }
+
         .controls {
             margin-top: 20px;
             display: flex;
             gap: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
 
         .control-group {
@@ -125,19 +149,19 @@
             color: #a6adc8;
         }
 
-        .screen-selector {
+        .tv-options {
             margin-top: 15px;
             display: flex;
             gap: 10px;
             align-items: center;
         }
 
-        .screen-selector label {
+        .tv-options label {
             color: #a6adc8;
             font-size: 13px;
         }
 
-        .screen-selector select {
+        .tv-options select {
             background: #313244;
             color: #cdd6f4;
             border: 1px solid #45475a;
@@ -174,11 +198,20 @@
 </head>
 <body>
     <h1>Wii U Title Switcher</h1>
-    <p class="subtitle">Interactive Menu Preview</p>
+    <p class="subtitle">Interactive Menu Preview - Dual Screen</p>
 
-    <div id="canvas-container">
-        <canvas id="screen" width="854" height="480"></canvas>
-        <span class="screen-label">DRC (GamePad)</span>
+    <div class="screens-container">
+        <!-- TV Screen (top) -->
+        <div class="screen-wrapper tv">
+            <canvas id="screen-tv" width="1280" height="720"></canvas>
+            <span class="screen-label">TV (720p)</span>
+        </div>
+
+        <!-- GamePad Screen (bottom) -->
+        <div class="screen-wrapper drc">
+            <canvas id="screen-drc" width="854" height="480"></canvas>
+            <span class="screen-label">GamePad (DRC)</span>
+        </div>
     </div>
 
     <div class="controls">
@@ -233,13 +266,12 @@
         </div>
     </div>
 
-    <div class="screen-selector">
-        <label for="screenType">Screen Mode:</label>
-        <select id="screenType" onchange="changeScreenType(this.value)">
-            <option value="drc" selected>GamePad (854x480)</option>
-            <option value="tv1080">TV 1080p (1920x1080)</option>
-            <option value="tv720">TV 720p (1280x720)</option>
-            <option value="tv480">TV 480p (854x480)</option>
+    <div class="tv-options">
+        <label for="tvResolution">TV Resolution:</label>
+        <select id="tvResolution" onchange="changeTvResolution(this.value)">
+            <option value="720" selected>720p (1280x720)</option>
+            <option value="1080">1080p (1920x1080)</option>
+            <option value="480">480p (854x480)</option>
         </select>
     </div>
 
@@ -250,33 +282,46 @@
     <div id="output"></div>
 
     <script>
-        // Screen dimensions
-        const screenSizes = {
-            drc: { width: 854, height: 480, label: 'DRC (GamePad)' },
-            tv1080: { width: 1920, height: 1080, label: 'TV 1080p' },
-            tv720: { width: 1280, height: 720, label: 'TV 720p' },
-            tv480: { width: 854, height: 480, label: 'TV 480p' }
+        // TV resolutions
+        const tvSizes = {
+            '1080': { width: 1920, height: 1080, label: 'TV (1080p)' },
+            '720': { width: 1280, height: 720, label: 'TV (720p)' },
+            '480': { width: 854, height: 480, label: 'TV (480p)' }
         };
 
-        function changeScreenType(type) {
-            const size = screenSizes[type];
-            const canvas = document.getElementById('screen');
-            const label = document.querySelector('.screen-label');
+        // DRC is always 854x480
+        const drcSize = { width: 854, height: 480 };
+
+        function updateCanvasScaling() {
+            const maxWidth = Math.min(window.innerWidth - 60, 900);
+
+            // Scale TV canvas
+            const tvCanvas = document.getElementById('screen-tv');
+            const tvScale = Math.min(1, maxWidth / tvCanvas.width);
+            tvCanvas.style.width = (tvCanvas.width * tvScale) + 'px';
+            tvCanvas.style.height = (tvCanvas.height * tvScale) + 'px';
+
+            // Scale DRC canvas (slightly smaller to show hierarchy)
+            const drcCanvas = document.getElementById('screen-drc');
+            const drcScale = Math.min(0.8, (maxWidth * 0.8) / drcCanvas.width);
+            drcCanvas.style.width = (drcCanvas.width * drcScale) + 'px';
+            drcCanvas.style.height = (drcCanvas.height * drcScale) + 'px';
+        }
+
+        function changeTvResolution(res) {
+            const size = tvSizes[res];
+            const canvas = document.getElementById('screen-tv');
+            const label = canvas.parentElement.querySelector('.screen-label');
 
             canvas.width = size.width;
             canvas.height = size.height;
             label.textContent = size.label;
 
-            // Scale canvas for display (TV resolutions are too large)
-            const maxWidth = window.innerWidth - 60;
-            const scale = Math.min(1, maxWidth / size.width);
-            canvas.style.width = (size.width * scale) + 'px';
-            canvas.style.height = (size.height * scale) + 'px';
+            updateCanvasScaling();
 
             // Notify WASM if loaded
-            if (typeof Module !== 'undefined' && Module._setScreenType) {
-                const typeMap = { drc: 0, tv1080: 1, tv720: 2, tv480: 3 };
-                Module._setScreenType(typeMap[type]);
+            if (typeof Module !== 'undefined' && Module._setTvResolution) {
+                Module._setTvResolution(parseInt(res));
             }
         }
 
@@ -295,8 +340,11 @@
             }
         });
 
-        // Initialize screen size
-        changeScreenType('drc');
+        // Handle window resize
+        window.addEventListener('resize', updateCanvasScaling);
+
+        // Initialize
+        updateCanvasScaling();
 
         // Module callbacks
         var Module = {
@@ -308,7 +356,6 @@
             printErr: function(text) {
                 console.error(text);
             },
-            canvas: document.getElementById('screen'),
             setStatus: function(text) {
                 const statusEl = document.getElementById('status-text');
                 if (text) {

@@ -3,6 +3,7 @@
  *
  * Provides an interactive menu preview in the browser using WebAssembly.
  * Uses the same rendering code as the actual plugin but with mock data.
+ * Renders to both TV and GamePad (DRC) screens simultaneously.
  */
 
 #include "render/renderer.h"
@@ -25,15 +26,22 @@ extern "C" {
     void onKeyUp(int keyCode);
 }
 
+// Forward declarations from canvas_renderer.cpp
+namespace Renderer {
+    void SelectScreen(int screen);
+    void SetTvResolution(int resolution);
+}
+
 namespace {
 
 // =============================================================================
 // Menu State
 // =============================================================================
 
-// List view state
+// List view states for each screen (they share selection state)
 UI::ListView::State sListState;
-UI::ListView::Config sListConfig;
+UI::ListView::Config sDrcListConfig;
+UI::ListView::Config sTvListConfig;
 
 // Currently selected category
 int sCurrentCategory = 0;
@@ -154,7 +162,6 @@ void drawDetailsPanel() {
  * Draw the footer with controls and count
  */
 void drawFooter() {
-    const Settings::PluginSettings& settings = Settings::Get();
     int row = Renderer::GetFooterRow();
 
     // Left side: controls
@@ -171,10 +178,13 @@ void drawFooter() {
 }
 
 /**
- * Main rendering function
+ * Render content to a specific screen
  */
-void render() {
+void renderScreen(int screenId, const UI::ListView::Config& listConfig) {
     const Settings::PluginSettings& settings = Settings::Get();
+
+    // Select the target screen
+    Renderer::SelectScreen(screenId);
 
     // Begin frame with background color
     Renderer::BeginFrame(settings.bgColor);
@@ -183,8 +193,8 @@ void render() {
     drawCategoryBar();
     drawHeader();
 
-    // Draw title list using ListView
-    UI::ListView::Render(sListState, sListConfig, [&](int index, bool isSelected) {
+    // Draw title list using ListView with screen-specific config
+    UI::ListView::Render(sListState, listConfig, [&](int index, bool isSelected) {
         UI::ListView::ItemView view;
 
         const Titles::TitleInfo* title = Categories::GetFilteredTitle(index);
@@ -222,9 +232,52 @@ void render() {
 
     drawDetailsPanel();
     drawFooter();
+}
 
-    // End frame - pushes to canvas
+/**
+ * Main rendering function - renders to both screens
+ */
+void render() {
+    // Render to DRC (GamePad)
+    renderScreen(0, sDrcListConfig);
+
+    // Render to TV
+    renderScreen(1, sTvListConfig);
+
+    // Push both framebuffers to canvases
     Renderer::EndFrame();
+}
+
+/**
+ * Update list configs based on current screen dimensions
+ */
+void updateListConfigs() {
+    // DRC config (854x480)
+    Renderer::SelectScreen(0);
+    sDrcListConfig.col = 0;
+    sDrcListConfig.row = LIST_START_ROW;
+    sDrcListConfig.width = Renderer::GetListWidth();
+    sDrcListConfig.visibleRows = Renderer::GetVisibleRows();
+    sDrcListConfig.showLineNumbers = Settings::Get().showNumbers;
+    sDrcListConfig.showScrollIndicators = true;
+    sDrcListConfig.canConfirm = true;
+    sDrcListConfig.canCancel = false;
+    sDrcListConfig.canFavorite = true;
+
+    // TV config (variable resolution)
+    Renderer::SelectScreen(1);
+    sTvListConfig.col = 0;
+    sTvListConfig.row = LIST_START_ROW;
+    sTvListConfig.width = Renderer::GetListWidth();
+    sTvListConfig.visibleRows = Renderer::GetVisibleRows();
+    sTvListConfig.showLineNumbers = Settings::Get().showNumbers;
+    sTvListConfig.showScrollIndicators = true;
+    sTvListConfig.canConfirm = true;
+    sTvListConfig.canCancel = false;
+    sTvListConfig.canFavorite = true;
+
+    // Reset to DRC for input handling
+    Renderer::SelectScreen(0);
 }
 
 /**
@@ -243,18 +296,18 @@ void handleInput() {
     // Category navigation
     if (pressed & VPAD_BUTTON_ZL) {
         Categories::PreviousCategory();
-        sListState.SetItemCount(Categories::GetFilteredCount(), sListConfig.visibleRows);
+        sListState.SetItemCount(Categories::GetFilteredCount(), sDrcListConfig.visibleRows);
     }
     if (pressed & VPAD_BUTTON_ZR) {
         Categories::NextCategory();
-        sListState.SetItemCount(Categories::GetFilteredCount(), sListConfig.visibleRows);
+        sListState.SetItemCount(Categories::GetFilteredCount(), sDrcListConfig.visibleRows);
     }
 
-    // Handle list navigation
-    UI::ListView::HandleInput(sListState, pressed, sListConfig);
+    // Handle list navigation (use DRC config for input)
+    UI::ListView::HandleInput(sListState, pressed, sDrcListConfig);
 
     // Handle actions
-    auto action = UI::ListView::GetAction(pressed, sListConfig);
+    auto action = UI::ListView::GetAction(pressed, sDrcListConfig);
     switch (action) {
         case UI::ListView::Action::FAVORITE: {
             int idx = UI::ListView::GetSelectedIndex(sListState);
@@ -263,15 +316,17 @@ void handleInput() {
                 if (title) {
                     Settings::ToggleFavorite(title->titleId);
                     Categories::RefreshFilter();
-                    sListState.SetItemCount(Categories::GetFilteredCount(), sListConfig.visibleRows);
+                    sListState.SetItemCount(Categories::GetFilteredCount(), sDrcListConfig.visibleRows);
                 }
             }
             break;
         }
         case UI::ListView::Action::CONFIRM: {
             // In web preview, just show a message
-            printf("Selected title: %s\n",
-                   Categories::GetFilteredTitle(sListState.selectedIndex)->name);
+            const Titles::TitleInfo* title = Categories::GetFilteredTitle(sListState.selectedIndex);
+            if (title) {
+                printf("Selected title: %s\n", title->name);
+            }
             break;
         }
         default:
@@ -294,8 +349,8 @@ void mainLoop() {
 // =============================================================================
 
 int main() {
-    printf("Wii U Title Switcher - Web Preview\n");
-    printf("===================================\n\n");
+    printf("Wii U Title Switcher - Web Preview (Dual Screen)\n");
+    printf("=================================================\n\n");
 
     // Initialize renderer
     if (!Renderer::Init()) {
@@ -311,19 +366,11 @@ int main() {
     // Initialize categories
     Categories::Init();
 
-    // Configure list view
-    sListConfig.col = 0;
-    sListConfig.row = LIST_START_ROW;
-    sListConfig.width = Renderer::GetListWidth();
-    sListConfig.visibleRows = Renderer::GetVisibleRows();
-    sListConfig.showLineNumbers = Settings::Get().showNumbers;
-    sListConfig.showScrollIndicators = true;
-    sListConfig.canConfirm = true;
-    sListConfig.canCancel = false;  // No cancel in preview
-    sListConfig.canFavorite = true;
+    // Configure list views for both screens
+    updateListConfigs();
 
     // Initialize list state
-    sListState.SetItemCount(Categories::GetFilteredCount(), sListConfig.visibleRows);
+    sListState.SetItemCount(Categories::GetFilteredCount(), sDrcListConfig.visibleRows);
 
     printf("Loaded %d titles\n", Titles::GetCount());
     printf("Use arrow keys to navigate, Q/E for categories\n\n");
@@ -346,13 +393,12 @@ int main() {
 extern "C" {
 
 /**
- * Change screen type (called from JavaScript)
- * TODO: Implement actual screen type switching with different resolutions
+ * Change TV resolution (called from JavaScript)
  */
-void setScreenType(int type) {
-    // For now, just acknowledge the request
-    // Full implementation would require resizing the framebuffer
-    printf("Screen type requested: %d\n", type);
+void setTvResolution(int resolution) {
+    Renderer::SetTvResolution(resolution);
+    updateListConfigs();
+    printf("TV resolution changed to %dp\n", resolution);
 }
 
 } // extern "C"
