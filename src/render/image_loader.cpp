@@ -260,7 +260,16 @@ bool loadImage(uint64_t titleId, Renderer::ImageHandle& outHandle)
     char iconPath[280];
     snprintf(iconPath, sizeof(iconPath), "%s/iconTex.tga", metaPath);
 
-    // Load the image (loadImageFromFile sets sLastError on failure)
+    // Load the image
+    FILE* file = fopen(iconPath, "rb");
+    if (!file) {
+        // Show the path that failed so we can debug
+        snprintf(sLastError, sizeof(sLastError), "fopen: %.100s", iconPath);
+        return false;
+    }
+
+    // File opened successfully, pass to loadImageFromFile logic
+    fclose(file);
     return loadImageFromFile(iconPath, outHandle);
 }
 
