@@ -407,27 +407,17 @@ void drawFooter()
     ImageLoader::GetLoadingStats(&pending, &ready, &failed, &total);
 
     char footer[120];
-    if (pending > 0) {
         snprintf(footer, sizeof(footer),
-                 "%s:Go %s:Close %s:Fav %s:Edit [%d/%d] Loading:%d",
-                 Buttons::Actions::CONFIRM.label,
-                 Buttons::Actions::CANCEL.label,
-                 Buttons::Actions::FAVORITE.label,
-                 Buttons::Actions::EDIT.label,
-                 selectedIdx + 1,
-                 count,
-                 pending);
-    } else {
-        snprintf(footer, sizeof(footer),
-                 "%s:Go %s:Close %s:Fav %s:Edit %s:Settings ZL/ZR:Cat [%d/%d]",
+                 "%s:Go %s:Close %s:Fav %s:Edit %s:Settings ZL/ZR:Cat [%d/%d] %d/%d",
                  Buttons::Actions::CONFIRM.label,
                  Buttons::Actions::CANCEL.label,
                  Buttons::Actions::FAVORITE.label,
                  Buttons::Actions::EDIT.label,
                  Buttons::Actions::SETTINGS.label,
                  selectedIdx + 1,
-                 count);
-    }
+                 count,
+                 ready,
+                 total);
 
     Renderer::DrawText(0, Renderer::GetFooterRow(), footer);
 }
