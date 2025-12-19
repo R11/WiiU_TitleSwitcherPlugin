@@ -73,9 +73,9 @@ static const SystemAppOption sSystemApps[] = {
     {"Nintendo eShop",       "Open the Nintendo eShop",                     SYSAPP_ESHOP},
     {"Mii Maker",            "Open Mii Maker",                              SYSTEM_APP_ID_MII_MAKER},
     {"System Settings",      "Open System Settings",                        SYSTEM_APP_ID_SYSTEM_SETTINGS},
-    {"Controller Sync",      "Sync controllers (Gamepad, Wiimotes)",        SYSAPP_CONTROLLER_SYNC},
-    {"Notifications",        "View system notifications",                   SYSTEM_APP_ID_NOTIFICATIONS},
-    {"User Settings",        "Manage user accounts",                        SYSTEM_APP_ID_USER_SETTINGS},
+    // {"Controller Sync",      "Sync controllers (Gamepad, Wiimotes)",        SYSAPP_CONTROLLER_SYNC},
+    // {"Notifications",        "View system notifications",                   SYSTEM_APP_ID_NOTIFICATIONS},
+    // {"User Settings",        "Manage user accounts",                        SYSTEM_APP_ID_USER_SETTINGS},
     {"Parental Controls",    "Open Parental Controls",                      SYSTEM_APP_ID_PARENTAL_CONTROLS},
     {"Daily Log",            "View play activity",                          SYSTEM_APP_ID_DAILY_LOG},
 };
@@ -96,24 +96,19 @@ struct SettingItem {
     {n, d1, d2, SettingType::TOGGLE, (int)offsetof(Settings::PluginSettings, member)}
 #define COLOR_SETTING(n, d1, d2, member) \
     {n, d1, d2, SettingType::COLOR, (int)offsetof(Settings::PluginSettings, member)}
-#define BRIGHTNESS_SETTING(n, d1, d2) \
-    {n, d1, d2, SettingType::BRIGHTNESS, 0}
+// #define BRIGHTNESS_SETTING(n, d1, d2) \
+//     {n, d1, d2, SettingType::BRIGHTNESS, 0}
 #define ACTION_SETTING(n, d1, d2, actionId) \
     {n, d1, d2, SettingType::ACTION, actionId}
 
 static const SettingItem sSettingItems[] = {
-    BRIGHTNESS_SETTING("Gamepad Brightness", "Adjust Gamepad screen",   "brightness (1-5)."),
+    // BRIGHTNESS_SETTING("Gamepad Brightness", "Adjust Gamepad screen",   "brightness (1-5)."),
     ACTION_SETTING("System Apps",       "Launch system applications",   "(Browser, Settings, etc.)", ACTION_SYSTEM_APPS),
     TOGGLE_SETTING("Show Numbers",      "Show line numbers before",     "each title in the list.",   showNumbers),
     TOGGLE_SETTING("Show Favorites",    "Show favorite marker (*)",     "in the title list.",        showFavorites),
     COLOR_SETTING("Background",         "Menu background color.",       "RGBA hex format.",          bgColor),
-    COLOR_SETTING("Title Text",         "Normal title text color.",     "RGBA hex format.",          titleColor),
-    COLOR_SETTING("Highlighted",        "Selected title color.",        "RGBA hex format.",          highlightedTitleColor),
-    COLOR_SETTING("Favorite",           "Favorite marker color.",       "RGBA hex format.",          favoriteColor),
-    COLOR_SETTING("Header",             "Header text color.",           "RGBA hex format.",          headerColor),
-    COLOR_SETTING("Category",           "Category tab color.",          "RGBA hex format.",          categoryColor),
     ACTION_SETTING("Manage Categories", "Create, rename, or delete",    "custom categories.",        ACTION_MANAGE_CATEGORIES),
-    ACTION_SETTING("Debug Grid",        "Show grid overlay with",       "dimensions and positions.", ACTION_DEBUG_GRID),
+    // ACTION_SETTING("Debug Grid",        "Show grid overlay with",       "dimensions and positions.", ACTION_DEBUG_GRID),
 };
 
 static constexpr int SETTINGS_ITEM_COUNT = sizeof(sSettingItems) / sizeof(sSettingItems[0]);
@@ -722,7 +717,7 @@ void renderSettingsMain()
         switch (selected.type) {
             case SettingType::TOGGLE:     hint = "Press A to toggle"; break;
             case SettingType::COLOR:      hint = "Press A to edit"; break;
-            case SettingType::BRIGHTNESS: hint = "Left/Right to adjust"; break;
+            case SettingType::BRIGHTNESS: hint = "Press A to adjust"; break;
             case SettingType::ACTION:     hint = "Press A to open"; break;
         }
         Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 6, hint);
@@ -911,10 +906,10 @@ void renderSystemApps()
         Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 3, app.description);
     }
 
-    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 5, "Press A to launch");
-    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 7, "Note: The game will be");
-    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 8, "suspended while the");
-    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 9, "system app is open.");
+    // Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 5, "Press A to launch");
+    // Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 7, "Note: The game will be");
+    // Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 8, "suspended while the");
+    // Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + 9, "system app is open.");
 
     // --- Footer ---
     Renderer::DrawTextF(0, Renderer::GetFooterRow(), "%s:Launch %s:Back  [%d/%d]",
@@ -966,26 +961,6 @@ void handleSettingsMainInput(uint32_t pressed)
     UI::ListView::HandleInput(sSettingsListState, pressed, listConfig);
     int selectedIdx = UI::ListView::GetSelectedIndex(sSettingsListState);
 
-    // Check if current setting is brightness for left/right handling
-    if (selectedIdx >= 0 && selectedIdx < SETTINGS_ITEM_COUNT) {
-        const SettingItem& currentItem = sSettingItems[selectedIdx];
-        if (currentItem.type == SettingType::BRIGHTNESS) {
-            // Left/Right to adjust brightness (handled separately from navigation)
-            if (Buttons::Actions::NAV_SKIP_UP.Pressed(pressed)) {
-                int brightness = getCurrentBrightness();
-                if (brightness > 1) {
-                    setBrightness(brightness - 1);
-                }
-            }
-            if (Buttons::Actions::NAV_SKIP_DOWN.Pressed(pressed)) {
-                int brightness = getCurrentBrightness();
-                if (brightness < 5) {
-                    setBrightness(brightness + 1);
-                }
-            }
-        }
-    }
-
     // Handle actions
     UI::ListView::Action action = UI::ListView::GetAction(pressed, listConfig);
     if (action == UI::ListView::Action::CONFIRM && selectedIdx >= 0) {
@@ -1010,9 +985,9 @@ void handleSettingsMainInput(uint32_t pressed)
                 break;
             }
             case SettingType::BRIGHTNESS: {
-                // A toggles between min and max brightness
+                // A cycles through brightness levels
                 int brightness = getCurrentBrightness();
-                setBrightness(brightness >= 3 ? 1 : 5);
+                setBrightness((brightness % 5) + 1);
                 break;
             }
             case SettingType::ACTION: {
@@ -1408,7 +1383,12 @@ uint64_t runMenuLoop()
         }
 
         // Process image loading queue
-        ImageLoader::Update();
+        // HIGH priority (selected title) loads immediately, others throttled
+        static uint32_t frameCounter = 0;
+        frameCounter++;
+        if (ImageLoader::HasHighPriorityPending() || frameCounter % 10 == 0) {
+            ImageLoader::Update();
+        }
 
         // End frame (flush and flip)
         Renderer::EndFrame();

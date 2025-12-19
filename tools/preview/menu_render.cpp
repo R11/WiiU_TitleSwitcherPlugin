@@ -100,9 +100,9 @@ const SystemAppOption sSystemApps[] = {
     {"Nintendo eShop",    "Open the Nintendo eShop"},
     {"Mii Maker",         "Open Mii Maker"},
     {"System Settings",   "Open System Settings"},
-    {"Controller Sync",   "Sync controllers (Gamepad, Wiimotes)"},
-    {"Notifications",     "View system notifications"},
-    {"User Settings",     "Manage user accounts"},
+    // {"Controller Sync",   "Sync controllers (Gamepad, Wiimotes)"},
+    // {"Notifications",     "View system notifications"},
+    // {"User Settings",     "Manage user accounts"},
     {"Parental Controls", "Open Parental Controls"},
     {"Daily Log",         "View play activity"},
 };
@@ -506,7 +506,7 @@ void renderSettingsMain() {
         switch (selected.type) {
             case SettingType::TOGGLE:     hint = "Press A to toggle"; break;
             case SettingType::COLOR:      hint = "Press A to edit"; break;
-            case SettingType::BRIGHTNESS: hint = "Left/Right to adjust"; break;
+            case SettingType::BRIGHTNESS: hint = "Press A to adjust"; break;
             case SettingType::ACTION:     hint = "Press A to open"; break;
         }
         Renderer::DrawText(detailsCol, LIST_START_ROW + 6, hint);
@@ -555,10 +555,10 @@ void renderSystemApps() {
         Renderer::DrawText(detailsCol, LIST_START_ROW + 3, app.description);
     }
 
-    Renderer::DrawText(detailsCol, LIST_START_ROW + 5, "Press A to launch");
-    Renderer::DrawText(detailsCol, LIST_START_ROW + 7, "Note: The game will be");
-    Renderer::DrawText(detailsCol, LIST_START_ROW + 8, "suspended while the");
-    Renderer::DrawText(detailsCol, LIST_START_ROW + 9, "system app is open.");
+    // Renderer::DrawText(detailsCol, LIST_START_ROW + 5, "Press A to launch");
+    // Renderer::DrawText(detailsCol, LIST_START_ROW + 7, "Note: The game will be");
+    // Renderer::DrawText(detailsCol, LIST_START_ROW + 8, "suspended while the");
+    // Renderer::DrawText(detailsCol, LIST_START_ROW + 9, "system app is open.");
 
     // Footer
     Renderer::DrawTextF(0, footerRow, "%s:Launch %s:Back  [%d/%d]",

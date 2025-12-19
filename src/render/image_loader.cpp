@@ -179,6 +179,15 @@ bool IsReady(uint64_t titleId)
     return GetStatus(titleId) == Status::READY;
 }
 
+bool HasHighPriorityPending()
+{
+    if (!isInitialized || loadQueue.empty()) {
+        return false;
+    }
+    auto it = requestMap.find(loadQueue.front());
+    return it != requestMap.end() && it->second.priority == Priority::HIGH;
+}
+
 Renderer::ImageHandle Get(uint64_t titleId)
 {
     if (!isInitialized) {

@@ -38,6 +38,7 @@ void SetPriority(uint64_t titleId, Priority priority);
 // Access
 Status GetStatus(uint64_t titleId);
 bool IsReady(uint64_t titleId);
+bool HasHighPriorityPending();
 Renderer::ImageHandle Get(uint64_t titleId);
 void GetDebugInfo(int* outUpdateCalls, int* outQueueSize, bool* outInitialized);
 void GetLoadingStats(int* outPending, int* outReady, int* outFailed, int* outTotal);
