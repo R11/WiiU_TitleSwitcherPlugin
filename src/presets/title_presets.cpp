@@ -9,6 +9,7 @@
  */
 
 #include "title_presets.h"
+#include "../utils/paths.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -31,8 +32,8 @@ TitlePreset gPresets[MAX_PRESETS];
 int gPresetCount = 0;
 bool gIsLoaded = false;
 
-// Path to the presets file on SD card
-constexpr const char* PRESETS_FILE_PATH = "fs:/vol/external01/wiiu/environments/aroma/plugins/config/TitleSwitcher_presets.json";
+// Path to the presets file on SD card (defined in utils/paths.h)
+constexpr const char* PRESETS_FILE_PATH = Paths::PRESETS_FILE;
 
 // =============================================================================
 // Simple JSON Parser

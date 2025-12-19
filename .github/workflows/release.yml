@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on tags like v1.0.0, v2.1.0, etc.
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ make libgtest-dev cmake
+          cd /usr/src/gtest
+          sudo cmake .
+          sudo make
+          sudo cp lib/*.a /usr/lib/
+
+      - name: Run unit tests
+        run: |
+          cd tests
+          make
+          ./run_tests
+
+      - name: Build preview tool
+        run: |
+          cd tools/preview
+          make
+
+      - name: Verify snapshots
+        run: |
+          cd tools/preview
+          ./preview_demo --verify-snapshots
+
+  release:
+    name: Build and Release
+    needs: test  # Only run after tests pass
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to create releases
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build plugin
+        run: ./build.sh
+
+      - name: Create release package
+        run: ./scripts/package.sh --zip
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Title Switcher ${{ steps.version.outputs.VERSION }}
+          draft: false
+          prerelease: ${{ contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-rc') }}
+          generate_release_notes: true
+          files: |
+            TitleSwitcherPlugin.zip
+            TitleSwitcherPlugin.wps
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

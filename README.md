@@ -1,61 +1,59 @@
-# Title Switcher Plugin for Wii U
+# Title Switcher Plugin
 
-A plugin for the Aroma homebrew environment that allows you to switch between games and apps directly from the Aroma config menu without returning to the slow Wii U Menu.
+A Wii U Aroma plugin that lets you switch between games directly from an in-game menu, without returning to the slow Wii U Menu.
 
 ## Features
 
-- Quick game/app switching from Aroma's config menu
-- Games organized alphabetically in categories: A-F, G-L, M-R, S-Z, # (numbers)
-- System Apps in separate category (including vWii Mode)
-- Excludes currently running title from the list
-- Press A to launch immediately
+- **Quick Launch Menu** - Press L+R+Minus to open from any game
+- **Categories** - All, Favorites, Games, System Apps, plus custom categories
+- **Favorites** - Mark games as favorites for quick access
+- **Game Metadata** - Shows publisher, developer, genre, and release info from GameTDB
+- **Customizable** - Change background color and other settings
 
 ## Installation
 
-1. Copy `TitleSwitcherPlugin.wps` to your SD card:
-   ```
-   sd:/wiiu/environments/aroma/plugins/TitleSwitcherPlugin.wps
-   ```
-2. Boot your Wii U with Aroma
+Extract `TitleSwitcherPlugin.zip` to the root of your SD card:
 
-## Usage
+```
+sd:/wiiu/environments/aroma/plugins/TitleSwitcherPlugin.wps
+sd:/wiiu/environments/aroma/plugins/config/TitleSwitcher_presets.json
+```
 
-1. While in any application, press **L + D-Pad Down + Minus** to open Aroma's config menu
-2. Select **Title Switcher** from the plugin list
-3. Navigate to a category (A-F, G-L, etc. or System Apps)
-4. Select a game and press **A** to launch
+## Controls
 
 | Button | Action |
 |--------|--------|
-| D-Pad Up/Down | Navigate list |
-| A | Launch selected title |
-| B | Back / Exit menu |
+| **L+R+Minus** | Open menu |
+| **Up/Down** | Navigate list |
+| **Left/Right** | Skip 5 items |
+| **L/R** | Page up/down |
+| **ZL/ZR** | Switch category |
+| **A** | Launch game |
+| **B** | Back / Close menu |
+| **Y** | Toggle favorite |
+| **X** | Edit categories |
+| **+** | Settings |
 
 ## Categories
 
-- **A-F, G-L, M-R, S-Z** - Games sorted alphabetically
-- **# (0-9)** - Games starting with numbers/symbols
-- **System Apps** - System applications and vWii Mode
+- **All** - All installed titles
+- **Favorites** - Your marked favorites
+- **Games** - Retail and eShop games
+- **System** - System apps (Browser, eShop, Mii Maker, etc.)
+- **Custom** - Create your own categories via X button
 
 ## Building
-
-Requires Docker to build:
 
 ```bash
 ./build.sh
 ```
 
-## Technical Details
-
-- Integrates with WUPS Config API for menu interface
-- Uses `MCP_TitleListByAppType` to enumerate games and system apps
-- Uses `ACPGetTitleMetaXml` to retrieve title names
-- Uses `SYSLaunchTitle` to switch titles
+Requires Docker. Output: `TitleSwitcherPlugin.wps`
 
 ## Requirements
 
-- Wii U console with Aroma homebrew environment
-- Notification Module (for status messages)
+- Wii U with Aroma homebrew environment
+- Notification Module (optional, for status messages)
 
 ## License
 
@@ -64,10 +62,3 @@ GPLv3
 ## Author
 
 R11
-
-## Version History
-
-- 1.0.0 - Category-based browser with System Apps support
-- 0.8.0 - Single-item browser with L/R pagination
-- 0.7.0 - Config menu integration (full list)
-- 0.1.0 - Initial release

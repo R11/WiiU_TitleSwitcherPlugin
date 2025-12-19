@@ -10,11 +10,8 @@
 │  Nintendo eShop              |                                                                     │
 │  Mii Maker                   | Open the Internet Browser                                           │
 │  System Settings             |                                                                     │
-│  Controller Sync             | Press A to launch                                                   │
-│  Notifications               |                                                                     │
-│  User Settings               | Note: The game will be                                              │
-│  Parental Controls           | suspended while the                                                 │
-│  Daily Log                   | system app is open.                                                 │
+│  Parental Controls           |                                                                     │
+│  Daily Log                   |                                                                     │
 │                              |                                                                     │
 │                              |                                                                     │
 │                              |                                                                     │
@@ -30,7 +27,10 @@
 │                              |                                                                     │
 │                              |                                                                     │
 │                              |                                                                     │
-│A:Launch B:Back  [2/10]                                                                             │
+│                              |                                                                     │
+│                              |                                                                     │
+│                              |                                                                     │
+│A:Launch B:Back  [2/7]                                                                              │
 └────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
 
@@ -46,11 +46,8 @@
 │  Nintendo eShop                                |                                                                                                               │
 │  Mii Maker                                     | Open the Internet Browser                                                                                     │
 │  System Settings                               |                                                                                                               │
-│  Controller Sync                               | Press A to launch                                                                                             │
-│  Notifications                                 |                                                                                                               │
-│  User Settings                                 | Note: The game will be                                                                                        │
-│  Parental Controls                             | suspended while the                                                                                           │
-│  Daily Log                                     | system app is open.                                                                                           │
+│  Parental Controls                             |                                                                                                               │
+│  Daily Log                                     |                                                                                                               │
 │                                                |                                                                                                               │
 │                                                |                                                                                                               │
 │                                                |                                                                                                               │
@@ -83,7 +80,10 @@
 │                                                |                                                                                                               │
 │                                                |                                                                                                               │
 │                                                |                                                                                                               │
-│A:Launch B:Back  [2/10]                                                                                                                                         │
+│                                                |                                                                                                               │
+│                                                |                                                                                                               │
+│                                                |                                                                                                               │
+│A:Launch B:Back  [2/7]                                                                                                                                          │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
 
@@ -99,11 +99,8 @@
 │  Nintendo eShop                    |                                                                                   │
 │  Mii Maker                         | Open the Internet Browser                                                         │
 │  System Settings                   |                                                                                   │
-│  Controller Sync                   | Press A to launch                                                                 │
-│  Notifications                     |                                                                                   │
-│  User Settings                     | Note: The game will be                                                            │
-│  Parental Controls                 | suspended while the                                                               │
-│  Daily Log                         | system app is open.                                                               │
+│  Parental Controls                 |                                                                                   │
+│  Daily Log                         |                                                                                   │
 │                                    |                                                                                   │
 │                                    |                                                                                   │
 │                                    |                                                                                   │
@@ -125,7 +122,10 @@
 │                                    |                                                                                   │
 │                                    |                                                                                   │
 │                                    |                                                                                   │
-│A:Launch B:Back  [2/10]                                                                                                 │
+│                                    |                                                                                   │
+│                                    |                                                                                   │
+│                                    |                                                                                   │
+│A:Launch B:Back  [2/7]                                                                                                  │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
 
@@ -141,11 +141,8 @@
 │  Nintendo eShop        |                                                       │
 │  Mii Maker             | Open the Internet Browser                             │
 │  System Settings       |                                                       │
-│  Controller Sync       | Press A to launch                                     │
-│  Notifications         |                                                       │
-│  User Settings         | Note: The game will be                                │
-│  Parental Controls     | suspended while the                                   │
-│  Daily Log             | system app is open.                                   │
+│  Parental Controls     |                                                       │
+│  Daily Log             |                                                       │
 │                        |                                                       │
 │                        |                                                       │
 │                        |                                                       │
@@ -163,5 +160,8 @@
 │                        |                                                       │
 │                        |                                                       │
 │                        |                                                       │
-│A:Launch B:Back  [2/10]                                                         │
+│                        |                                                       │
+│                        |                                                       │
+│                        |                                                       │
+│A:Launch B:Back  [2/7]                                                          │
 └────────────────────────────────────────────────────────────────────────────────┘

@@ -2,7 +2,11 @@ build/
 *.wps
 *.elf
 *.map
+*.zip
 .DS_Store
+
+# Distribution/packaging output
+dist/
 
 # CMake build directories
 tests/build/

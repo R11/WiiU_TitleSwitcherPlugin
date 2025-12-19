@@ -11,7 +11,7 @@
 │  Show Favorites: ON          | Adjust Gamepad screen                                               │
 │  Background: 1E1E2EFF        | brightness (1-5).                                                   │
 │  Title Text: 1E1E2EFF        |                                                                     │
-│  Highlighted: 1E1E2EFF       | Left/Right to adjust                                                │
+│  Highlighted: 1E1E2EFF       | Press A to adjust                                                   │
 │  Favorite: 1E1E2EFF          |                                                                     │
 │  Header: 1E1E2EFF            |                                                                     │
 │  Category: 1E1E2EFF          |                                                                     │
@@ -47,7 +47,7 @@
 │  Show Favorites: ON                            | Adjust Gamepad screen                                                                                         │
 │  Background: 1E1E2EFF                          | brightness (1-5).                                                                                             │
 │  Title Text: 1E1E2EFF                          |                                                                                                               │
-│  Highlighted: 1E1E2EFF                         | Left/Right to adjust                                                                                          │
+│  Highlighted: 1E1E2EFF                         | Press A to adjust                                                                                             │
 │  Favorite: 1E1E2EFF                            |                                                                                                               │
 │  Header: 1E1E2EFF                              |                                                                                                               │
 │  Category: 1E1E2EFF                            |                                                                                                               │
@@ -100,7 +100,7 @@
 │  Show Favorites: ON                | Adjust Gamepad screen                                                             │
 │  Background: 1E1E2EFF              | brightness (1-5).                                                                 │
 │  Title Text: 1E1E2EFF              |                                                                                   │
-│  Highlighted: 1E1E2EFF             | Left/Right to adjust                                                              │
+│  Highlighted: 1E1E2EFF             | Press A to adjust                                                                 │
 │  Favorite: 1E1E2EFF                |                                                                                   │
 │  Header: 1E1E2EFF                  |                                                                                   │
 │  Category: 1E1E2EFF                |                                                                                   │
@@ -142,7 +142,7 @@
 │  Show Favorites: ON    | Adjust Gamepad screen                                 │
 │  Background: 1E1E2EFF  | brightness (1-5).                                     │
 │  Title Text: 1E1E2EFF  |                                                       │
-│  Highlighted: 1E1E2EFF | Left/Right to adjust                                  │
+│  Highlighted: 1E1E2EFF | Press A to adjust                                     │
 │  Favorite: 1E1E2EFF    |                                                       │
 │  Header: 1E1E2EFF      |                                                       │
 │  Category: 1E1E2EFF    |                                                       │
