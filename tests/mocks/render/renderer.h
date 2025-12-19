@@ -20,4 +20,15 @@ inline void DrawTextF(int col, int row, const char* fmt, ...) {
     (void)col; (void)row; (void)fmt;
 }
 
+// Layout helpers (mock values for testing)
+inline int GetGridWidth() { return 100; }
+inline int GetGridHeight() { return 18; }
+inline int GetDividerCol() { return 30; }
+inline int GetDetailsPanelCol() { return 32; }
+inline int GetListWidth() { return 30; }
+inline int GetVisibleRows() { return 15; }
+inline int GetFooterRow() { return 17; }
+inline int GetScreenWidth() { return 854; }
+inline int GetScreenHeight() { return 480; }
+
 } // namespace Renderer

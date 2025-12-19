@@ -81,5 +81,11 @@ inline int GetSelectedIndex(const State& state) {
     return state.itemCount > 0 ? state.selectedIndex : -1;
 }
 
-}
-}
+Config LeftPanelConfig(int visibleRows = -1);
+Config DetailsPanelConfig(int rowOffset, int visibleRows);
+Config InputOnlyConfig(int visibleRows);
+Config BrowseModeConfig(int visibleRows);
+Config EditModeConfig(int visibleRows);
+
+} // namespace ListView
+} // namespace UI

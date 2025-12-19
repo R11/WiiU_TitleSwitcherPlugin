@@ -5,6 +5,8 @@
 #include "list_view.h"
 #include "input/buttons.h"
 #include "render/renderer.h"
+#include "render/measurements.h"
+#include "menu/menu.h"
 
 #include <cstdio>
 #include <cstring>
@@ -235,5 +237,49 @@ void RenderScrollIndicators(const State& state, const Config& config) {
     }
 }
 
+Config LeftPanelConfig(int visibleRows) {
+    Config config;
+    config.col = Menu::LIST_START_COL;
+    config.row = Menu::LIST_START_ROW;
+    config.width = Renderer::GetDividerCol() - 1;
+    config.visibleRows = (visibleRows > 0) ? visibleRows
+                                           : (Renderer::GetFooterRow() - Menu::LIST_START_ROW - 1);
+    config.showScrollIndicators = true;
+    return config;
 }
+
+Config DetailsPanelConfig(int rowOffset, int visibleRows) {
+    Config config;
+    config.col = Renderer::GetDetailsPanelCol();
+    config.row = Menu::LIST_START_ROW + rowOffset;
+    config.width = Renderer::GetGridWidth() - Renderer::GetDetailsPanelCol() - 1;
+    config.visibleRows = visibleRows;
+    config.showScrollIndicators = true;
+    return config;
 }
+
+Config InputOnlyConfig(int visibleRows) {
+    Config config;
+    config.visibleRows = visibleRows;
+    return config;
+}
+
+Config BrowseModeConfig(int visibleRows) {
+    Config config;
+    config.visibleRows = visibleRows;
+    config.smallSkip = Buttons::Skip::SMALL;
+    config.largeSkip = Buttons::Skip::LARGE;
+    config.canFavorite = true;
+    return config;
+}
+
+Config EditModeConfig(int visibleRows) {
+    Config config;
+    config.visibleRows = visibleRows;
+    config.canToggle = true;
+    config.canCancel = true;
+    return config;
+}
+
+} // namespace ListView
+} // namespace UI
