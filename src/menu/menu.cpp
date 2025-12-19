@@ -1,7 +1,5 @@
 /**
  * Main Menu Implementation
- *
- * See menu.h for usage documentation.
  */
 
 #include "menu.h"
@@ -15,56 +13,41 @@
 #include "../presets/title_presets.h"
 #include "../ui/list_view.h"
 
-// Wii U SDK headers
-#include <vpad/input.h>           // VPADRead, VPADStatus
-#include <sysapp/launch.h>        // SYSLaunchTitle, SYSLaunchMenu, _SYSLaunchSettings
-#include <sysapp/switch.h>        // SYSSwitchToBrowser, SYSSwitchToEShop, etc.
-#include <sysapp/title.h>         // SYSTEM_APP_ID_*
-#include <nn/ccr/sys.h>           // CCRSysGetCurrentLCDMode, CCRSysSetCurrentLCDMode
-#include <coreinit/time.h>        // OSGetTime, OSTicksToMilliseconds
-#include <proc_ui/procui.h>       // ProcUIIsRunning
+#include <vpad/input.h>
+#include <sysapp/launch.h>
+#include <sysapp/switch.h>
+#include <sysapp/title.h>
+#include <nn/ccr/sys.h>
+#include <coreinit/time.h>
+#include <notifications/notifications.h>
 
-// Standard library
-#include <cstdio>                 // snprintf
-#include <cstring>                // strlen, strncpy
+#include <cstdio>
+#include <cstring>
 
 namespace Menu {
 
-// =============================================================================
-// Internal State
-// =============================================================================
-
 namespace {
 
-// Current menu state
 bool sIsOpen = false;
 bool sInitialized = false;
 Mode sCurrentMode = Mode::BROWSE;
 
-// Selection state
-UI::ListView::State sTitleListState;  // Title list state (browse mode)
+UI::ListView::State sTitleListState;
+UI::ListView::State sEditCatsListState;
 
-// Edit mode state
-UI::ListView::State sEditCatsListState;  // Category edit list state
-
-// Settings mode state
 enum class SettingsSubMode {
-    MAIN,           // Main settings list
-    MANAGE_CATS,    // Category management submenu
-    SYSTEM_APPS,    // System apps submenu
-    COLOR_INPUT,    // Editing a color value
-    NAME_INPUT      // Editing a category name
+    MAIN,
+    MANAGE_CATS,
+    SYSTEM_APPS,
+    COLOR_INPUT,
+    NAME_INPUT
 };
 
-// =============================================================================
-// Data-Driven Settings System
-// =============================================================================
-
 enum class SettingType {
-    TOGGLE,     // Boolean on/off
-    COLOR,      // RGBA hex color
-    BRIGHTNESS, // Gamepad brightness (1-5)
-    ACTION      // Opens a submenu or performs an action
+    TOGGLE,
+    COLOR,
+    BRIGHTNESS,
+    ACTION
 };
 
 enum SettingAction {
@@ -73,18 +56,12 @@ enum SettingAction {
     ACTION_DEBUG_GRID = -3
 };
 
-// =============================================================================
-// System Apps Data
-// =============================================================================
-
-// System app options for the System Apps submenu
 struct SystemAppOption {
     const char* name;
     const char* description;
-    int appId;  // SYSTEM_APP_ID_* or special negative values
+    int appId;
 };
 
-// Special app IDs for actions that use different APIs
 constexpr int SYSAPP_RETURN_TO_MENU = -1;
 constexpr int SYSAPP_BROWSER = -2;
 constexpr int SYSAPP_ESHOP = -3;
@@ -105,7 +82,6 @@ static const SystemAppOption sSystemApps[] = {
 
 static constexpr int SYSTEM_APP_COUNT = sizeof(sSystemApps) / sizeof(sSystemApps[0]);
 
-// ListView state for system apps submenu
 UI::ListView::State sSystemAppsListState;
 
 struct SettingItem {
@@ -113,10 +89,9 @@ struct SettingItem {
     const char* descLine1;
     const char* descLine2;
     SettingType type;
-    int dataOffset;  // offsetof() for TOGGLE/COLOR, action ID for ACTION
+    int dataOffset;
 };
 
-// Helper macros for cleaner definitions
 #define TOGGLE_SETTING(n, d1, d2, member) \
     {n, d1, d2, SettingType::TOGGLE, (int)offsetof(Settings::PluginSettings, member)}
 #define COLOR_SETTING(n, d1, d2, member) \
@@ -126,7 +101,6 @@ struct SettingItem {
 #define ACTION_SETTING(n, d1, d2, actionId) \
     {n, d1, d2, SettingType::ACTION, actionId}
 
-// All settings defined in one place - easy to add/remove/reorder
 static const SettingItem sSettingItems[] = {
     BRIGHTNESS_SETTING("Gamepad Brightness", "Adjust Gamepad screen",   "brightness (1-5)."),
     ACTION_SETTING("System Apps",       "Launch system applications",   "(Browser, Settings, etc.)", ACTION_SYSTEM_APPS),
@@ -144,56 +118,41 @@ static const SettingItem sSettingItems[] = {
 
 static constexpr int SETTINGS_ITEM_COUNT = sizeof(sSettingItems) / sizeof(sSettingItems[0]);
 
-UI::ListView::State sSettingsListState;  // Settings list state
+UI::ListView::State sSettingsListState;
 SettingsSubMode sSettingsSubMode = SettingsSubMode::MAIN;
-UI::ListView::State sManageCatsListState;  // Manage categories list state
-int sEditingSettingIndex = -1;       // Which setting is being edited (-1 = none)
-int sEditingCategoryId = -1;         // Which category is being renamed (-1 = new)
-TextInput::Field sInputField;        // Reusable text input field
+UI::ListView::State sManageCatsListState;
+int sEditingSettingIndex = -1;
+int sEditingCategoryId = -1;
+TextInput::Field sInputField;
 
-// Helper to get a toggle value pointer from offset
 bool* getTogglePtr(int offset) {
     return (bool*)((char*)&Settings::Get() + offset);
 }
 
-// Helper to get a color value pointer from offset
 uint32_t* getColorPtr(int offset) {
     return (uint32_t*)((char*)&Settings::Get() + offset);
 }
 
-// Safety tracking
-OSTime sApplicationStartTime = 0;       // When current app started
-bool sInForeground = false;             // Is app in foreground?
-constexpr uint32_t STARTUP_GRACE_MS = 3000;  // Wait time before allowing menu
+OSTime sApplicationStartTime = 0;
+bool sInForeground = false;
+bool sOpeningInProgress = false;
+constexpr uint32_t STARTUP_GRACE_MS = 3000;
 
-// =============================================================================
-// Layout Constants
-// =============================================================================
+constexpr int CATEGORY_EDIT_VISIBLE_ROWS = 10;
+constexpr int CATEGORY_MANAGE_VISIBLE_ROWS = 10;
 
-// Visible rows in different scrollable lists
-constexpr int CATEGORY_EDIT_VISIBLE_ROWS = 10;    // Category checkboxes in edit mode
-constexpr int CATEGORY_MANAGE_VISIBLE_ROWS = 10;  // Category list in manage mode (minus header rows)
-
-// =============================================================================
-// Helper Functions
-// =============================================================================
-
-/**
- * Clamp selection to valid range and update scroll offset.
- */
 void clampSelection()
 {
     int count = Categories::GetFilteredCount();
     sTitleListState.SetItemCount(count, Renderer::GetVisibleRows());
 }
 
-/**
- * Draw the category bar at the top of the screen.
- */
 void drawCategoryBar()
 {
     char line[80];
     int col = 0;
+
+    const Settings::PluginSettings& settings = Settings::Get();
 
     // Draw each visible category tab
     int catCount = Categories::GetTotalCategoryCount();
@@ -206,39 +165,34 @@ void drawCategoryBar()
         }
 
         const char* name = Categories::GetCategoryName(i);
+        uint32_t color;
 
         if (i == currentCat) {
-            // Highlighted category
+            // Highlighted category - use highlight color
             snprintf(line, sizeof(line), "[%s] ", name);
+            color = settings.highlightedTitleColor;
         } else {
             snprintf(line, sizeof(line), " %s  ", name);
+            color = settings.categoryColor;
         }
 
-        Renderer::DrawText(col, CATEGORY_ROW, line);
+        Renderer::DrawText(col, CATEGORY_ROW, line, color);
         col += strlen(line);
     }
 }
 
-/**
- * Draw a vertical divider line between the title list and details panel.
- */
 void drawDivider()
 {
-    // Draw vertical bar from list start to footer (not in header)
     for (int row = LIST_START_ROW; row < Renderer::GetFooterRow(); row++) {
         Renderer::DrawText(Renderer::GetDividerCol(), row, "|");
     }
 }
 
-/**
- * Draw the title list on the left side.
- */
 void drawTitleList()
 {
     int count = Categories::GetFilteredCount();
     sTitleListState.itemCount = count;
 
-    // Configure list view
     UI::ListView::Config listConfig;
     listConfig.col = LIST_START_COL;
     listConfig.row = LIST_START_ROW;
@@ -247,7 +201,6 @@ void drawTitleList()
     listConfig.showLineNumbers = Settings::Get().showNumbers;
     listConfig.showScrollIndicators = true;
 
-    // Render using ListView
     UI::ListView::Render(sTitleListState, listConfig, [](int index, bool isSelected) {
         UI::ListView::ItemView view;
         const Titles::TitleInfo* title = Categories::GetFilteredTitle(index);
@@ -260,8 +213,21 @@ void drawTitleList()
         view.text = title->name;
         view.prefix = isSelected ? "> " : "  ";
 
+        // Apply colors from settings
+        const Settings::PluginSettings& settings = Settings::Get();
+        bool isFavorite = Settings::IsFavorite(title->titleId);
+
+        if (isSelected) {
+            view.textColor = settings.highlightedTitleColor;
+            view.prefixColor = settings.highlightedTitleColor;
+        } else if (isFavorite) {
+            view.textColor = settings.favoriteColor;
+        } else {
+            view.textColor = settings.titleColor;
+        }
+
         // Favorite marker as suffix if enabled
-        if (Settings::Get().showFavorites && Settings::IsFavorite(title->titleId)) {
+        if (settings.showFavorites && isFavorite) {
             view.suffix = " *";
         }
 
@@ -269,9 +235,6 @@ void drawTitleList()
     });
 }
 
-/**
- * Draw the details panel on the right side.
- */
 void drawDetailsPanel()
 {
     int count = Categories::GetFilteredCount();
@@ -283,54 +246,50 @@ void drawDetailsPanel()
     const Titles::TitleInfo* title = Categories::GetFilteredTitle(selectedIdx);
     if (!title) return;
 
+    const Settings::PluginSettings& settings = Settings::Get();
+
     // Request icon loading (will be cached if already loaded)
     ImageLoader::Request(title->titleId, ImageLoader::Priority::HIGH);
 
-    // Title name (left-aligned with details panel)
-    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW, title->name);
+    // Title name (left-aligned with details panel) - highlighted
+    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW, title->name, settings.headerColor);
 
-    // Draw icon below title
-    // Position calculated from screen percentages for accuracy
     constexpr int ICON_SIZE = 128;
-    constexpr int ICON_MARGIN = 170;  // Extra margin from panel edge
+    constexpr int ICON_MARGIN = 170;
     int screenWidth = Renderer::GetScreenWidth();
     int screenHeight = Renderer::GetScreenHeight();
     int gridWidth = Renderer::GetGridWidth();
     int gridHeight = Renderer::GetGridHeight();
     int iconX = (screenWidth * Renderer::GetDetailsPanelCol()) / gridWidth + ICON_MARGIN;
-    // Y position: row 4 (after title at row 2 and some spacing)
     int iconY = (screenHeight * 4) / gridHeight;
 
     if (ImageLoader::IsReady(title->titleId)) {
         Renderer::ImageHandle icon = ImageLoader::Get(title->titleId);
         Renderer::DrawImage(iconX, iconY, icon, ICON_SIZE, ICON_SIZE);
     } else {
-        // Draw placeholder while loading
         Renderer::DrawPlaceholder(iconX, iconY, ICON_SIZE, ICON_SIZE, 0x333333FF);
     }
 
-    // Info starts after icon (icon is ~5-6 rows at 24px/row)
     constexpr int INFO_START_ROW = LIST_START_ROW + 7;
     int currentRow = INFO_START_ROW;
 
-    // Title ID
     char idStr[32];
     snprintf(idStr, sizeof(idStr), "ID: %016llX",
              static_cast<unsigned long long>(title->titleId));
     Renderer::DrawText(Renderer::GetDetailsPanelCol(), currentRow++, idStr);
 
-    // Favorite status
-    const char* favStatus = Settings::IsFavorite(title->titleId) ? "Yes" : "No";
-    Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), currentRow++, "Favorite: %s", favStatus);
+    // Favorite status - yellow if favorite
+    bool isFav = Settings::IsFavorite(title->titleId);
+    const char* favStatus = isFav ? "Yes" : "No";
+    uint32_t favColor = isFav ? settings.favoriteColor : settings.titleColor;
+    Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), currentRow++, favColor, "Favorite: %s", favStatus);
 
-    // Game ID (product code) for debugging preset matching
     if (title->productCode[0] != '\0') {
         Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), currentRow++, "Game ID: %s", title->productCode);
     } else {
         Renderer::DrawText(Renderer::GetDetailsPanelCol(), currentRow++, "Game ID: (none)");
     }
 
-    // Look up preset metadata if available
     const TitlePresets::TitlePreset* preset = nullptr;
     if (title->productCode[0] != '\0') {
         preset = TitlePresets::GetPresetByGameId(title->productCode);
@@ -404,17 +363,21 @@ void drawFooter()
     int count = Categories::GetFilteredCount();
     int selectedIdx = UI::ListView::GetSelectedIndex(sTitleListState);
 
-    // Bottom row: main controls with customizable button labels
-    char footer[100];
-    snprintf(footer, sizeof(footer),
-             "%s:Go %s:Close %s:Fav %s:Edit %s:Settings ZL/ZR:Cat [%d/%d]",
-             Buttons::Actions::CONFIRM.label,
-             Buttons::Actions::CANCEL.label,
-             Buttons::Actions::FAVORITE.label,
-             Buttons::Actions::EDIT.label,
-             Buttons::Actions::SETTINGS.label,
-             selectedIdx + 1,
-             count);
+    int pending, ready, failed, total;
+    ImageLoader::GetLoadingStats(&pending, &ready, &failed, &total);
+
+    char footer[120];
+        snprintf(footer, sizeof(footer),
+                 "%s:Go %s:Close %s:Fav %s:Edit %s:Settings ZL/ZR:Cat [%d/%d] %d/%d",
+                 Buttons::Actions::CONFIRM.label,
+                 Buttons::Actions::CANCEL.label,
+                 Buttons::Actions::FAVORITE.label,
+                 Buttons::Actions::EDIT.label,
+                 Buttons::Actions::SETTINGS.label,
+                 selectedIdx + 1,
+                 count,
+                 ready,
+                 total);
 
     Renderer::DrawText(0, Renderer::GetFooterRow(), footer);
 }
@@ -1348,14 +1311,6 @@ void handleSettingsModeInput(uint32_t pressed, uint32_t held)
     }
 }
 
-// =============================================================================
-// Debug Grid Mode
-// =============================================================================
-
-/**
- * Render debug grid overlay.
- * Shows character grid with position labels and pixel information.
- */
 void renderDebugGridMode()
 {
     int gridWidth = Renderer::GetGridWidth();
@@ -1363,11 +1318,9 @@ void renderDebugGridMode()
     int screenWidth = Renderer::GetScreenWidth();
     int screenHeight = Renderer::GetScreenHeight();
 
-    // Draw header info
     Renderer::DrawTextF(0, 0, 0xFFFF00FF, "DEBUG GRID - Screen: %dx%d px  Grid: %dx%d chars",
                         screenWidth, screenHeight, gridWidth, gridHeight);
 
-    // Draw column markers every 10 columns
     for (int col = 0; col < gridWidth; col += 10) {
         Renderer::DrawTextF(col, 1, 0x00FF00FF, "%d", col);
     }
@@ -1488,11 +1441,7 @@ uint64_t runMenuLoop()
     return titleToLaunch;
 }
 
-} // anonymous namespace
-
-// =============================================================================
-// Public Implementation
-// =============================================================================
+}
 
 void Init()
 {
@@ -1516,12 +1465,10 @@ bool IsOpen()
 
 bool IsSafeToOpen()
 {
-    // Already open?
     if (sIsOpen) {
         return false;
     }
 
-    // Check startup grace period
     if (sApplicationStartTime != 0) {
         OSTime now = OSGetTime();
         OSTime elapsed = now - sApplicationStartTime;
@@ -1532,15 +1479,12 @@ bool IsSafeToOpen()
         }
     }
 
-    // Check foreground state
     if (!sInForeground) {
         return false;
     }
 
-    // Check ProcUI state
-    if (!ProcUIIsRunning()) {
-        return false;
-    }
+    // Note: ProcUIIsRunning() check removed - some games (e.g. Picross 3D)
+    // don't use ProcUI normally but the menu can still work fine.
 
     return true;
 }
@@ -1554,43 +1498,36 @@ void Open()
 {
     if (sIsOpen) return;
 
-    // Initialize screen rendering
+    // Mark that we're in the opening phase to prevent foreground release
+    // from interrupting initialization (fixes flash in Shovel Knight)
+    sOpeningInProgress = true;
+
     if (!Renderer::Init()) {
-        // Screen init failed - can't open menu
+        NotificationModule_AddErrorNotification("Menu unavailable - not enough memory");
+        sOpeningInProgress = false;
         return;
     }
 
-    // Initialize image loader for title icons
-    ImageLoader::Init();
-
-    // Ensure titles are loaded
     Titles::Load();
-
-    // Initialize category filter
     Categories::Init();
+    ImageLoader::RetryFailed();
 
-    // Restore last selection from settings
-    sTitleListState = UI::ListView::State();  // Reset state
+    sTitleListState = UI::ListView::State();
     sTitleListState.selectedIndex = Settings::Get().lastIndex;
     clampSelection();
 
-    // Mark as open and reset mode
     sIsOpen = true;
+    sOpeningInProgress = false;
     sCurrentMode = Mode::BROWSE;
 
-    // Run the menu loop (blocks until menu closes)
     uint64_t titleToLaunch = runMenuLoop();
 
-    // Save state
     Settings::Get().lastIndex = sTitleListState.selectedIndex;
     Settings::Save();
 
-    // Cleanup
     sIsOpen = false;
-    ImageLoader::Shutdown();
     Renderer::Shutdown();
 
-    // Launch selected title if any
     if (titleToLaunch != 0) {
         SYSLaunchTitle(titleToLaunch);
     }
@@ -1624,6 +1561,12 @@ void OnForegroundAcquired()
 
 void OnForegroundReleased()
 {
+    // Ignore foreground releases during menu opening to prevent flash
+    // (some games briefly release foreground during initialization)
+    if (sOpeningInProgress) {
+        return;
+    }
+
     sInForeground = false;
 
     if (sIsOpen) {
