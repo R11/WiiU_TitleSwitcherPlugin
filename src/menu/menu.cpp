@@ -403,17 +403,31 @@ void drawFooter()
     int count = Categories::GetFilteredCount();
     int selectedIdx = UI::ListView::GetSelectedIndex(sTitleListState);
 
-    // Bottom row: main controls with customizable button labels
-    char footer[100];
-    snprintf(footer, sizeof(footer),
-             "%s:Go %s:Close %s:Fav %s:Edit %s:Settings ZL/ZR:Cat [%d/%d]",
-             Buttons::Actions::CONFIRM.label,
-             Buttons::Actions::CANCEL.label,
-             Buttons::Actions::FAVORITE.label,
-             Buttons::Actions::EDIT.label,
-             Buttons::Actions::SETTINGS.label,
-             selectedIdx + 1,
-             count);
+    int pending, ready, failed, total;
+    ImageLoader::GetLoadingStats(&pending, &ready, &failed, &total);
+
+    char footer[120];
+    if (pending > 0) {
+        snprintf(footer, sizeof(footer),
+                 "%s:Go %s:Close %s:Fav %s:Edit [%d/%d] Loading:%d",
+                 Buttons::Actions::CONFIRM.label,
+                 Buttons::Actions::CANCEL.label,
+                 Buttons::Actions::FAVORITE.label,
+                 Buttons::Actions::EDIT.label,
+                 selectedIdx + 1,
+                 count,
+                 pending);
+    } else {
+        snprintf(footer, sizeof(footer),
+                 "%s:Go %s:Close %s:Fav %s:Edit %s:Settings ZL/ZR:Cat [%d/%d]",
+                 Buttons::Actions::CONFIRM.label,
+                 Buttons::Actions::CANCEL.label,
+                 Buttons::Actions::FAVORITE.label,
+                 Buttons::Actions::EDIT.label,
+                 Buttons::Actions::SETTINGS.label,
+                 selectedIdx + 1,
+                 count);
+    }
 
     Renderer::DrawText(0, Renderer::GetFooterRow(), footer);
 }
@@ -1563,6 +1577,9 @@ void Open()
 
     // Initialize category filter
     Categories::Init();
+
+    // Retry any failed image loads (may succeed now if context changed)
+    ImageLoader::RetryFailed();
 
     // Restore last selection from settings
     sTitleListState = UI::ListView::State();  // Reset state

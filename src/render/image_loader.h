@@ -40,6 +40,10 @@ Status GetStatus(uint64_t titleId);
 bool IsReady(uint64_t titleId);
 Renderer::ImageHandle Get(uint64_t titleId);
 void GetDebugInfo(int* outUpdateCalls, int* outQueueSize, bool* outInitialized);
+void GetLoadingStats(int* outPending, int* outReady, int* outFailed, int* outTotal);
+
+// Retry failed loads (call when menu opens)
+void RetryFailed();
 
 // Cache management
 void ClearCache();

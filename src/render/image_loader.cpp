@@ -199,6 +199,47 @@ void GetDebugInfo(int* outUpdateCalls, int* outQueueSize, bool* outInitialized)
     if (outInitialized) *outInitialized = sInitialized;
 }
 
+void GetLoadingStats(int* outPending, int* outReady, int* outFailed, int* outTotal)
+{
+    int pending = 0, ready = 0, failed = 0;
+
+    for (const auto& pair : sRequests) {
+        switch (pair.second.status) {
+            case Status::QUEUED:
+            case Status::LOADING:
+                pending++;
+                break;
+            case Status::READY:
+                ready++;
+                break;
+            case Status::FAILED:
+                failed++;
+                break;
+            default:
+                break;
+        }
+    }
+
+    if (outPending) *outPending = pending;
+    if (outReady) *outReady = ready;
+    if (outFailed) *outFailed = failed;
+    if (outTotal) *outTotal = pending + ready + failed;
+}
+
+void RetryFailed()
+{
+    if (!sInitialized) {
+        return;
+    }
+
+    for (auto& pair : sRequests) {
+        if (pair.second.status == Status::FAILED) {
+            pair.second.status = Status::QUEUED;
+            sLoadQueue.push_back(pair.first);
+        }
+    }
+}
+
 void ClearCache()
 {
     if (!sInitialized) {
