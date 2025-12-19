@@ -21,6 +21,7 @@
 
 // Wii U SDK
 #include <nn/acp/title.h>
+#include <coreinit/title.h>
 
 namespace ImageLoader {
 

@@ -119,9 +119,6 @@ INITIALIZE_PLUGIN()
     // Load title list (queues icon requests for each title)
     Titles::Load();
 
-    // Load all queued icons now while in Wii U Menu context
-    ImageLoader::LoadAllSync();
-
     // Load preset metadata from SD card
     TitlePresets::Load();
 

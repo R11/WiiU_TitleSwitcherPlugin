@@ -56,8 +56,7 @@ namespace ImageLoader {
 // =============================================================================
 
 // Maximum number of images to keep in cache
-// Set high to hold all title icons (loaded at plugin init)
-constexpr int DEFAULT_CACHE_SIZE = 500;
+constexpr int DEFAULT_CACHE_SIZE = 50;
 
 // Icon dimensions (Wii U standard)
 constexpr int ICON_WIDTH = 128;
