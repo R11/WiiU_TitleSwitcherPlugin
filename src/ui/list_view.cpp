@@ -264,5 +264,22 @@ Config InputOnlyConfig(int visibleRows) {
     return config;
 }
 
+Config BrowseModeConfig(int visibleRows) {
+    Config config;
+    config.visibleRows = visibleRows;
+    config.smallSkip = Buttons::Skip::SMALL;
+    config.largeSkip = Buttons::Skip::LARGE;
+    config.canFavorite = true;
+    return config;
+}
+
+Config EditModeConfig(int visibleRows) {
+    Config config;
+    config.visibleRows = visibleRows;
+    config.canToggle = true;
+    config.canCancel = true;
+    return config;
+}
+
 } // namespace ListView
 } // namespace UI

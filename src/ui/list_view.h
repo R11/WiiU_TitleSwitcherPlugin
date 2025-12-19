@@ -84,6 +84,8 @@ inline int GetSelectedIndex(const State& state) {
 Config LeftPanelConfig(int visibleRows = -1);
 Config DetailsPanelConfig(int rowOffset, int visibleRows);
 Config InputOnlyConfig(int visibleRows);
+Config BrowseModeConfig(int visibleRows);
+Config EditModeConfig(int visibleRows);
 
 } // namespace ListView
 } // namespace UI
