@@ -1,61 +1,90 @@
-/**
- * ColorShader - Solid Color Rectangle Rendering
+/****************************************************************************
+ * Copyright (C) 2015 Dimok
  *
- * Simple shader for drawing solid colored rectangles.
- * Vertex shader transforms 2D positions, pixel shader outputs flat color.
- */
-
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ ****************************************************************************/
 #pragma once
 
-#include <cstdint>
-#include <gx2/shaders.h>
-#include <gx2/texture.h>
+#include "FetchShader.h"
+#include "PixelShader.h"
+#include "VertexShader.h"
 
-namespace ColorShader {
+class ColorShader : public Shader {
+private:
+    ColorShader();
+    virtual ~ColorShader();
 
-/**
- * Initialize the color shader.
- * @return true on success
- */
-bool Init();
+    static const uint32_t cuAttributeCount   = 2;
+    static const uint32_t cuPositionVtxsSize = 4 * cuVertexAttrSize;
 
-/**
- * Shutdown and free shader resources.
- */
-void Shutdown();
+    static ColorShader *shaderInstance;
 
-/**
- * Check if shader is initialized.
- */
-bool IsInitialized();
+    FetchShader *fetchShader;
+    VertexShader vertexShader;
+    PixelShader pixelShader;
 
-/**
- * Begin drawing with the color shader.
- * Sets up shader state for subsequent draw calls.
- */
-void Begin();
+    float *positionVtxs;
 
-/**
- * End drawing with the color shader.
- */
-void End();
+    uint32_t angleLocation;
+    uint32_t offsetLocation;
+    uint32_t scaleLocation;
+    uint32_t colorLocation;
+    uint32_t colorIntensityLocation;
+    uint32_t positionLocation;
 
-/**
- * Draw a colored rectangle.
- * Must be called between Begin() and End().
- * @param x Left position
- * @param y Top position
- * @param width Rectangle width
- * @param height Rectangle height
- * @param color RGBA color (0xRRGGBBAA)
- */
-void DrawRect(float x, float y, float width, float height, uint32_t color);
+public:
+    static const uint32_t cuColorVtxsSize = 4 * cuColorAttrSize;
 
-/**
- * Set the screen resolution for coordinate transformation.
- * @param width Screen width in pixels
- * @param height Screen height in pixels
- */
-void SetScreenSize(float width, float height);
+    static ColorShader *instance() {
+        if (!shaderInstance) {
+            shaderInstance = new ColorShader();
+        }
+        return shaderInstance;
+    }
+    static void destroyInstance() {
+        if (shaderInstance) {
+            delete shaderInstance;
+            shaderInstance = nullptr;
+        }
+    }
 
-} // namespace ColorShader
+    void setShaders() const {
+        fetchShader->setShader();
+        vertexShader.setShader();
+        pixelShader.setShader();
+    }
+
+    void setAttributeBuffer(const uint8_t *colorAttr, const float *posVtxs_in = nullptr, const uint32_t &vtxCount = 0) const {
+        if (posVtxs_in && vtxCount) {
+            VertexShader::setAttributeBuffer(0, vtxCount * cuVertexAttrSize, cuVertexAttrSize, posVtxs_in);
+            VertexShader::setAttributeBuffer(1, vtxCount * cuColorAttrSize, cuColorAttrSize, colorAttr);
+        } else {
+            VertexShader::setAttributeBuffer(0, cuPositionVtxsSize, cuVertexAttrSize, positionVtxs);
+            VertexShader::setAttributeBuffer(1, cuColorVtxsSize, cuColorAttrSize, colorAttr);
+        }
+    }
+
+    void setAngle(const float &val) const {
+        VertexShader::setUniformReg(angleLocation, 4, &val);
+    }
+    void setOffset(const glm::vec3 &vec) const {
+        VertexShader::setUniformReg(offsetLocation, 4, &vec[0]);
+    }
+    void setScale(const glm::vec3 &vec) const {
+        VertexShader::setUniformReg(scaleLocation, 4, &vec[0]);
+    }
+    void setColorIntensity(const glm::vec4 &vec) const {
+        PixelShader::setUniformReg(colorIntensityLocation, 4, &vec[0]);
+    }
+};

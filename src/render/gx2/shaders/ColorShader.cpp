@@ -1,238 +1,169 @@
-/**
- * ColorShader Implementation
+/****************************************************************************
+ * Copyright (C) 2015 Dimok
  *
- * Draws solid colored rectangles using GX2 GPU.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * NOTE: This requires pre-compiled GX2 shader binaries.
- * The shader code would be:
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * Vertex Shader (GLSL-style pseudo code):
- *   uniform vec2 uScreenSize;
- *   in vec2 aPosition;
- *   void main() {
- *       // Convert from screen coordinates to clip space
- *       vec2 pos = (aPosition / uScreenSize) * 2.0 - 1.0;
- *       gl_Position = vec4(pos.x, -pos.y, 0.0, 1.0);
- *   }
- *
- * Pixel Shader:
- *   uniform vec4 uColor;
- *   out vec4 fragColor;
- *   void main() {
- *       fragColor = uColor;
- *   }
- */
-
-#ifdef ENABLE_GX2_RENDERING
-
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ ****************************************************************************/
 #include "ColorShader.h"
-#include <cstring>
-#include <malloc.h>
-#include <gx2/draw.h>
-#include <gx2/mem.h>
-#include <gx2/registers.h>
-#include <gx2/shaders.h>
-#include <coreinit/cache.h>
-#include <memory/mappedmemory.h>
 
-namespace ColorShader {
+static const uint32_t cpVertexShaderProgram[] = {
+        0x00000000, 0x00008009, 0x20000000, 0x000078a0,
+        0x3c200000, 0x88060094, 0x00c00000, 0x88062014,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00a11f00, 0xfc00620f, 0x02490001, 0x80000040,
+        0xfd041f80, 0x900c0060, 0x83f9223e, 0x0000803f,
+        0xfe282001, 0x10000040, 0xfe001f80, 0x00080060,
+        0xfeac9f80, 0xfd00624f, 0xdb0f49c0, 0xdb0fc940,
+        0xfea81f80, 0x9000e02f, 0x83f9223e, 0x00000000,
+        0xfe041f80, 0x00370000, 0xffa01f00, 0x80000000,
+        0xff101f00, 0x800c0020, 0x7f041f80, 0x80370000,
+        0x0000103f, 0x00000000, 0x02c51f00, 0x80000000,
+        0xfea41f00, 0x80000020, 0xffa09f00, 0x80000040,
+        0xff001f80, 0x800c0060, 0x398ee33f, 0x0000103f,
+        0x02c41f00, 0x9000e00f, 0x02c59f01, 0x80000020,
+        0xfea81f00, 0x80000040, 0x02c19f80, 0x9000e06f,
+        0x398ee33f, 0x00000000, 0x02c11f01, 0x80000000,
+        0x02c49f80, 0x80000060, 0x02e08f01, 0xfe0c620f,
+        0x02c01f80, 0x7f00622f, 0xfe242000, 0x10000000,
+        0xfe20a080, 0x10000020, 0xf2178647, 0x49c0e9fb,
+        0xfbbdb2ab, 0x768ac733};
 
-// =============================================================================
-// Shader State
-// =============================================================================
+static const uint32_t cpVertexShaderRegs[] = {
+        0x00000103, 0x00000000, 0x00000000, 0x00000001,
+        0xffffff00, 0xffffffff, 0xffffffff, 0xffffffff,
+        0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+        0xffffffff, 0xffffffff, 0x00000000, 0xfffffffc,
+        0x00000002, 0x00000001, 0x00000000, 0x000000ff,
+        0x000000ff, 0x000000ff, 0x000000ff, 0x000000ff,
+        0x000000ff, 0x000000ff, 0x000000ff, 0x000000ff,
+        0x000000ff, 0x000000ff, 0x000000ff, 0x000000ff,
+        0x000000ff, 0x000000ff, 0x000000ff, 0x000000ff,
+        0x000000ff, 0x000000ff, 0x000000ff, 0x000000ff,
+        0x000000ff, 0x000000ff, 0x000000ff, 0x000000ff,
+        0x000000ff, 0x000000ff, 0x000000ff, 0x000000ff,
+        0x000000ff, 0x00000000, 0x0000000e, 0x00000010};
 
-static bool sInitialized = false;
+static const uint32_t cpPixelShaderProgram[] = {
+        0x20000000, 0x00000ca0, 0x00000000, 0x88062094,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00002000, 0x90000000, 0x0004a000, 0x90000020,
+        0x00082001, 0x90000040, 0x000ca081, 0x90000060,
+        0xbb7dd898, 0x9746c59c, 0xc69b00e7, 0x03c36218};
+static const uint32_t cpPixelShaderRegs[] = {
+        0x00000001, 0x00000002, 0x14000001, 0x00000000,
+        0x00000001, 0x00000100, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x0000000f, 0x00000001, 0x00000010,
+        0x00000000};
 
-// Shader programs
-static GX2VertexShader* sVertexShader = nullptr;
-static GX2PixelShader* sPixelShader = nullptr;
+ColorShader *ColorShader::shaderInstance = nullptr;
 
-// Fetch shader (describes vertex layout)
-static GX2FetchShader* sFetchShader = nullptr;
-static void* sFetchShaderBuffer = nullptr;
+ColorShader::ColorShader()
+    : vertexShader(cuAttributeCount) {
+    //! create pixel shader
+    pixelShader.setProgram(cpPixelShaderProgram, sizeof(cpPixelShaderProgram), cpPixelShaderRegs, sizeof(cpPixelShaderRegs));
 
-// Vertex attribute buffer
-static GX2AttribStream sAttribStream;
+    colorIntensityLocation = 0;
+    pixelShader.addUniformVar((GX2UniformVar){
+            "unf_color_intensity", GX2_SHADER_VAR_TYPE_FLOAT4, 1, colorIntensityLocation, -1});
 
-// Uniform locations
-static int32_t sScreenSizeLocation = -1;
-static int32_t sColorLocation = -1;
+    //! create vertex shader
+    vertexShader.setProgram(cpVertexShaderProgram, sizeof(cpVertexShaderProgram), cpVertexShaderRegs, sizeof(cpVertexShaderRegs));
 
-// Current screen size
-static float sScreenWidth = 1280.0f;
-static float sScreenHeight = 720.0f;
+    angleLocation  = 0;
+    offsetLocation = 4;
+    scaleLocation  = 8;
+    vertexShader.addUniformVar((GX2UniformVar){
+            "unf_angle", GX2_SHADER_VAR_TYPE_FLOAT, 1, angleLocation, -1});
+    vertexShader.addUniformVar((GX2UniformVar){
+            "unf_offset", GX2_SHADER_VAR_TYPE_FLOAT3, 1, offsetLocation, -1});
+    vertexShader.addUniformVar((GX2UniformVar){
+            "unf_scale", GX2_SHADER_VAR_TYPE_FLOAT3, 1, scaleLocation, -1});
 
-// Vertex buffer for quad
-struct Vertex {
-    float x, y;
-};
+    colorLocation    = 1;
+    positionLocation = 0;
+    vertexShader.addAttribVar((GX2AttribVar){
+            "attr_color", GX2_SHADER_VAR_TYPE_FLOAT4, 0, colorLocation});
+    vertexShader.addAttribVar((GX2AttribVar){
+            "attr_position", GX2_SHADER_VAR_TYPE_FLOAT3, 0, positionLocation});
 
-static void* sVertexBuffer = nullptr;
-static const int VERTEX_COUNT = 4;
+    //! setup attribute streams
+    GX2InitAttribStream(vertexShader.getAttributeBuffer(0), positionLocation, 0, 0, GX2_ATTRIB_FORMAT_FLOAT_32_32_32);
+    GX2InitAttribStream(vertexShader.getAttributeBuffer(1), colorLocation, 1, 0, GX2_ATTRIB_FORMAT_UNORM_8_8_8_8);
 
-// =============================================================================
-// Shader Binary Data
-// =============================================================================
+    //! create fetch shader
+    fetchShader = new FetchShader(vertexShader.getAttributeBuffer(), vertexShader.getAttributesCount());
 
-// TODO: Include actual compiled shader binaries here
-// These would be compiled from WHB/GX2 shader source using the GPU7 compiler
-
-// Placeholder - shader initialization will fail until real binaries are added
-static const uint8_t sVertexShaderData[] = { 0 };
-static const uint8_t sPixelShaderData[] = { 0 };
-
-// =============================================================================
-// Implementation
-// =============================================================================
-
-bool Init() {
-    if (sInitialized) {
-        return true;
+    //! model vertex has to be align and cannot be in unknown regions for GX2 like 0xBCAE1000
+    positionVtxs = (float *) MEMAllocFromMappedMemoryForGX2Ex(cuPositionVtxsSize, GX2_VERTEX_BUFFER_ALIGNMENT);
+    if (positionVtxs) {
+        //! position vertex structure
+        int32_t i         = 0;
+        positionVtxs[i++] = -1.0f;
+        positionVtxs[i++] = -1.0f;
+        positionVtxs[i++] = 0.0f;
+        positionVtxs[i++] = 1.0f;
+        positionVtxs[i++] = -1.0f;
+        positionVtxs[i++] = 0.0f;
+        positionVtxs[i++] = 1.0f;
+        positionVtxs[i++] = 1.0f;
+        positionVtxs[i++] = 0.0f;
+        positionVtxs[i++] = -1.0f;
+        positionVtxs[i++] = 1.0f;
+        positionVtxs[i++] = 0.0f;
+        GX2Invalidate(GX2_INVALIDATE_MODE_CPU_ATTRIBUTE_BUFFER, positionVtxs, cuPositionVtxsSize);
     }
-
-    // For now, just mark as not initialized since we don't have real shader binaries
-    // When real binaries are available:
-    // 1. Allocate and copy vertex shader
-    // 2. Allocate and copy pixel shader
-    // 3. Create fetch shader
-    // 4. Set up attribute streams
-    // 5. Allocate vertex buffer
-
-    // Allocate vertex buffer (4 vertices for a quad)
-    sVertexBuffer = MEMAllocFromMappedMemoryForGX2Ex(
-        sizeof(Vertex) * VERTEX_COUNT,
-        GX2_VERTEX_BUFFER_ALIGNMENT
-    );
-
-    if (!sVertexBuffer) {
-        return false;
-    }
-
-    // TODO: Initialize actual shaders when binaries are available
-    // For now, this remains uninitialized
-    // sInitialized = true;
-
-    return false; // Return false until we have real shader binaries
 }
 
-void Shutdown() {
-    if (!sInitialized) {
-        // Still clean up vertex buffer if allocated
-        if (sVertexBuffer) {
-            MEMFreeToMappedMemory(sVertexBuffer);
-            sVertexBuffer = nullptr;
-        }
-        return;
+ColorShader::~ColorShader() {
+    if (positionVtxs) {
+        MEMFreeToMappedMemory(positionVtxs);
+        positionVtxs = nullptr;
     }
 
-    // Free fetch shader
-    if (sFetchShaderBuffer) {
-        MEMFreeToMappedMemory(sFetchShaderBuffer);
-        sFetchShaderBuffer = nullptr;
-    }
-    if (sFetchShader) {
-        free(sFetchShader);
-        sFetchShader = nullptr;
-    }
-
-    // Free vertex/pixel shaders
-    if (sVertexShader) {
-        if (sVertexShader->program) {
-            MEMFreeToMappedMemory((void*)sVertexShader->program);
-        }
-        free(sVertexShader);
-        sVertexShader = nullptr;
-    }
-
-    if (sPixelShader) {
-        if (sPixelShader->program) {
-            MEMFreeToMappedMemory((void*)sPixelShader->program);
-        }
-        free(sPixelShader);
-        sPixelShader = nullptr;
-    }
-
-    // Free vertex buffer
-    if (sVertexBuffer) {
-        MEMFreeToMappedMemory(sVertexBuffer);
-        sVertexBuffer = nullptr;
-    }
-
-    sInitialized = false;
+    delete fetchShader;
+    fetchShader = nullptr;
 }
-
-bool IsInitialized() {
-    return sInitialized;
-}
-
-void SetScreenSize(float width, float height) {
-    sScreenWidth = width;
-    sScreenHeight = height;
-}
-
-void Begin() {
-    if (!sInitialized) {
-        return;
-    }
-
-    // Set shaders
-    GX2SetVertexShader(sVertexShader);
-    GX2SetPixelShader(sPixelShader);
-    GX2SetFetchShader(sFetchShader);
-
-    // Set screen size uniform
-    float screenSize[4] = { sScreenWidth, sScreenHeight, 0, 0 };
-    GX2SetVertexUniformReg(sScreenSizeLocation, 4, screenSize);
-
-    // Enable blending for alpha
-    GX2SetColorControl(GX2_LOGIC_OP_COPY, 0xFF, FALSE, TRUE);
-    GX2SetBlendControl(
-        GX2_RENDER_TARGET_0,
-        GX2_BLEND_MODE_SRC_ALPHA,
-        GX2_BLEND_MODE_INV_SRC_ALPHA,
-        GX2_BLEND_COMBINE_MODE_ADD,
-        TRUE,
-        GX2_BLEND_MODE_ONE,
-        GX2_BLEND_MODE_INV_SRC_ALPHA,
-        GX2_BLEND_COMBINE_MODE_ADD
-    );
-}
-
-void End() {
-    // Nothing to do
-}
-
-void DrawRect(float x, float y, float width, float height, uint32_t color) {
-    if (!sInitialized || !sVertexBuffer) {
-        return;
-    }
-
-    // Set up vertices for a quad (triangle strip)
-    Vertex* vertices = (Vertex*)sVertexBuffer;
-    vertices[0] = { x, y };                     // Top-left
-    vertices[1] = { x + width, y };             // Top-right
-    vertices[2] = { x, y + height };            // Bottom-left
-    vertices[3] = { x + width, y + height };    // Bottom-right
-
-    // Flush vertex buffer to GPU
-    GX2Invalidate(GX2_INVALIDATE_MODE_CPU_ATTRIBUTE_BUFFER, sVertexBuffer, sizeof(Vertex) * VERTEX_COUNT);
-
-    // Set color uniform (convert RGBA to float4)
-    float colorFloat[4] = {
-        ((color >> 24) & 0xFF) / 255.0f,
-        ((color >> 16) & 0xFF) / 255.0f,
-        ((color >> 8) & 0xFF) / 255.0f,
-        (color & 0xFF) / 255.0f
-    };
-    GX2SetPixelUniformReg(sColorLocation, 4, colorFloat);
-
-    // Set vertex buffer
-    GX2SetAttribBuffer(0, sizeof(Vertex) * VERTEX_COUNT, sizeof(Vertex), sVertexBuffer);
-
-    // Draw triangle strip
-    GX2DrawEx(GX2_PRIMITIVE_MODE_TRIANGLE_STRIP, VERTEX_COUNT, 0, 1);
-}
-
-} // namespace ColorShader
-
-#endif // ENABLE_GX2_RENDERING

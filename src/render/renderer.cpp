@@ -7,6 +7,10 @@
 #include "bitmap_font.h"
 #include "../utils/dc.h"
 
+#ifdef ENABLE_GX2_RENDERING
+#include "gx2/gx2_overlay.h"
+#endif
+
 #include <coreinit/screen.h>
 #include <coreinit/cache.h>
 #include <coreinit/memory.h>
@@ -197,37 +201,61 @@ void drawPlaceholderOSScreen(int pixelX, int pixelY, int width, int height, uint
 
 bool initGX2()
 {
+#ifdef ENABLE_GX2_RENDERING
+    if (!GX2Overlay::Init()) {
+        return false;
+    }
+    GX2Overlay::SetEnabled(true);
+    return true;
+#else
     return false;
+#endif
 }
 
 void shutdownGX2()
 {
+#ifdef ENABLE_GX2_RENDERING
+    GX2Overlay::SetEnabled(false);
+    GX2Overlay::Shutdown();
+#endif
 }
 
 void beginFrameGX2(uint32_t clearColor)
 {
+#ifdef ENABLE_GX2_RENDERING
+    GX2Overlay::BeginDraw(clearColor);
+#else
     (void)clearColor;
+#endif
 }
 
 void endFrameGX2()
 {
+#ifdef ENABLE_GX2_RENDERING
+    GX2Overlay::EndDraw();
+#endif
 }
 
 void drawTextGX2(int column, int row, const char* text, uint32_t color)
 {
-    (void)column;
-    (void)row;
-    (void)text;
-    (void)color;
+#ifdef ENABLE_GX2_RENDERING
+    // Convert column/row to pixels (OSScreen uses 8x24 character cells)
+    int pixelX = column * 8;
+    int pixelY = row * 24;
+    GX2Overlay::DrawText(pixelX, pixelY, text, color, 16);
+#else
+    (void)column; (void)row; (void)text; (void)color;
+#endif
 }
 
 void drawImageGX2(int pixelX, int pixelY, ImageHandle image, int width, int height)
 {
-    (void)pixelX;
-    (void)pixelY;
-    (void)image;
-    (void)width;
-    (void)height;
+#ifdef ENABLE_GX2_RENDERING
+    // TODO: Image rendering not yet implemented
+    (void)pixelX; (void)pixelY; (void)image; (void)width; (void)height;
+#else
+    (void)pixelX; (void)pixelY; (void)image; (void)width; (void)height;
+#endif
 }
 
 }

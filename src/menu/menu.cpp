@@ -19,7 +19,6 @@
 #include <sysapp/title.h>
 #include <nn/ccr/sys.h>
 #include <coreinit/time.h>
-#include <proc_ui/procui.h>
 
 #include <cstdio>
 #include <cstring>
@@ -135,6 +134,7 @@ uint32_t* getColorPtr(int offset) {
 
 OSTime sApplicationStartTime = 0;
 bool sInForeground = false;
+bool sOpeningInProgress = false;
 constexpr uint32_t STARTUP_GRACE_MS = 3000;
 
 constexpr int CATEGORY_EDIT_VISIBLE_ROWS = 10;
@@ -1482,9 +1482,8 @@ bool IsSafeToOpen()
         return false;
     }
 
-    if (!ProcUIIsRunning()) {
-        return false;
-    }
+    // Note: ProcUIIsRunning() check removed - some games (e.g. Picross 3D)
+    // don't use ProcUI normally but the menu can still work fine.
 
     return true;
 }
@@ -1498,7 +1497,12 @@ void Open()
 {
     if (sIsOpen) return;
 
+    // Mark that we're in the opening phase to prevent foreground release
+    // from interrupting initialization (fixes flash in Shovel Knight)
+    sOpeningInProgress = true;
+
     if (!Renderer::Init()) {
+        sOpeningInProgress = false;
         return;
     }
 
@@ -1511,6 +1515,7 @@ void Open()
     clampSelection();
 
     sIsOpen = true;
+    sOpeningInProgress = false;
     sCurrentMode = Mode::BROWSE;
 
     uint64_t titleToLaunch = runMenuLoop();
@@ -1554,6 +1559,12 @@ void OnForegroundAcquired()
 
 void OnForegroundReleased()
 {
+    // Ignore foreground releases during menu opening to prevent flash
+    // (some games briefly release foreground during initialization)
+    if (sOpeningInProgress) {
+        return;
+    }
+
     sInForeground = false;
 
     if (sIsOpen) {

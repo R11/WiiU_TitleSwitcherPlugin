@@ -5,133 +5,105 @@
  * 1. Hook GX2CopyColorBufferToScanBuffer via WUPS function replacement
  * 2. Before copy, draw our overlay into the color buffer
  * 3. Restore game's GX2 context state
- *
- * Reference: https://github.com/wiiu-env/NotificationModule
  */
 
-// Only compile when GX2 rendering is enabled
-// TODO: Enable this once shaders and font rendering are implemented
 #ifdef ENABLE_GX2_RENDERING
 
 #include "gx2_overlay.h"
-#include "SchriftGX2.h"
 #include "shaders/ColorShader.h"
 #include "shaders/Texture2DShader.h"
 
 #include <cstring>
 #include <malloc.h>
 
-// WUPS headers
 #include <wups.h>
-
-// WUT headers
 #include <coreinit/cache.h>
-#include <coreinit/memexpheap.h>
+#include <coreinit/memory.h>
+#include <coreinit/systeminfo.h>
 #include <gx2/context.h>
 #include <gx2/display.h>
 #include <gx2/draw.h>
 #include <gx2/event.h>
 #include <gx2/mem.h>
 #include <gx2/registers.h>
-#include <gx2/sampler.h>
 #include <gx2/shaders.h>
 #include <gx2/state.h>
-#include <gx2/surface.h>
-#include <gx2/swap.h>
-#include <gx2/texture.h>
 #include <memory/mappedmemory.h>
+
+#pragma GCC diagnostic ignored "-Wvolatile"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 namespace GX2Overlay {
 
-// =============================================================================
-// Internal State (namespace-level for access from WUPS hooks)
-// =============================================================================
-
+// State
 static bool sInitialized = false;
 static bool sEnabled = false;
-
-// Our GX2 context state (separate from game's)
 static GX2ContextState* sContextState = nullptr;
-
-// Saved game context state (to restore after drawing)
-GX2ContextState* sSavedContextState = nullptr;  // Accessed by WUPS hooks
+GX2ContextState* sSavedContextState = nullptr;
 
 // Screen dimensions
-static int sScreenWidth = 1280;
-static int sScreenHeight = 720;
+static float sScreenWidth = 1280.0f;
+static float sScreenHeight = 720.0f;
 
-// Font for text rendering
-static SchriftGX2::Font* sFont = nullptr;
-static const float DEFAULT_FONT_SIZE = 16.0f;
+// Color vertex buffer for rectangles (4 vertices, RGBA each)
+static uint8_t* sColorVtxs = nullptr;
+static const uint32_t COLOR_VTX_COUNT = 4;
+
+// TODO: Font support - need to integrate NotificationModule's SchriftGX2
+// static SchriftGX2* sFontSystem = nullptr;
 
 namespace {
 
-/**
- * Draw our overlay into the color buffer before it's copied to screen
- */
 void drawOverlay(GX2ColorBuffer* colorBuffer, GX2ScanTarget scanTarget) {
     if (!sEnabled || !sContextState) {
         return;
     }
 
-    // Save current context
     GX2ContextState* savedContext = sSavedContextState;
-
-    // Switch to our context
     GX2SetContextState(sContextState);
 
-    // Set up viewport to match color buffer
-    GX2SetViewport(0, 0, colorBuffer->surface.width, colorBuffer->surface.height,
-                   0.0f, 1.0f);
+    GX2SetViewport(0, 0, colorBuffer->surface.width, colorBuffer->surface.height, 0.0f, 1.0f);
     GX2SetScissor(0, 0, colorBuffer->surface.width, colorBuffer->surface.height);
-
-    // Set color buffer as render target
     GX2SetColorBuffer(colorBuffer, GX2_RENDER_TARGET_0);
+    GX2SetDepthOnlyControl(GX2_FALSE, GX2_FALSE, GX2_COMPARE_FUNC_ALWAYS);
 
-    // TODO: Draw overlay content here
-    // - Use Texture2DShader for text/images
-    // - Use ColorShader for rectangles
+    // Enable alpha blending
+    GX2SetColorControl(GX2_LOGIC_OP_COPY, 0xFF, FALSE, TRUE);
+    GX2SetBlendControl(
+        GX2_RENDER_TARGET_0,
+        GX2_BLEND_MODE_SRC_ALPHA,
+        GX2_BLEND_MODE_INV_SRC_ALPHA,
+        GX2_BLEND_COMBINE_MODE_ADD,
+        TRUE,
+        GX2_BLEND_MODE_ONE,
+        GX2_BLEND_MODE_INV_SRC_ALPHA,
+        GX2_BLEND_COMBINE_MODE_ADD
+    );
 
-    // Restore game's context
+    // Drawing happens here when menu calls DrawRect/DrawText
+
     if (savedContext) {
         GX2SetContextState(savedContext);
     }
 }
 
 } // anonymous namespace
-
 } // namespace GX2Overlay
 
-// =============================================================================
-// WUPS Function Replacements (must be in global scope)
-// =============================================================================
-
-/**
- * Hook for GX2SetContextState - captures game's context state
- */
+// WUPS Function Replacements
 DECL_FUNCTION(void, GX2SetContextState_hook, GX2ContextState* state) {
-    // Save reference to game's context state
     GX2Overlay::sSavedContextState = state;
     real_GX2SetContextState_hook(state);
 }
 WUPS_MUST_REPLACE(GX2SetContextState_hook, WUPS_LOADER_LIBRARY_GX2, GX2SetContextState);
 
-/**
- * Hook for GX2CopyColorBufferToScanBuffer - intercepts frame display
- */
 DECL_FUNCTION(void, GX2CopyColorBufferToScanBuffer_hook,
               GX2ColorBuffer* colorBuffer, GX2ScanTarget scanTarget) {
-    // Draw overlay before copying to screen
     GX2Overlay::drawOverlay(colorBuffer, scanTarget);
-
-    // Call original function to display the frame
     real_GX2CopyColorBufferToScanBuffer_hook(colorBuffer, scanTarget);
 }
 WUPS_MUST_REPLACE(GX2CopyColorBufferToScanBuffer_hook, WUPS_LOADER_LIBRARY_GX2, GX2CopyColorBufferToScanBuffer);
-
-// =============================================================================
-// Public API (back in namespace)
-// =============================================================================
 
 namespace GX2Overlay {
 
@@ -140,39 +112,36 @@ bool Init() {
         return true;
     }
 
-    // Allocate our GX2 context state
+    // Allocate context state
     sContextState = (GX2ContextState*)MEMAllocFromMappedMemoryForGX2Ex(
         sizeof(GX2ContextState), GX2_CONTEXT_STATE_ALIGNMENT);
-
     if (!sContextState) {
         return false;
     }
-
-    // Initialize context state
     GX2SetupContextStateEx(sContextState, GX2_TRUE);
 
-    // Initialize shaders
-    if (!ColorShader::Init()) {
-        // ColorShader failed - continue anyway, DrawRect won't work
+    // Initialize shaders (singletons auto-create on first instance() call)
+    ColorShader::instance();
+    Texture2DShader::instance();
+
+    // Allocate color vertex buffer
+    sColorVtxs = (uint8_t*)MEMAllocFromMappedMemoryForGX2Ex(
+        COLOR_VTX_COUNT * ColorShader::cuColorAttrSize, GX2_VERTEX_BUFFER_ALIGNMENT);
+    if (!sColorVtxs) {
+        MEMFreeToMappedMemory(sContextState);
+        sContextState = nullptr;
+        return false;
     }
 
-    if (!Texture2DShader::Init()) {
-        // Texture2DShader failed - continue anyway, DrawText won't work
-    }
-
-    // Initialize font system
-    if (SchriftGX2::Init()) {
-        // Load default font
-        sFont = SchriftGX2::LoadDefaultFont(DEFAULT_FONT_SIZE);
-    }
-
-    // Set screen size for shaders
-    ColorShader::SetScreenSize((float)sScreenWidth, (float)sScreenHeight);
-    Texture2DShader::SetScreenSize((float)sScreenWidth, (float)sScreenHeight);
+    // TODO: Initialize font using system font
+    // void* fontData = nullptr;
+    // uint32_t fontSize = 0;
+    // if (OSGetSharedData(OS_SHAREDDATATYPE_FONT_STANDARD, 0, &fontData, &fontSize) && fontData && fontSize > 0) {
+    //     sFontSystem = new (std::nothrow) SchriftGX2((uint8_t*)fontData, fontSize);
+    // }
 
     sInitialized = true;
     sEnabled = false;
-
     return true;
 }
 
@@ -181,20 +150,20 @@ void Shutdown() {
         return;
     }
 
-    // Free font
-    if (sFont) {
-        delete sFont;
-        sFont = nullptr;
+    // TODO: Font cleanup
+    // if (sFontSystem) {
+    //     delete sFontSystem;
+    //     sFontSystem = nullptr;
+    // }
+
+    if (sColorVtxs) {
+        MEMFreeToMappedMemory(sColorVtxs);
+        sColorVtxs = nullptr;
     }
 
-    // Shutdown font system
-    SchriftGX2::Shutdown();
+    Texture2DShader::destroyInstance();
+    ColorShader::destroyInstance();
 
-    // Shutdown shaders
-    Texture2DShader::Shutdown();
-    ColorShader::Shutdown();
-
-    // Free context state
     if (sContextState) {
         MEMFreeToMappedMemory(sContextState);
         sContextState = nullptr;
@@ -204,71 +173,85 @@ void Shutdown() {
     sEnabled = false;
 }
 
-bool IsInitialized() {
-    return sInitialized;
-}
+bool IsInitialized() { return sInitialized; }
+void SetEnabled(bool enabled) { sEnabled = enabled; }
+bool IsEnabled() { return sEnabled; }
 
-void SetEnabled(bool enabled) {
-    sEnabled = enabled;
-}
-
-bool IsEnabled() {
-    return sEnabled;
+void SetScreenSize(float width, float height) {
+    sScreenWidth = width;
+    sScreenHeight = height;
 }
 
 void BeginDraw(uint32_t clearColor) {
-    // TODO: Set up for drawing
-    // - Clear overlay area if needed
-    // - Set blend mode for alpha
     (void)clearColor;
 }
 
 void EndDraw() {
-    // TODO: Finalize drawing
-    // - Flush GPU commands
-}
-
-void DrawText(int x, int y, const char* text, uint32_t color, int size) {
-    if (!sFont || !Texture2DShader::IsInitialized()) {
-        return;
-    }
-
-    // For now, use default font size
-    // TODO: Support different sizes by loading multiple font instances
-    (void)size;
-
-    Texture2DShader::Begin();
-    SchriftGX2::DrawText(sFont, (float)x, (float)y, text, color);
-    Texture2DShader::End();
+    GX2DrawDone();
 }
 
 void DrawRect(int x, int y, int width, int height, uint32_t color) {
-    if (!ColorShader::IsInitialized()) {
+    if (!sColorVtxs) {
         return;
     }
 
-    ColorShader::Begin();
-    ColorShader::DrawRect((float)x, (float)y, (float)width, (float)height, color);
-    ColorShader::End();
+    // Set color for all 4 vertices (RGBA format)
+    uint8_t r = (color >> 24) & 0xFF;
+    uint8_t g = (color >> 16) & 0xFF;
+    uint8_t b = (color >> 8) & 0xFF;
+    uint8_t a = color & 0xFF;
+
+    for (int i = 0; i < 4; i++) {
+        sColorVtxs[i * 4 + 0] = r;
+        sColorVtxs[i * 4 + 1] = g;
+        sColorVtxs[i * 4 + 2] = b;
+        sColorVtxs[i * 4 + 3] = a;
+    }
+    GX2Invalidate(GX2_INVALIDATE_MODE_CPU_ATTRIBUTE_BUFFER, sColorVtxs, COLOR_VTX_COUNT * 4);
+
+    // Calculate offset and scale for the shader
+    // Shader uses normalized device coords (-1 to 1)
+    // offset is the center of the quad, scale is half-size
+    float centerX = (float)x + (float)width / 2.0f;
+    float centerY = (float)y + (float)height / 2.0f;
+
+    // Convert to NDC: x: 0..screenWidth -> -1..1, y: 0..screenHeight -> 1..-1 (flipped)
+    glm::vec3 offset(
+        (centerX / sScreenWidth) * 2.0f - 1.0f,
+        1.0f - (centerY / sScreenHeight) * 2.0f,
+        0.0f
+    );
+
+    glm::vec3 scale(
+        (float)width / sScreenWidth,
+        (float)height / sScreenHeight,
+        1.0f
+    );
+
+    glm::vec4 colorIntensity(1.0f, 1.0f, 1.0f, 1.0f);
+
+    ColorShader::instance()->setShaders();
+    ColorShader::instance()->setAttributeBuffer(sColorVtxs);
+    ColorShader::instance()->setAngle(0.0f);
+    ColorShader::instance()->setOffset(offset);
+    ColorShader::instance()->setScale(scale);
+    ColorShader::instance()->setColorIntensity(colorIntensity);
+    ColorShader::instance()->draw();
+}
+
+void DrawText(int x, int y, const char* text, uint32_t color, int size) {
+    // TODO: Font rendering not yet implemented
+    // Need to integrate NotificationModule's SchriftGX2
+    (void)x; (void)y; (void)text; (void)color; (void)size;
 }
 
 void DrawTexture(int x, int y, GX2Texture* texture, int width, int height) {
-    if (!texture || !Texture2DShader::IsInitialized()) {
-        return;
-    }
-
-    Texture2DShader::Begin();
-    Texture2DShader::DrawTexture(texture, (float)x, (float)y, (float)width, (float)height, 0xFFFFFFFF);
-    Texture2DShader::End();
+    // TODO: Texture rendering - Texture2DShader needs adaptation
+    (void)x; (void)y; (void)texture; (void)width; (void)height;
 }
 
-int GetScreenWidth() {
-    return sScreenWidth;
-}
-
-int GetScreenHeight() {
-    return sScreenHeight;
-}
+int GetScreenWidth() { return (int)sScreenWidth; }
+int GetScreenHeight() { return (int)sScreenHeight; }
 
 } // namespace GX2Overlay
 

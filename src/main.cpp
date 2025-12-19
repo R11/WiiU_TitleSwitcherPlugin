@@ -77,13 +77,16 @@ void handleInput(VPADStatus* inputBuffer, uint32_t sampleCount)
     uint32_t heldButtons = inputBuffer[0].hold;
     bool comboIsHeld = Buttons::IsComboPressed(heldButtons, Buttons::Actions::MENU_OPEN_COMBO);
 
-    if (comboIsHeld && !comboWasHeldPreviously && Menu::IsSafeToOpen()) {
-        Menu::Open();
+    if (comboIsHeld && !comboWasHeldPreviously) {
+        notify("Combo detected");
+        if (Menu::IsSafeToOpen()) {
+            Menu::Open();
 
-        for (uint32_t sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++) {
-            inputBuffer[sampleIndex].trigger = 0;
-            inputBuffer[sampleIndex].hold = 0;
-            inputBuffer[sampleIndex].release = 0;
+            for (uint32_t sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++) {
+                inputBuffer[sampleIndex].trigger = 0;
+                inputBuffer[sampleIndex].hold = 0;
+                inputBuffer[sampleIndex].release = 0;
+            }
         }
     }
 
