@@ -13,6 +13,7 @@
 #include "titles/titles.h"
 #include "storage/settings.h"
 #include "presets/title_presets.h"
+#include "render/image_loader.h"
 
 WUPS_PLUGIN_NAME("Title Switcher");
 WUPS_PLUGIN_DESCRIPTION("Game launcher menu via L+R+Minus");
@@ -34,6 +35,7 @@ INITIALIZE_PLUGIN()
     Settings::Init();
     Settings::Load();
     Menu::Init();
+    ImageLoader::Init();
     Titles::Load();
     TitlePresets::Load();
     notify("Title Switcher ready");
@@ -41,6 +43,7 @@ INITIALIZE_PLUGIN()
 
 DEINITIALIZE_PLUGIN()
 {
+    ImageLoader::Shutdown();
     Menu::Shutdown();
     NotificationModule_DeInitLibrary();
 }

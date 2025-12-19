@@ -3,6 +3,7 @@
  */
 
 #include "titles.h"
+#include "../render/image_loader.h"
 
 #include <coreinit/mcp.h>
 #include <coreinit/title.h>
@@ -133,6 +134,7 @@ void Load(bool forceReload)
             getTitleMetadataFromSystem(titleId,
                                        titleCache[titleCount].name, MAX_NAME_LENGTH,
                                        titleCache[titleCount].productCode, MAX_PRODUCT_CODE);
+            ImageLoader::Request(titleId, ImageLoader::Priority::LOW);
             titleCount++;
         }
     }

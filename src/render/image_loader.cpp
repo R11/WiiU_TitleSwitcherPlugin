@@ -1,27 +1,21 @@
 /**
- * Image Loader Implementation
- * Loads title icons using libgd for image parsing.
+ * Async image loading with priority queue.
+ * Uses ImageStore for loading from various sources.
  */
 
 #include "image_loader.h"
 #include "renderer.h"
+#include "../storage/image_store.h"
 
 #include <map>
 #include <vector>
 #include <algorithm>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-
-#include <gd.h>
-#include <nn/acp/title.h>
 
 namespace ImageLoader {
 
 namespace {
 
 bool isInitialized = false;
-int cacheCapacity = DEFAULT_CACHE_SIZE;
 
 struct RequestInfo {
     uint64_t titleId;
@@ -32,7 +26,9 @@ struct RequestInfo {
 
 std::map<uint64_t, RequestInfo> requestMap;
 std::vector<uint64_t> loadQueue;
-std::vector<uint64_t> cacheAccessOrder;
+
+int updateCallCount = 0;
+int lastQueueSize = 0;
 
 void sortLoadQueue()
 {
@@ -47,155 +43,18 @@ void sortLoadQueue()
         });
 }
 
-void touchCache(uint64_t titleId)
-{
-    auto cacheIterator = std::find(cacheAccessOrder.begin(), cacheAccessOrder.end(), titleId);
-    if (cacheIterator != cacheAccessOrder.end()) {
-        cacheAccessOrder.erase(cacheIterator);
-    }
-    cacheAccessOrder.push_back(titleId);
 }
 
-void freeImage(Renderer::ImageHandle handle)
-{
-    if (handle) {
-        if (handle->pixels) {
-            free(handle->pixels);
-        }
-        delete handle;
-    }
-}
-
-void evictIfNeeded()
-{
-    while (static_cast<int>(cacheAccessOrder.size()) > cacheCapacity && !cacheAccessOrder.empty()) {
-        uint64_t oldestTitleId = cacheAccessOrder.front();
-        cacheAccessOrder.erase(cacheAccessOrder.begin());
-
-        auto requestIterator = requestMap.find(oldestTitleId);
-        if (requestIterator != requestMap.end() && requestIterator->second.status == Status::READY) {
-            freeImage(requestIterator->second.handle);
-            requestIterator->second.status = Status::NOT_REQUESTED;
-            requestIterator->second.handle = Renderer::INVALID_IMAGE;
-        }
-    }
-}
-
-bool loadImageFromFile(const char* filePath, Renderer::ImageHandle& outputHandle)
-{
-    outputHandle = Renderer::INVALID_IMAGE;
-
-    FILE* file = fopen(filePath, "rb");
-    if (!file) {
-        return false;
-    }
-
-    fseek(file, 0, SEEK_END);
-    long fileSize = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    if (fileSize <= 8) {
-        fclose(file);
-        return false;
-    }
-
-    uint8_t* fileBuffer = (uint8_t*)malloc(fileSize);
-    if (!fileBuffer) {
-        fclose(file);
-        return false;
-    }
-
-    if (fread(fileBuffer, 1, fileSize, file) != (size_t)fileSize) {
-        free(fileBuffer);
-        fclose(file);
-        return false;
-    }
-    fclose(file);
-
-    gdImagePtr gdImage = nullptr;
-
-    if (fileBuffer[0] == 0x89 && fileBuffer[1] == 'P' && fileBuffer[2] == 'N' && fileBuffer[3] == 'G') {
-        gdImage = gdImageCreateFromPngPtr(fileSize, fileBuffer);
-    } else if (fileBuffer[0] == 0xFF && fileBuffer[1] == 0xD8) {
-        gdImage = gdImageCreateFromJpegPtr(fileSize, fileBuffer);
-    } else if (fileBuffer[0] == 'B' && fileBuffer[1] == 'M') {
-        gdImage = gdImageCreateFromBmpPtr(fileSize, fileBuffer);
-    } else if (fileBuffer[0] == 0x00) {
-        gdImage = gdImageCreateFromTgaPtr(fileSize, fileBuffer);
-    }
-
-    free(fileBuffer);
-
-    if (!gdImage) {
-        return false;
-    }
-
-    int imageWidth = gdImageSX(gdImage);
-    int imageHeight = gdImageSY(gdImage);
-
-    uint32_t* pixelBuffer = (uint32_t*)malloc(imageWidth * imageHeight * sizeof(uint32_t));
-    if (!pixelBuffer) {
-        gdImageDestroy(gdImage);
-        return false;
-    }
-
-    for (int pixelY = 0; pixelY < imageHeight; pixelY++) {
-        for (int pixelX = 0; pixelX < imageWidth; pixelX++) {
-            int pixelValue = gdImageGetPixel(gdImage, pixelX, pixelY);
-
-            uint8_t red = gdImageRed(gdImage, pixelValue);
-            uint8_t green = gdImageGreen(gdImage, pixelValue);
-            uint8_t blue = gdImageBlue(gdImage, pixelValue);
-            uint8_t alpha = 255 - (gdImageAlpha(gdImage, pixelValue) * 2);
-
-            pixelBuffer[pixelY * imageWidth + pixelX] = (red << 24) | (green << 16) | (blue << 8) | alpha;
-        }
-    }
-
-    gdImageDestroy(gdImage);
-
-    Renderer::ImageData* imageData = new Renderer::ImageData();
-    imageData->pixels = pixelBuffer;
-    imageData->width = imageWidth;
-    imageData->height = imageHeight;
-
-    outputHandle = imageData;
-    return true;
-}
-
-bool loadImage(uint64_t titleId, Renderer::ImageHandle& outputHandle)
-{
-    outputHandle = Renderer::INVALID_IMAGE;
-
-    if (!Renderer::SupportsImages()) {
-        return false;
-    }
-
-    char metaDirectoryPath[256];
-    ACPResult result = ACPGetTitleMetaDir(titleId, metaDirectoryPath, sizeof(metaDirectoryPath));
-    if (result != ACP_RESULT_SUCCESS) {
-        return false;
-    }
-
-    char iconFilePath[280];
-    snprintf(iconFilePath, sizeof(iconFilePath), "%s/iconTex.tga", metaDirectoryPath);
-
-    return loadImageFromFile(iconFilePath, outputHandle);
-}
-
-}
-
-bool Init(int maxCacheSize)
+bool Init(int cacheSize)
 {
     if (isInitialized) {
         return true;
     }
 
-    cacheCapacity = (maxCacheSize > 0) ? maxCacheSize : DEFAULT_CACHE_SIZE;
+    ImageStore::Init(cacheSize > 0 ? cacheSize : DEFAULT_CACHE_SIZE);
+
     requestMap.clear();
     loadQueue.clear();
-    cacheAccessOrder.clear();
-
     isInitialized = true;
     return true;
 }
@@ -206,21 +65,17 @@ void Shutdown()
         return;
     }
 
-    for (auto& entry : requestMap) {
-        if (entry.second.handle) {
-            freeImage(entry.second.handle);
-            entry.second.handle = Renderer::INVALID_IMAGE;
-        }
-    }
-
+    ImageStore::Shutdown();
     requestMap.clear();
     loadQueue.clear();
-    cacheAccessOrder.clear();
     isInitialized = false;
 }
 
 void Update()
 {
+    updateCallCount++;
+    lastQueueSize = static_cast<int>(loadQueue.size());
+
     if (!isInitialized || loadQueue.empty()) {
         return;
     }
@@ -238,11 +93,9 @@ void Update()
     requestIterator->second.status = Status::LOADING;
 
     Renderer::ImageHandle handle;
-    if (loadImage(titleId, handle)) {
+    if (ImageStore::Load(titleId, handle)) {
         requestIterator->second.status = Status::READY;
         requestIterator->second.handle = handle;
-        touchCache(titleId);
-        evictIfNeeded();
     } else {
         requestIterator->second.status = Status::FAILED;
         requestIterator->second.handle = Renderer::INVALID_IMAGE;
@@ -258,7 +111,6 @@ void Request(uint64_t titleId, Priority priority)
     auto requestIterator = requestMap.find(titleId);
     if (requestIterator != requestMap.end()) {
         if (requestIterator->second.status == Status::READY) {
-            touchCache(titleId);
             return;
         }
         if (requestIterator->second.status == Status::QUEUED ||
@@ -335,10 +187,57 @@ Renderer::ImageHandle Get(uint64_t titleId)
 
     auto requestIterator = requestMap.find(titleId);
     if (requestIterator != requestMap.end() && requestIterator->second.status == Status::READY) {
-        touchCache(titleId);
         return requestIterator->second.handle;
     }
     return Renderer::INVALID_IMAGE;
+}
+
+void GetDebugInfo(int* outUpdateCalls, int* outQueueSize, bool* outInitialized)
+{
+    if (outUpdateCalls) *outUpdateCalls = updateCallCount;
+    if (outQueueSize) *outQueueSize = lastQueueSize;
+    if (outInitialized) *outInitialized = isInitialized;
+}
+
+void GetLoadingStats(int* outPending, int* outReady, int* outFailed, int* outTotal)
+{
+    int pending = 0, ready = 0, failed = 0;
+
+    for (const auto& entry : requestMap) {
+        switch (entry.second.status) {
+            case Status::QUEUED:
+            case Status::LOADING:
+                pending++;
+                break;
+            case Status::READY:
+                ready++;
+                break;
+            case Status::FAILED:
+                failed++;
+                break;
+            default:
+                break;
+        }
+    }
+
+    if (outPending) *outPending = pending;
+    if (outReady) *outReady = ready;
+    if (outFailed) *outFailed = failed;
+    if (outTotal) *outTotal = pending + ready + failed;
+}
+
+void RetryFailed()
+{
+    if (!isInitialized) {
+        return;
+    }
+
+    for (auto& entry : requestMap) {
+        if (entry.second.status == Status::FAILED) {
+            entry.second.status = Status::QUEUED;
+            loadQueue.push_back(entry.first);
+        }
+    }
 }
 
 void ClearCache()
@@ -347,15 +246,9 @@ void ClearCache()
         return;
     }
 
-    for (auto& entry : requestMap) {
-        if (entry.second.handle) {
-            freeImage(entry.second.handle);
-        }
-    }
-
+    ImageStore::ClearMemoryCache();
     requestMap.clear();
     loadQueue.clear();
-    cacheAccessOrder.clear();
 }
 
 void Evict(uint64_t titleId)
@@ -364,17 +257,11 @@ void Evict(uint64_t titleId)
         return;
     }
 
+    ImageStore::RemoveFromMemoryCache(titleId);
+
     auto requestIterator = requestMap.find(titleId);
     if (requestIterator != requestMap.end()) {
-        if (requestIterator->second.handle) {
-            freeImage(requestIterator->second.handle);
-        }
         requestMap.erase(requestIterator);
-    }
-
-    auto cacheIterator = std::find(cacheAccessOrder.begin(), cacheAccessOrder.end(), titleId);
-    if (cacheIterator != cacheAccessOrder.end()) {
-        cacheAccessOrder.erase(cacheIterator);
     }
 
     auto queueIterator = std::find(loadQueue.begin(), loadQueue.end(), titleId);
@@ -385,12 +272,12 @@ void Evict(uint64_t titleId)
 
 int GetCacheCount()
 {
-    return static_cast<int>(cacheAccessOrder.size());
+    return ImageStore::GetMemoryCacheCount();
 }
 
 int GetCacheCapacity()
 {
-    return cacheCapacity;
+    return ImageStore::GetMemoryCacheCapacity();
 }
 
 void Prefetch(const uint64_t* titleIdArray, int count)
@@ -401,6 +288,32 @@ void Prefetch(const uint64_t* titleIdArray, int count)
 
     for (int index = 0; index < count; index++) {
         Request(titleIdArray[index], Priority::LOW);
+    }
+}
+
+void LoadAllSync()
+{
+    if (!isInitialized) {
+        return;
+    }
+
+    while (!loadQueue.empty()) {
+        uint64_t titleId = loadQueue.front();
+        loadQueue.erase(loadQueue.begin());
+
+        auto requestIterator = requestMap.find(titleId);
+        if (requestIterator == requestMap.end()) {
+            continue;
+        }
+
+        Renderer::ImageHandle handle;
+        if (ImageStore::Load(titleId, handle)) {
+            requestIterator->second.status = Status::READY;
+            requestIterator->second.handle = handle;
+        } else {
+            requestIterator->second.status = Status::FAILED;
+            requestIterator->second.handle = Renderer::INVALID_IMAGE;
+        }
     }
 }
 

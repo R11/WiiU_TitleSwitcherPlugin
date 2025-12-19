@@ -1,5 +1,5 @@
 /**
- * Universal List View Component - Implementation
+ * Universal List View Component
  */
 
 #include "list_view.h"
@@ -12,10 +12,6 @@
 
 namespace UI {
 namespace ListView {
-
-// =============================================================================
-// State Implementation
-// =============================================================================
 
 void State::SetItemCount(int count, int visibleRows) {
     itemCount = count;
@@ -87,10 +83,6 @@ void State::MoveSelection(int delta, int visibleRows, bool wrap) {
     Clamp(visibleRows);
 }
 
-// =============================================================================
-// Input Handling
-// =============================================================================
-
 void HandleInput(State& state, uint32_t pressed, const Config& config) {
     if (state.itemCount <= 0) {
         return;
@@ -98,7 +90,6 @@ void HandleInput(State& state, uint32_t pressed, const Config& config) {
 
     int delta = 0;
 
-    // Single step navigation (D-pad up/down)
     if (Buttons::Actions::NAV_UP.Pressed(pressed)) {
         delta = -1;
     }
@@ -106,7 +97,6 @@ void HandleInput(State& state, uint32_t pressed, const Config& config) {
         delta = 1;
     }
 
-    // Small skip navigation (D-pad left/right)
     if (Buttons::Actions::NAV_SKIP_UP.Pressed(pressed)) {
         delta = -config.smallSkip;
     }
@@ -114,7 +104,6 @@ void HandleInput(State& state, uint32_t pressed, const Config& config) {
         delta = config.smallSkip;
     }
 
-    // Large skip navigation (L/R) - only when not used for reorder
     if (!config.canReorder) {
         if (Buttons::Actions::NAV_PAGE_UP.Pressed(pressed)) {
             delta = -config.largeSkip;
@@ -130,7 +119,6 @@ void HandleInput(State& state, uint32_t pressed, const Config& config) {
 }
 
 Action GetAction(uint32_t pressed, const Config& config) {
-    // A button - confirm or toggle
     if (Buttons::Actions::CONFIRM.Pressed(pressed)) {
         if (config.canToggle) {
             return Action::TOGGLE;
@@ -140,28 +128,24 @@ Action GetAction(uint32_t pressed, const Config& config) {
         }
     }
 
-    // B button - cancel
     if (Buttons::Actions::CANCEL.Pressed(pressed)) {
         if (config.canCancel) {
             return Action::CANCEL;
         }
     }
 
-    // X button - delete
     if (Buttons::Actions::EDIT.Pressed(pressed)) {
         if (config.canDelete) {
             return Action::DELETE;
         }
     }
 
-    // Y button - favorite
     if (Buttons::Actions::FAVORITE.Pressed(pressed)) {
         if (config.canFavorite) {
             return Action::FAVORITE;
         }
     }
 
-    // L/R buttons - reorder (when enabled)
     if (config.canReorder) {
         if (Buttons::Actions::NAV_PAGE_UP.Pressed(pressed)) {
             return Action::MOVE_UP;
@@ -174,22 +158,16 @@ Action GetAction(uint32_t pressed, const Config& config) {
     return Action::NONE;
 }
 
-// =============================================================================
-// Rendering
-// =============================================================================
-
 void Render(const State& state, const Config& config, RenderCallback getItem) {
     if (!getItem) {
         return;
     }
 
-    // Handle empty list
     if (state.itemCount <= 0) {
         Renderer::DrawText(config.col, config.row, "(empty)");
         return;
     }
 
-    // Render each visible item
     for (int i = 0; i < config.visibleRows; i++) {
         int itemIndex = state.scrollOffset + i;
         if (itemIndex >= state.itemCount) {
@@ -199,20 +177,16 @@ void Render(const State& state, const Config& config, RenderCallback getItem) {
         bool isSelected = (itemIndex == state.selectedIndex);
         ItemView view = getItem(itemIndex, isSelected);
 
-        // Build the display line
         char line[128];
         int pos = 0;
 
-        // Line number (if enabled)
         if (config.showLineNumbers) {
             pos += snprintf(line + pos, sizeof(line) - pos, "%3d.", itemIndex + 1);
         }
 
-        // Prefix (cursor, checkbox, etc.)
         const char* prefix = view.prefix ? view.prefix : "  ";
         pos += snprintf(line + pos, sizeof(line) - pos, "%s", prefix);
 
-        // Calculate max text width
         int prefixLen = strlen(prefix);
         int suffixLen = view.suffix ? strlen(view.suffix) : 0;
         int numberLen = config.showLineNumbers ? 4 : 0;
@@ -221,34 +195,28 @@ void Render(const State& state, const Config& config, RenderCallback getItem) {
             maxTextLen = 1;
         }
 
-        // Main text (truncated to fit)
         const char* text = view.text ? view.text : "";
         int textLen = strlen(text);
         if (textLen > maxTextLen) {
-            // Truncate with indicator
             pos += snprintf(line + pos, sizeof(line) - pos, "%.*s~", maxTextLen - 1, text);
         } else {
             pos += snprintf(line + pos, sizeof(line) - pos, "%-*s", maxTextLen, text);
         }
 
-        // Suffix
         if (view.suffix && view.suffix[0] != '\0') {
             snprintf(line + pos, sizeof(line) - pos, "%s", view.suffix);
         }
 
-        // Draw the line
         uint32_t color = view.dimmed ? 0x888888FF : view.textColor;
         Renderer::DrawText(config.col, config.row + i, line, color);
     }
 
-    // Scroll indicators
     if (config.showScrollIndicators) {
         RenderScrollIndicators(state, config);
     }
 }
 
 void RenderScrollIndicators(const State& state, const Config& config) {
-    // Show [UP] indicator when there are items above
     if (CanScrollUp(state)) {
         int indicatorCol = config.col + config.width - 4;
         if (indicatorCol < config.col) {
@@ -257,7 +225,6 @@ void RenderScrollIndicators(const State& state, const Config& config) {
         Renderer::DrawText(indicatorCol, config.row, "[UP]");
     }
 
-    // Show [DOWN] indicator when there are items below
     if (CanScrollDown(state, config)) {
         int indicatorCol = config.col + config.width - 6;
         if (indicatorCol < config.col) {
@@ -268,5 +235,5 @@ void RenderScrollIndicators(const State& state, const Config& config) {
     }
 }
 
-} // namespace ListView
-} // namespace UI
+}
+}
