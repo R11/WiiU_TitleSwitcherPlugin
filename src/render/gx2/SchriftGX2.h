@@ -112,6 +112,13 @@ bool Init();
 void Shutdown();
 
 /**
+ * Set the screen size for text positioning.
+ * @param width Screen width in pixels
+ * @param height Screen height in pixels
+ */
+void SetScreenSize(float width, float height);
+
+/**
  * Load the default font from the embedded font data.
  * @param pointSize Font size in points
  * @return Font instance or nullptr on failure

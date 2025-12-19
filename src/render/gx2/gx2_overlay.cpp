@@ -10,6 +10,7 @@
 #ifdef ENABLE_GX2_RENDERING
 
 #include "gx2_overlay.h"
+#include "SchriftGX2.h"
 #include "shaders/ColorShader.h"
 #include "shaders/Texture2DShader.h"
 
@@ -50,8 +51,8 @@ static float sScreenHeight = 720.0f;
 static uint8_t* sColorVtxs = nullptr;
 static const uint32_t COLOR_VTX_COUNT = 4;
 
-// TODO: Font support - need to integrate NotificationModule's SchriftGX2
-// static SchriftGX2* sFontSystem = nullptr;
+// Font for text rendering
+static SchriftGX2::Font* sDefaultFont = nullptr;
 
 namespace {
 
@@ -91,7 +92,11 @@ void drawOverlay(GX2ColorBuffer* colorBuffer, GX2ScanTarget scanTarget) {
 } // anonymous namespace
 } // namespace GX2Overlay
 
-// WUPS Function Replacements
+// WUPS Function Replacements - DISABLED
+// These hooks cause system freeze on Wii U Menu because they intercept GX2
+// calls even when the overlay is disabled. The hook-based overlay approach
+// needs architectural redesign to work properly for full-screen menu takeover.
+#if 0
 DECL_FUNCTION(void, GX2SetContextState_hook, GX2ContextState* state) {
     GX2Overlay::sSavedContextState = state;
     real_GX2SetContextState_hook(state);
@@ -104,6 +109,7 @@ DECL_FUNCTION(void, GX2CopyColorBufferToScanBuffer_hook,
     real_GX2CopyColorBufferToScanBuffer_hook(colorBuffer, scanTarget);
 }
 WUPS_MUST_REPLACE(GX2CopyColorBufferToScanBuffer_hook, WUPS_LOADER_LIBRARY_GX2, GX2CopyColorBufferToScanBuffer);
+#endif
 
 namespace GX2Overlay {
 
@@ -133,12 +139,9 @@ bool Init() {
         return false;
     }
 
-    // TODO: Initialize font using system font
-    // void* fontData = nullptr;
-    // uint32_t fontSize = 0;
-    // if (OSGetSharedData(OS_SHAREDDATATYPE_FONT_STANDARD, 0, &fontData, &fontSize) && fontData && fontSize > 0) {
-    //     sFontSystem = new (std::nothrow) SchriftGX2((uint8_t*)fontData, fontSize);
-    // }
+    // Initialize font system and load default font
+    SchriftGX2::Init();
+    sDefaultFont = SchriftGX2::LoadDefaultFont(16.0f);
 
     sInitialized = true;
     sEnabled = false;
@@ -150,11 +153,12 @@ void Shutdown() {
         return;
     }
 
-    // TODO: Font cleanup
-    // if (sFontSystem) {
-    //     delete sFontSystem;
-    //     sFontSystem = nullptr;
-    // }
+    // Clean up font
+    if (sDefaultFont) {
+        delete sDefaultFont;
+        sDefaultFont = nullptr;
+    }
+    SchriftGX2::Shutdown();
 
     if (sColorVtxs) {
         MEMFreeToMappedMemory(sColorVtxs);
@@ -180,6 +184,7 @@ bool IsEnabled() { return sEnabled; }
 void SetScreenSize(float width, float height) {
     sScreenWidth = width;
     sScreenHeight = height;
+    SchriftGX2::SetScreenSize(width, height);
 }
 
 void BeginDraw(uint32_t clearColor) {
@@ -240,9 +245,11 @@ void DrawRect(int x, int y, int width, int height, uint32_t color) {
 }
 
 void DrawText(int x, int y, const char* text, uint32_t color, int size) {
-    // TODO: Font rendering not yet implemented
-    // Need to integrate NotificationModule's SchriftGX2
-    (void)x; (void)y; (void)text; (void)color; (void)size;
+    (void)size;  // Font size is fixed at initialization
+    if (!sDefaultFont) {
+        return;
+    }
+    SchriftGX2::DrawText(sDefaultFont, (float)x, (float)y, text, color);
 }
 
 void DrawTexture(int x, int y, GX2Texture* texture, int width, int height) {

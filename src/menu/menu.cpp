@@ -19,6 +19,7 @@
 #include <sysapp/title.h>
 #include <nn/ccr/sys.h>
 #include <coreinit/time.h>
+#include <notifications/notifications.h>
 
 #include <cstdio>
 #include <cstring>
@@ -1502,6 +1503,7 @@ void Open()
     sOpeningInProgress = true;
 
     if (!Renderer::Init()) {
+        NotificationModule_AddErrorNotification("Menu unavailable - not enough memory");
         sOpeningInProgress = false;
         return;
     }

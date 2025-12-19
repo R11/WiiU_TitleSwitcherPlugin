@@ -11,15 +11,54 @@
 #include "gx2/gx2_overlay.h"
 #endif
 
+#include <wups.h>
 #include <coreinit/screen.h>
 #include <coreinit/cache.h>
 #include <coreinit/memory.h>
 #include <coreinit/systeminfo.h>
 #include <gx2/event.h>
+#include <gx2/surface.h>
 #include <memory/mappedmemory.h>
 
 #include <cstdio>
 #include <cstdarg>
+
+// Captured game buffers for fallback when memory allocation fails
+struct StoredBuffer {
+    void* buffer = nullptr;
+    uint32_t buffer_size = 0;
+    int32_t mode = 0;
+    GX2SurfaceFormat surface_format = GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8;
+    GX2BufferingMode buffering_mode = GX2_BUFFERING_MODE_DOUBLE;
+};
+
+static StoredBuffer gStoredTVBuffer;
+static StoredBuffer gStoredDRCBuffer;
+
+// WUPS hooks to capture game's framebuffers
+DECL_FUNCTION(void, GX2SetTVBuffer, void *buffer, uint32_t buffer_size,
+              int32_t tv_render_mode, GX2SurfaceFormat format,
+              GX2BufferingMode buffering_mode) {
+    gStoredTVBuffer.buffer = buffer;
+    gStoredTVBuffer.buffer_size = buffer_size;
+    gStoredTVBuffer.mode = tv_render_mode;
+    gStoredTVBuffer.surface_format = format;
+    gStoredTVBuffer.buffering_mode = buffering_mode;
+    real_GX2SetTVBuffer(buffer, buffer_size, tv_render_mode, format, buffering_mode);
+}
+WUPS_MUST_REPLACE(GX2SetTVBuffer, WUPS_LOADER_LIBRARY_GX2, GX2SetTVBuffer);
+
+DECL_FUNCTION(void, GX2SetDRCBuffer, void *buffer, uint32_t buffer_size,
+              uint32_t drc_mode, GX2SurfaceFormat surface_format,
+              GX2BufferingMode buffering_mode) {
+    gStoredDRCBuffer.buffer = buffer;
+    gStoredDRCBuffer.buffer_size = buffer_size;
+    gStoredDRCBuffer.mode = drc_mode;
+    gStoredDRCBuffer.surface_format = surface_format;
+    gStoredDRCBuffer.buffering_mode = buffering_mode;
+    real_GX2SetDRCBuffer(buffer, buffer_size, drc_mode, surface_format, buffering_mode);
+}
+WUPS_MUST_REPLACE(GX2SetDRCBuffer, WUPS_LOADER_LIBRARY_GX2, GX2SetDRCBuffer);
 
 namespace Renderer {
 
@@ -34,6 +73,8 @@ void* tvFramebuffer = nullptr;
 void* drcFramebuffer = nullptr;
 uint32_t tvFramebufferSize = 0;
 uint32_t drcFramebufferSize = 0;
+bool usingFallbackTV = false;
+bool usingFallbackDRC = false;
 
 constexpr int OS_SCREEN_COLS = 100;
 constexpr int OS_SCREEN_ROWS = 18;
@@ -51,18 +92,39 @@ bool initOSScreen()
     tvFramebufferSize = OSScreenGetBufferSizeEx(SCREEN_TV);
     drcFramebufferSize = OSScreenGetBufferSizeEx(SCREEN_DRC);
 
+    // Reset fallback flags
+    usingFallbackTV = false;
+    usingFallbackDRC = false;
+
+    // Try to allocate fresh buffers
     tvFramebuffer = MEMAllocFromMappedMemoryForGX2Ex(tvFramebufferSize, 0x100);
     drcFramebuffer = MEMAllocFromMappedMemoryForGX2Ex(drcFramebufferSize, 0x100);
 
+    // Fallback to captured game buffers if allocation failed
+    if (!tvFramebuffer && gStoredTVBuffer.buffer &&
+        gStoredTVBuffer.buffer_size >= tvFramebufferSize) {
+        tvFramebuffer = gStoredTVBuffer.buffer;
+        usingFallbackTV = true;
+    }
+
+    if (!drcFramebuffer && gStoredDRCBuffer.buffer &&
+        gStoredDRCBuffer.buffer_size >= drcFramebufferSize) {
+        drcFramebuffer = gStoredDRCBuffer.buffer;
+        usingFallbackDRC = true;
+    }
+
+    // If still no buffers, clean up and fail
     if (!tvFramebuffer || !drcFramebuffer) {
-        if (tvFramebuffer) {
+        if (tvFramebuffer && !usingFallbackTV) {
             MEMFreeToMappedMemory(tvFramebuffer);
-            tvFramebuffer = nullptr;
         }
-        if (drcFramebuffer) {
+        tvFramebuffer = nullptr;
+        if (drcFramebuffer && !usingFallbackDRC) {
             MEMFreeToMappedMemory(drcFramebuffer);
-            drcFramebuffer = nullptr;
         }
+        drcFramebuffer = nullptr;
+        usingFallbackTV = false;
+        usingFallbackDRC = false;
         DCRestoreRegisters(&savedDCRegisters);
         return false;
     }
@@ -91,17 +153,21 @@ void shutdownOSScreen()
     OSEnableHomeButtonMenu(homeButtonWasEnabled);
     DCRestoreRegisters(&savedDCRegisters);
 
-    if (tvFramebuffer) {
+    // Only free buffers we allocated (not fallback buffers borrowed from game)
+    if (tvFramebuffer && !usingFallbackTV) {
         MEMFreeToMappedMemory(tvFramebuffer);
-        tvFramebuffer = nullptr;
     }
-    if (drcFramebuffer) {
+    tvFramebuffer = nullptr;
+
+    if (drcFramebuffer && !usingFallbackDRC) {
         MEMFreeToMappedMemory(drcFramebuffer);
-        drcFramebuffer = nullptr;
     }
+    drcFramebuffer = nullptr;
 
     tvFramebufferSize = 0;
     drcFramebufferSize = 0;
+    usingFallbackTV = false;
+    usingFallbackDRC = false;
 }
 
 void beginFrameOSScreen(uint32_t clearColor)

@@ -8,12 +8,18 @@
 #ifdef ENABLE_GX2_RENDERING
 
 #include "SchriftGX2.h"
+#include "shaders/Texture2DShader.h"
 #include <cstring>
 #include <malloc.h>
 #include <coreinit/cache.h>
 #include <coreinit/memexpheap.h>
+#include <coreinit/memory.h>
 #include <gx2/mem.h>
+#include <gx2/sampler.h>
 #include <memory/mappedmemory.h>
+
+#pragma GCC diagnostic ignored "-Wvolatile"
+#include <glm/glm.hpp>
 
 namespace SchriftGX2 {
 
@@ -235,13 +241,20 @@ float Font::getStringWidth(const char* text) {
 // =============================================================================
 
 static bool sInitialized = false;
+static GX2Sampler* sFontSampler = nullptr;
+static float sScreenWidth = 854.0f;
+static float sScreenHeight = 480.0f;
 
 bool Init() {
     if (sInitialized) {
         return true;
     }
 
-    // TODO: Initialize shaders here
+    sFontSampler = (GX2Sampler*)MEMAllocFromMappedMemoryForGX2Ex(sizeof(GX2Sampler), 64);
+    if (!sFontSampler) {
+        return false;
+    }
+    GX2InitSampler(sFontSampler, GX2_TEX_CLAMP_MODE_CLAMP, GX2_TEX_XY_FILTER_MODE_LINEAR);
 
     sInitialized = true;
     return true;
@@ -252,25 +265,48 @@ void Shutdown() {
         return;
     }
 
-    // TODO: Clean up shaders
+    if (sFontSampler) {
+        MEMFreeToMappedMemory(sFontSampler);
+        sFontSampler = nullptr;
+    }
 
     sInitialized = false;
 }
 
+void SetScreenSize(float width, float height) {
+    sScreenWidth = width;
+    sScreenHeight = height;
+}
+
 Font* LoadDefaultFont(float pointSize) {
-    // TODO: Load embedded font data
-    // For now, return nullptr until we embed a font
-    (void)pointSize;
-    return nullptr;
+    void* fontData = nullptr;
+    uint32_t fontSize = 0;
+
+    if (!OSGetSharedData(OS_SHAREDDATATYPE_FONT_STANDARD, 0, &fontData, &fontSize)) {
+        return nullptr;
+    }
+    if (!fontData || fontSize == 0) {
+        return nullptr;
+    }
+
+    return new Font(fontData, fontSize, pointSize);
 }
 
 void DrawText(Font* font, float x, float y, const char* text, uint32_t color) {
-    if (!font || !font->isValid()) {
+    if (!font || !font->isValid() || !sFontSampler) {
         return;
     }
 
     float cursorX = x;
     float baseline = y + font->getAscender();
+
+    // Convert RGBA color to vec4
+    glm::vec4 colorVec(
+        ((color >> 24) & 0xFF) / 255.0f,
+        ((color >> 16) & 0xFF) / 255.0f,
+        ((color >> 8) & 0xFF) / 255.0f,
+        (color & 0xFF) / 255.0f
+    );
 
     // Simple UTF-8 decoding
     const uint8_t* p = (const uint8_t*)text;
@@ -298,15 +334,34 @@ void DrawText(Font* font, float x, float y, const char* text, uint32_t color) {
         const GlyphData* glyph = font->getGlyph(codepoint);
         if (glyph) {
             if (glyph->texture) {
-                // Draw the glyph texture
                 float glyphX = cursorX + glyph->offsetX;
                 float glyphY = baseline + glyph->offsetY;
 
-                // TODO: Use Texture2DShader to draw quad with glyph texture and color
-                // The shader will multiply the grayscale glyph by the text color
-                (void)glyphX;
-                (void)glyphY;
-                (void)color;
+                // Calculate quad center and size in NDC
+                float centerX = glyphX + glyph->width / 2.0f;
+                float centerY = glyphY + glyph->height / 2.0f;
+
+                glm::vec3 offset(
+                    (centerX / sScreenWidth) * 2.0f - 1.0f,
+                    1.0f - (centerY / sScreenHeight) * 2.0f,
+                    0.0f
+                );
+
+                glm::vec3 scale(
+                    (float)glyph->width / sScreenWidth,
+                    (float)glyph->height / sScreenHeight,
+                    1.0f
+                );
+
+                Texture2DShader::instance()->setShaders();
+                Texture2DShader::instance()->setAttributeBuffer();
+                Texture2DShader::instance()->setAngle(0.0f);
+                Texture2DShader::instance()->setOffset(offset);
+                Texture2DShader::instance()->setScale(scale);
+                Texture2DShader::instance()->setColorIntensity(colorVec);
+                Texture2DShader::instance()->setBlurring(glm::vec3(0.0f));
+                Texture2DShader::instance()->setTextureAndSampler(glyph->texture, sFontSampler);
+                Texture2DShader::instance()->draw();
             }
             cursorX += glyph->advanceX;
         }
