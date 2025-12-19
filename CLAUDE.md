@@ -79,7 +79,7 @@ Dynamic layouts support: DRC GamePad (854x480), TV 1080p/720p/480p. Layout calcu
 - **DC register save/restore**: Clean graphics takeover
 
 ### Storage Format
-WUPS Storage API writes to `sd:/wiiu/plugins/config/TitleSwitcher.json`. Version-based migration (CONFIG_VERSION = 2).
+WUPS Storage API writes to `sd:/wiiu/environments/aroma/plugins/config/TitleSwitcher.json`. Version-based migration (CONFIG_VERSION = 2).
 
 ### Presets System
 GameTDB metadata loaded from `sd:/wiiu/environments/aroma/plugins/config/TitleSwitcher_presets.json`. Provides publisher, developer, release date, genre, and region data. Use `tools/convert_gametdb.py` to generate from GameTDB XML.
@@ -126,6 +126,20 @@ To skip temporarily: `git commit --no-verify`
 - **libmappedmemory** - GX2-compatible memory
 - **libnotifications** - In-game notifications
 - **libgd, libpng, libjpeg** - Image loading
+
+## Code Style
+
+### Comments
+- Keep comments to 1-2 lines maximum
+- Never put comments on the same line as code
+- Prefer descriptive variable/function names over comments
+- Delete comments that restate what code already expresses
+- No ASCII art diagrams or lengthy documentation blocks in source files
+
+### Variable Naming
+- Use verbose, self-explanatory names (e.g., `categoryIndex` not `catIdx`)
+- Iterator names should describe what they iterate (e.g., `requestIterator` not `it`)
+- Boolean variables should read as questions (e.g., `isVisible`, `hasLoaded`)
 
 ## Color Palette
 

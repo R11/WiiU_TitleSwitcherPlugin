@@ -29,7 +29,7 @@
  *   PixelEditor::Config config;
  *   config.width = 64;
  *   config.height = 64;
- *   config.savePath = "fs:/vol/external01/wiiu/drawings/";
+ *   // savePath defaults to Paths::USER_DATA_DIR (sd:/wiiu/titleswitcher/)
  *
  *   PixelEditor::Open(config);  // Blocks until closed
  */
@@ -37,6 +37,7 @@
 #pragma once
 
 #include <cstdint>
+#include "../utils/paths.h"
 
 namespace PixelEditor {
 
@@ -47,7 +48,7 @@ namespace PixelEditor {
 struct Config {
     int width = 64;              // Canvas width in pixels
     int height = 64;             // Canvas height in pixels
-    const char* savePath = "fs:/vol/external01/wiiu/titleswitcher/";
+    const char* savePath = Paths::USER_DATA_DIR;  // Defined in utils/paths.h
     const char* loadFile = nullptr;  // Optional: load existing file
 };
 
