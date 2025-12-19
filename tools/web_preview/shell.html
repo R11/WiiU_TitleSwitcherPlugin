@@ -217,35 +217,35 @@
     <div class="controls">
         <div class="control-group">
             <h3>Navigation</h3>
-            <div class="arrow-keys">
-                <div class="key">&#9650;</div>
-                <div class="key">&#9664;</div>
-                <div class="key">&#9660;</div>
-                <div class="key">&#9654;</div>
+            <div class="key-row">
+                <span class="key">W</span>
+                <span class="key">A</span>
+                <span class="key">S</span>
+                <span class="key">D</span>
+                <span class="action">or Arrow keys</span>
             </div>
             <div class="key-row">
-                <span class="action">Move selection</span>
+                <span class="action">Move selection (D-pad)</span>
             </div>
         </div>
 
         <div class="control-group">
             <h3>Actions</h3>
             <div class="key-row">
-                <span class="key">Enter</span>
-                <span class="action">/ <span class="key">Space</span></span>
+                <span class="key">J</span>
                 <span class="action">Confirm (A)</span>
             </div>
             <div class="key-row">
-                <span class="key">Esc</span>
+                <span class="key">K</span>
                 <span class="action">Back (B)</span>
             </div>
             <div class="key-row">
-                <span class="key">F</span>
-                <span class="action">Favorite (Y)</span>
+                <span class="key">U</span>
+                <span class="action">Edit (X)</span>
             </div>
             <div class="key-row">
-                <span class="key">X</span>
-                <span class="action">Edit (X)</span>
+                <span class="key">I</span>
+                <span class="action">Favorite (Y)</span>
             </div>
         </div>
 
@@ -259,9 +259,25 @@
                 <span class="key">E</span>
                 <span class="action">Next Category (ZR)</span>
             </div>
+        </div>
+
+        <div class="control-group">
+            <h3>Shoulders / Menu</h3>
             <div class="key-row">
-                <span class="key">+</span>
-                <span class="action">Settings</span>
+                <span class="key">O</span>
+                <span class="action">L Button</span>
+            </div>
+            <div class="key-row">
+                <span class="key">P</span>
+                <span class="action">R Button</span>
+            </div>
+            <div class="key-row">
+                <span class="key">N</span>
+                <span class="action">Minus</span>
+            </div>
+            <div class="key-row">
+                <span class="key">M</span>
+                <span class="action">Settings (Plus)</span>
             </div>
         </div>
     </div>
@@ -293,17 +309,17 @@
         const drcSize = { width: 854, height: 480 };
 
         function updateCanvasScaling() {
-            const maxWidth = Math.min(window.innerWidth - 60, 900);
+            const maxWidth = Math.min(window.innerWidth - 60, 1400);
 
-            // Scale TV canvas
+            // Scale TV canvas - allow it to be larger to show resolution differences
             const tvCanvas = document.getElementById('screen-tv');
-            const tvScale = Math.min(1, maxWidth / tvCanvas.width);
+            const tvScale = Math.min(1.0, maxWidth / tvCanvas.width);
             tvCanvas.style.width = (tvCanvas.width * tvScale) + 'px';
             tvCanvas.style.height = (tvCanvas.height * tvScale) + 'px';
 
-            // Scale DRC canvas (slightly smaller to show hierarchy)
+            // DRC canvas at 1:1 scale (854x480) to match actual GamePad
             const drcCanvas = document.getElementById('screen-drc');
-            const drcScale = Math.min(0.8, (maxWidth * 0.8) / drcCanvas.width);
+            const drcScale = Math.min(1.0, maxWidth / drcCanvas.width);
             drcCanvas.style.width = (drcCanvas.width * drcScale) + 'px';
             drcCanvas.style.height = (drcCanvas.height * drcScale) + 'px';
         }
@@ -346,30 +362,42 @@
         // Initialize
         updateCanvasScaling();
 
-        // Module callbacks
+        // Module callbacks - must be defined before script loads
         var Module = {
             preRun: [],
             postRun: [],
             print: function(text) {
-                console.log(text);
+                console.log('[WASM]', text);
             },
             printErr: function(text) {
-                console.error(text);
+                console.error('[WASM Error]', text);
+                const statusEl = document.getElementById('status-text');
+                statusEl.textContent = 'Error: ' + text;
+                statusEl.className = 'error';
             },
             setStatus: function(text) {
+                console.log('[Status]', text || 'Ready');
                 const statusEl = document.getElementById('status-text');
                 if (text) {
                     statusEl.textContent = text;
                     statusEl.className = 'loading';
                 } else {
-                    statusEl.textContent = 'Ready - Press arrow keys to navigate';
+                    statusEl.textContent = 'Ready - WASD to navigate, J=confirm, M=settings';
                     statusEl.className = 'ready';
                 }
             },
             onRuntimeInitialized: function() {
+                console.log('[WASM] Runtime initialized');
                 Module.setStatus('');
+            },
+            onAbort: function(what) {
+                console.error('[WASM] Abort:', what);
+                const statusEl = document.getElementById('status-text');
+                statusEl.textContent = 'Aborted: ' + what;
+                statusEl.className = 'error';
             }
         };
+        window.Module = Module;
     </script>
     {{{ SCRIPT }}}
 </body>

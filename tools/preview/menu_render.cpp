@@ -567,4 +567,95 @@ void renderSystemApps() {
                       sSystemAppIndex + 1, SYSTEM_APP_COUNT);
 }
 
+// =============================================================================
+// Debug Grid Mode Rendering
+// =============================================================================
+
+void renderDebugGrid() {
+    int gridWidth = Renderer::GetGridWidth();
+    int gridHeight = Renderer::GetGridHeight();
+    int screenWidth = Renderer::GetScreenWidth();
+    int screenHeight = Renderer::GetScreenHeight();
+
+    // Draw bright border outline to mark screen edges
+    uint32_t borderColor = 0xFF00FFFF;  // Magenta
+    for (int col = 0; col < gridWidth; col++) {
+        Renderer::DrawText(col, 0, "=", borderColor);
+        Renderer::DrawText(col, gridHeight - 1, "=", borderColor);
+    }
+    for (int row = 0; row < gridHeight; row++) {
+        Renderer::DrawText(0, row, "|", borderColor);
+        Renderer::DrawText(gridWidth - 1, row, "|", borderColor);
+    }
+    // Corner markers
+    Renderer::DrawText(0, 0, "+", 0x00FF00FF);
+    Renderer::DrawText(gridWidth - 1, 0, "+", 0x00FF00FF);
+    Renderer::DrawText(0, gridHeight - 1, "+", 0x00FF00FF);
+    Renderer::DrawText(gridWidth - 1, gridHeight - 1, "+", 0x00FF00FF);
+
+    // Header info
+    Renderer::DrawTextF(2, 1, 0xFFFF00FF, "DEBUG - %dx%d px  Grid: %dx%d",
+                        screenWidth, screenHeight, gridWidth, gridHeight);
+
+    // Column markers every 10
+    for (int col = 0; col < gridWidth; col += 10) {
+        Renderer::DrawTextF(col, 2, 0x00FF00FF, "%d", col);
+    }
+
+    // Horizontal separator
+    for (int col = 1; col < gridWidth - 1; col++) {
+        Renderer::DrawText(col, 3, "-", 0x888888FF);
+    }
+
+    // Show all printable ASCII characters (32-126)
+    Renderer::DrawText(2, 4, "CHARACTERS:", 0xFFFFFFFF);
+    int charRow = 5;
+    int charCol = 2;
+    char charBuf[2] = {0, 0};
+    for (int c = 32; c <= 126; c++) {
+        charBuf[0] = (char)c;
+        Renderer::DrawText(charCol, charRow, charBuf, 0xCDD6F4FF);
+        charCol++;
+        if (charCol >= gridWidth - 2 || (c - 32 + 1) % 32 == 0) {
+            charCol = 2;
+            charRow++;
+        }
+    }
+
+    // Grid section
+    int gridStartRow = charRow + 1;
+    Renderer::DrawText(2, gridStartRow, "GRID:", 0xFFFFFFFF);
+    gridStartRow++;
+
+    for (int row = gridStartRow; row < gridHeight - 2; row++) {
+        Renderer::DrawTextF(1, row, 0x00FF00FF, "%2d", row);
+
+        int dividerCol = Renderer::GetDividerCol();
+        int detailsCol = Renderer::GetDetailsPanelCol();
+
+        if (dividerCol < gridWidth - 1) {
+            Renderer::DrawText(dividerCol, row, "|", 0xFF0000FF);
+        }
+        if (detailsCol < gridWidth - 1) {
+            Renderer::DrawText(detailsCol, row, ">", 0x00FFFFFF);
+        }
+
+        for (int col = 10; col < gridWidth - 1; col += 10) {
+            if (col != dividerCol && col != detailsCol) {
+                Renderer::DrawText(col, row, ".", 0x444444FF);
+            }
+        }
+    }
+
+    // Footer
+    int footerRow = gridHeight - 2;
+    int dividerCol = Renderer::GetDividerCol();
+    int detailsCol = Renderer::GetDetailsPanelCol();
+    int visibleRows = Renderer::GetVisibleRows();
+
+    Renderer::DrawTextF(2, footerRow, 0xFFFFFFFF,
+                        "Div:%d Det:%d Rows:%d  [B:Back]",
+                        dividerCol, detailsCol, visibleRows);
+}
+
 } // namespace MenuRender

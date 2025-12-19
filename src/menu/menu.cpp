@@ -109,7 +109,7 @@ static const SettingItem sSettingItems[] = {
     TOGGLE_SETTING("Show Favorites",    "Show favorite marker (*)",     "in the title list.",        showFavorites),
     COLOR_SETTING("Background",         "Menu background color.",       "RGBA hex format.",          bgColor),
     ACTION_SETTING("Manage Categories", "Create, rename, or delete",    "custom categories.",        ACTION_MANAGE_CATEGORIES),
-    // ACTION_SETTING("Debug Grid",        "Show grid overlay with",       "dimensions and positions.", ACTION_DEBUG_GRID),
+    ACTION_SETTING("Debug Grid",        "Show grid overlay with",       "dimensions and positions.", ACTION_DEBUG_GRID),
 };
 
 static constexpr int SETTINGS_ITEM_COUNT = sizeof(sSettingItems) / sizeof(sSettingItems[0]);
@@ -1296,57 +1296,59 @@ void handleSettingsModeInput(uint32_t pressed, uint32_t held)
 
 void renderDebugGridMode()
 {
-    int gridWidth = Renderer::GetGridWidth();
-    int gridHeight = Renderer::GetGridHeight();
-    int screenWidth = Renderer::GetScreenWidth();
-    int screenHeight = Renderer::GetScreenHeight();
+    int w = Renderer::GetScreenWidth();
+    int h = Renderer::GetScreenHeight();
 
-    Renderer::DrawTextF(0, 0, 0xFFFF00FF, "DEBUG GRID - Screen: %dx%d px  Grid: %dx%d chars",
-                        screenWidth, screenHeight, gridWidth, gridHeight);
+    // ABSOLUTE PIXEL POSITIONS (red) - actual screen coordinates
+    // These are fixed regardless of any OSScreen margins
+    Renderer::DrawVLine(0, 0, h, 0xFF0000FF);        // Left edge X=0
+    Renderer::DrawVLine(w - 1, 0, h, 0xFF0000FF);    // Right edge X=853
+    Renderer::DrawVLine(w / 2, 0, h, 0xFF000080);    // Screen center X=427 (dimmer)
+    Renderer::DrawHLine(0, 0, w, 0xFF0000FF);        // Top edge Y=0
+    Renderer::DrawHLine(0, h - 1, w, 0xFF0000FF);    // Bottom edge Y=479
+    Renderer::DrawHLine(0, h / 2, w, 0xFF000080);    // Screen center Y=240 (dimmer)
 
-    for (int col = 0; col < gridWidth; col += 10) {
-        Renderer::DrawTextF(col, 1, 0x00FF00FF, "%d", col);
-    }
+    // Corner pixels for visibility
+    Renderer::DrawPixel(0, 0, 0xFF0000FF);
+    Renderer::DrawPixel(w - 1, 0, 0xFF0000FF);
+    Renderer::DrawPixel(0, h - 1, 0xFF0000FF);
+    Renderer::DrawPixel(w - 1, h - 1, 0xFF0000FF);
 
-    // Draw horizontal line at row 2
-    for (int col = 0; col < gridWidth; col++) {
-        Renderer::DrawText(col, 2, "-", 0x888888FF);
-    }
+    // CHARACTER GRID POSITIONS (green) - where does text actually render?
+    Renderer::DrawText(0, 0, "X", 0x00FF00FF);       // Character at col 0, row 0
+    Renderer::DrawText(50, 0, "M", 0x00FF00FF);      // Character at col 50 (grid center)
+    Renderer::DrawText(99, 0, "E", 0x00FF00FF);      // Character at col 99 (rightmost)
 
-    // Draw row markers and grid lines
-    for (int row = 3; row < gridHeight - 1; row++) {
-        // Row number on left
-        Renderer::DrawTextF(0, row, 0x00FF00FF, "%2d", row);
+    // CALCULATED positions (cyan) - where we think columns should be
+    int calcCol0 = 0 * 8;
+    int calcCol50 = 50 * 8;
+    int calcCol99 = 99 * 8;
 
-        // Vertical lines at key positions
-        int dividerCol = Renderer::GetDividerCol();
-        int detailsCol = Renderer::GetDetailsPanelCol();
+    Renderer::DrawVLine(calcCol0, 50, h - 100, 0x00FFFFFF);
+    Renderer::DrawVLine(calcCol50, 50, h - 100, 0x00FFFFFF);
+    Renderer::DrawVLine(calcCol99, 50, h - 100, 0x00FFFFFF);
 
-        // Mark divider column
-        Renderer::DrawText(dividerCol, row, "|", 0xFF0000FF);
-
-        // Mark details panel start
-        if (detailsCol < gridWidth) {
-            Renderer::DrawText(detailsCol, row, ">", 0x00FFFFFF);
-        }
-
-        // Light grid every 10 columns
-        for (int col = 10; col < gridWidth; col += 10) {
-            if (col != dividerCol && col != detailsCol) {
-                Renderer::DrawText(col, row, ".", 0x444444FF);
-            }
-        }
-    }
-
-    // Draw footer with layout info
-    int footerRow = gridHeight - 1;
+    // DIVIDER position (yellow)
     int dividerCol = Renderer::GetDividerCol();
-    int detailsCol = Renderer::GetDetailsPanelCol();
-    int visibleRows = Renderer::GetVisibleRows();
+    int dividerPixel = Renderer::ColToPixelX(dividerCol);
+    Renderer::DrawVLine(dividerPixel, 50, h - 100, 0xFFFF00FF);
 
-    Renderer::DrawTextF(0, footerRow, 0xFFFFFFFF,
-                        "Divider:%d Details:%d VisRows:%d  B:Back",
-                        dividerCol, detailsCol, visibleRows);
+    // Labels
+    Renderer::DrawTextF(1, 3, 0xFFFFFFFF, "SCREEN: %dx%d pixels", w, h);
+    Renderer::DrawTextF(1, 4, 0xFFFFFFFF, "GRID: 100x18 chars @ 8x24 = 800x432");
+    Renderer::DrawTextF(1, 5, 0xFF8080FF, "RED = actual screen edges (pixel 0, %d, %d)", w / 2, w - 1);
+    Renderer::DrawTextF(1, 6, 0x80FFFFFF, "CYAN = calculated col 0,50,99 (pixels 0,400,792)");
+    Renderer::DrawTextF(1, 7, 0x80FF80FF, "GREEN X,M,E = where col 0,50,99 actually render");
+    Renderer::DrawTextF(1, 8, 0xFFFF80FF, "YELLOW = divider at col %d (pixel %d)", dividerCol, dividerPixel);
+    Renderer::DrawText(1, 10, "If X is RIGHT of red edge, OSScreen has LEFT MARGIN", 0xFFFFFFFF);
+    Renderer::DrawText(1, 11, "If M is RIGHT of red center, OSScreen centers grid", 0xFFFFFFFF);
+
+    Renderer::DrawTextF(1, 13, 0xCDD6F4FF, "Expected margins: L=%d R=%d (total %d unaccounted)",
+                        (w - 800) / 2, (w - 800) / 2, w - 800);
+    Renderer::DrawTextF(1, 14, 0xCDD6F4FF, "                  T=%d B=%d (total %d unaccounted)",
+                        (h - 432) / 2, (h - 432) / 2, h - 432);
+
+    Renderer::DrawText(1, Renderer::GetGridHeight() - 1, "[B:Back]", 0x888888FF);
 }
 
 /**
@@ -1361,72 +1363,96 @@ void handleDebugGridModeInput(uint32_t pressed)
 }
 
 /**
- * Main menu loop.
+ * Process a single frame (render + input).
+ * Non-blocking - returns immediately after one frame.
+ * @return FrameResult indicating whether to continue and any title to launch
+ */
+FrameResult processFrameInternal()
+{
+    FrameResult result = {true, 0};
+
+    if (!sIsOpen) {
+        result.shouldContinue = false;
+        return result;
+    }
+
+    // Begin frame (waits for vsync, clears screen)
+    Renderer::BeginFrame(Settings::Get().bgColor);
+
+    // Render based on current mode
+    switch (sCurrentMode) {
+        case Mode::BROWSE:
+            renderBrowseMode();
+            break;
+        case Mode::EDIT:
+            renderEditMode();
+            break;
+        case Mode::SETTINGS:
+            renderSettingsMode();
+            break;
+        case Mode::DEBUG_GRID:
+            renderDebugGridMode();
+            break;
+    }
+
+    // Process image loading queue
+    // HIGH priority (selected title) loads immediately, others throttled
+    static uint32_t frameCounter = 0;
+    frameCounter++;
+    if (ImageLoader::HasHighPriorityPending() || frameCounter % 10 == 0) {
+        ImageLoader::Update();
+    }
+
+    // End frame (flush and flip)
+    Renderer::EndFrame();
+
+    // Read input
+    VPADStatus vpadStatus;
+    VPADReadError vpadError;
+    int32_t readResult = VPADRead(VPAD_CHAN_0, &vpadStatus, 1, &vpadError);
+
+    if (readResult > 0 && vpadError == VPAD_READ_SUCCESS) {
+        uint32_t pressed = vpadStatus.trigger;
+        uint32_t held = vpadStatus.hold;
+
+        // Handle input based on current mode
+        switch (sCurrentMode) {
+            case Mode::BROWSE:
+                result.titleToLaunch = handleBrowseModeInput(pressed);
+                break;
+            case Mode::EDIT:
+                handleEditModeInput(pressed);
+                break;
+            case Mode::SETTINGS:
+                handleSettingsModeInput(pressed, held);
+                break;
+            case Mode::DEBUG_GRID:
+                handleDebugGridModeInput(pressed);
+                break;
+        }
+    }
+
+    // Check if menu was closed during input handling
+    if (!sIsOpen) {
+        result.shouldContinue = false;
+    }
+
+    return result;
+}
+
+/**
+ * Main menu loop (blocking).
  * @return Title ID to launch, or 0 if cancelled
  */
 uint64_t runMenuLoop()
 {
-    uint64_t titleToLaunch = 0;
-    VPADStatus vpadStatus;
-    VPADReadError vpadError;
-
     while (sIsOpen) {
-        // Begin frame (waits for vsync, clears screen)
-        Renderer::BeginFrame(Settings::Get().bgColor);
-
-        // Render based on current mode
-        switch (sCurrentMode) {
-            case Mode::BROWSE:
-                renderBrowseMode();
-                break;
-            case Mode::EDIT:
-                renderEditMode();
-                break;
-            case Mode::SETTINGS:
-                renderSettingsMode();
-                break;
-            case Mode::DEBUG_GRID:
-                renderDebugGridMode();
-                break;
-        }
-
-        // Process image loading queue
-        // HIGH priority (selected title) loads immediately, others throttled
-        static uint32_t frameCounter = 0;
-        frameCounter++;
-        if (ImageLoader::HasHighPriorityPending() || frameCounter % 10 == 0) {
-            ImageLoader::Update();
-        }
-
-        // End frame (flush and flip)
-        Renderer::EndFrame();
-
-        // Read input
-        int32_t readResult = VPADRead(VPAD_CHAN_0, &vpadStatus, 1, &vpadError);
-
-        if (readResult > 0 && vpadError == VPAD_READ_SUCCESS) {
-            uint32_t pressed = vpadStatus.trigger;
-            uint32_t held = vpadStatus.hold;
-
-            // Handle input based on current mode
-            switch (sCurrentMode) {
-                case Mode::BROWSE:
-                    titleToLaunch = handleBrowseModeInput(pressed);
-                    break;
-                case Mode::EDIT:
-                    handleEditModeInput(pressed);
-                    break;
-                case Mode::SETTINGS:
-                    handleSettingsModeInput(pressed, held);
-                    break;
-                case Mode::DEBUG_GRID:
-                    handleDebugGridModeInput(pressed);
-                    break;
-            }
+        FrameResult result = processFrameInternal();
+        if (!result.shouldContinue) {
+            return result.titleToLaunch;
         }
     }
-
-    return titleToLaunch;
+    return 0;
 }
 
 }
@@ -1524,6 +1550,101 @@ void Open()
 void Close()
 {
     sIsOpen = false;
+}
+
+FrameResult ProcessFrame()
+{
+    return processFrameInternal();
+}
+
+void RenderFrame()
+{
+    if (!sIsOpen) return;
+
+    // Begin frame
+    Renderer::BeginFrame(Settings::Get().bgColor);
+
+    // Render based on current mode
+    switch (sCurrentMode) {
+        case Mode::BROWSE:
+            renderBrowseMode();
+            break;
+        case Mode::EDIT:
+            renderEditMode();
+            break;
+        case Mode::SETTINGS:
+            renderSettingsMode();
+            break;
+        case Mode::DEBUG_GRID:
+            renderDebugGridMode();
+            break;
+    }
+}
+
+FrameResult HandleInputFrame()
+{
+    FrameResult result = {true, 0};
+
+    if (!sIsOpen) {
+        result.shouldContinue = false;
+        return result;
+    }
+
+    // Process image loading queue
+    static uint32_t frameCounter = 0;
+    frameCounter++;
+    if (ImageLoader::HasHighPriorityPending() || frameCounter % 10 == 0) {
+        ImageLoader::Update();
+    }
+
+    // Read input
+    VPADStatus vpadStatus;
+    VPADReadError vpadError;
+    int32_t readResult = VPADRead(VPAD_CHAN_0, &vpadStatus, 1, &vpadError);
+
+    if (readResult > 0 && vpadError == VPAD_READ_SUCCESS) {
+        uint32_t pressed = vpadStatus.trigger;
+        uint32_t held = vpadStatus.hold;
+
+        // Handle input based on current mode
+        switch (sCurrentMode) {
+            case Mode::BROWSE:
+                result.titleToLaunch = handleBrowseModeInput(pressed);
+                break;
+            case Mode::EDIT:
+                handleEditModeInput(pressed);
+                break;
+            case Mode::SETTINGS:
+                handleSettingsModeInput(pressed, held);
+                break;
+            case Mode::DEBUG_GRID:
+                handleDebugGridModeInput(pressed);
+                break;
+        }
+    }
+
+    // Check if menu was closed during input handling
+    if (!sIsOpen) {
+        result.shouldContinue = false;
+    }
+
+    return result;
+}
+
+void ResetToBrowse()
+{
+    sCurrentMode = Mode::BROWSE;
+    sIsOpen = true;
+}
+
+void InitForWebPreview()
+{
+    sInitialized = true;
+    sIsOpen = true;
+    sCurrentMode = Mode::BROWSE;
+    sInForeground = true;
+    sTitleListState = UI::ListView::State();
+    clampSelection();
 }
 
 void OnApplicationStart()

@@ -2,18 +2,19 @@
  * Web Input System
  *
  * Maps keyboard events to VPAD button presses.
- * Keyboard mapping:
- *   Arrow keys  -> D-pad
- *   Enter/Space -> A button
- *   Escape/Backspace -> B button
- *   X -> X button
- *   Y -> Y button
- *   Q -> ZL
- *   E -> ZR
- *   Tab -> L
- *   Shift+Tab -> R
- *   + -> Plus
- *   - -> Minus
+ * Simple letter-key mapping to avoid modifier keys and browser conflicts:
+ *
+ *   WASD / Arrow keys -> D-pad
+ *   J -> A button (confirm)
+ *   K -> B button (back)
+ *   U -> X button (edit)
+ *   I -> Y button (favorite)
+ *   Q -> ZL (prev category)
+ *   E -> ZR (next category)
+ *   O -> L button
+ *   P -> R button
+ *   M -> Plus (settings menu)
+ *   N -> Minus
  */
 
 #include "vpad/input.h"
@@ -32,38 +33,33 @@ static uint32_t sPrevHeldButtons = 0;
 // Key code to VPAD button mapping
 uint32_t keyCodeToButton(int keyCode) {
     switch (keyCode) {
-        // Arrow keys -> D-pad
+        // WASD + Arrow keys -> D-pad
+        case 87: return VPAD_BUTTON_UP;     // W
+        case 83: return VPAD_BUTTON_DOWN;   // S
+        case 65: return VPAD_BUTTON_LEFT;   // A
+        case 68: return VPAD_BUTTON_RIGHT;  // D
         case 37: return VPAD_BUTTON_LEFT;   // ArrowLeft
         case 38: return VPAD_BUTTON_UP;     // ArrowUp
         case 39: return VPAD_BUTTON_RIGHT;  // ArrowRight
         case 40: return VPAD_BUTTON_DOWN;   // ArrowDown
 
-        // Enter/Space -> A
-        case 13: return VPAD_BUTTON_A;      // Enter
-        case 32: return VPAD_BUTTON_A;      // Space
+        // Action buttons (JKUI cluster)
+        case 74: return VPAD_BUTTON_A;      // J (confirm)
+        case 75: return VPAD_BUTTON_B;      // K (back)
+        case 85: return VPAD_BUTTON_X;      // U (edit)
+        case 73: return VPAD_BUTTON_Y;      // I (favorite)
 
-        // Escape/Backspace -> B
-        case 27: return VPAD_BUTTON_B;      // Escape
-        case 8:  return VPAD_BUTTON_B;      // Backspace
-
-        // X and Y buttons
-        case 88: return VPAD_BUTTON_X;      // X key
-        case 89: return VPAD_BUTTON_Y;      // Y key
-        case 70: return VPAD_BUTTON_Y;      // F key (Favorite)
+        // Category buttons
+        case 81: return VPAD_BUTTON_ZL;     // Q (prev category)
+        case 69: return VPAD_BUTTON_ZR;     // E (next category)
 
         // Shoulder buttons
-        case 81: return VPAD_BUTTON_ZL;     // Q
-        case 69: return VPAD_BUTTON_ZR;     // E
-        case 9:  return VPAD_BUTTON_L;      // Tab (L)
-        // Shift+Tab would be R but harder to detect
+        case 79: return VPAD_BUTTON_L;      // O
+        case 80: return VPAD_BUTTON_R;      // P
 
-        // Plus/Minus
-        case 187: return VPAD_BUTTON_PLUS;  // + (=)
-        case 189: return VPAD_BUTTON_MINUS; // -
-
-        // Numpad
-        case 107: return VPAD_BUTTON_PLUS;  // Numpad +
-        case 109: return VPAD_BUTTON_MINUS; // Numpad -
+        // Menu buttons
+        case 77: return VPAD_BUTTON_PLUS;   // M (settings menu)
+        case 78: return VPAD_BUTTON_MINUS;  // N
 
         default: return 0;
     }

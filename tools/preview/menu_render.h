@@ -39,4 +39,7 @@ void drawFooter();
 void renderSettingsMain();
 void renderSystemApps();
 
+// Debug grid rendering
+void renderDebugGrid();
+
 } // namespace MenuRender

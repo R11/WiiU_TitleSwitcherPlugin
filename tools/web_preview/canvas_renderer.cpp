@@ -5,7 +5,7 @@
  * Supports simultaneous rendering to both TV and GamePad (DRC) screens.
  */
 
-#include "render/renderer.h"
+#include "stubs/renderer_stub.h"
 #include "render/bitmap_font.h"
 
 #ifdef __EMSCRIPTEN__
@@ -38,9 +38,14 @@ static constexpr int DRC_HEIGHT = 480;
 static int sTvWidth = 1280;
 static int sTvHeight = 720;
 
-// Character grid dimensions (based on 8x24 character cells)
-static constexpr int CHAR_WIDTH = 8;
-static constexpr int CHAR_HEIGHT = 24;
+// Grid dimensions - match OSScreen's fixed 100x18 grid for DRC
+// OSScreen uses these hardcoded values, not computed from pixels
+static constexpr int OS_SCREEN_COLS = 100;
+static constexpr int OS_SCREEN_ROWS = 18;
+
+// Character cell dimensions - match renderer.cpp exactly
+static constexpr int OS_SCREEN_CHAR_WIDTH = 8;
+static constexpr int OS_SCREEN_CHAR_HEIGHT = 24;
 
 // Current screen being rendered
 static Screen sCurrentScreen = Screen::DRC;
@@ -68,11 +73,13 @@ static uint32_t* getCurrentFramebuffer() {
 }
 
 static int getGridCols() {
-    return getCurrentWidth() / CHAR_WIDTH;
+    // Use fixed OSScreen grid dimensions to match real hardware
+    return OS_SCREEN_COLS;
 }
 
 static int getGridRows() {
-    return getCurrentHeight() / CHAR_HEIGHT;
+    // Use fixed OSScreen grid dimensions to match real hardware
+    return OS_SCREEN_ROWS;
 }
 
 /**
@@ -229,21 +236,38 @@ void EndFrame() {
 void DrawText(int col, int row, const char* text, uint32_t color) {
     if (!sInitialized || !text) return;
 
-    int x = col * CHAR_WIDTH;
-    int y = row * CHAR_HEIGHT + 8;  // Offset to center in row
+    // Match renderer.cpp exactly: no margins, same character spacing
+    constexpr int CHAR_W = 8;   // OS_SCREEN_CHAR_WIDTH
+    constexpr int CHAR_H = 24;  // OS_SCREEN_CHAR_HEIGHT
+
+    int baseX = col * CHAR_W;
+    int baseY = row * CHAR_H;
+
+    // 2x vertical scale to make 8x8 font fill 8x16, centered in 24px row
+    constexpr int SCALE_Y = 2;
+    constexpr int SCALED_HEIGHT = BitmapFont::CHAR_HEIGHT * SCALE_Y;  // 16px
+    int yOffset = (CHAR_H - SCALED_HEIGHT) / 2;  // Center in 24px row = 4px
 
     for (int i = 0; text[i] != '\0'; i++) {
         const uint8_t* glyph = BitmapFont::GetGlyph(text[i]);
-        if (glyph) {
-            for (int py = 0; py < BitmapFont::CHAR_HEIGHT; py++) {
-                for (int px = 0; px < BitmapFont::CHAR_WIDTH; px++) {
-                    if (BitmapFont::IsPixelSet(glyph, px, py)) {
-                        setPixel(x + px, y + py, color);
-                    }
+        if (!glyph) {
+            baseX += CHAR_W;
+            continue;
+        }
+
+        // Draw each pixel of the glyph with 2x vertical scale
+        for (int gy = 0; gy < BitmapFont::CHAR_HEIGHT; gy++) {
+            for (int gx = 0; gx < BitmapFont::CHAR_WIDTH; gx++) {
+                if (BitmapFont::IsPixelSet(glyph, gx, gy)) {
+                    int px = baseX + gx;
+                    int py = baseY + yOffset + gy * SCALE_Y;
+                    setPixel(px, py, color);
+                    setPixel(px, py + 1, color);
                 }
             }
         }
-        x += CHAR_WIDTH;
+
+        baseX += CHAR_W;
     }
 }
 
@@ -294,6 +318,29 @@ void DrawImage(int x, int y, ImageHandle handle, int width, int height) {
 bool SupportsImages() { return false; }
 
 // =============================================================================
+// Pixel Drawing (for debug overlays)
+// =============================================================================
+
+void DrawPixel(int x, int y, uint32_t color) {
+    if (!sInitialized) return;
+    setPixel(x, y, color);
+}
+
+void DrawHLine(int x, int y, int length, uint32_t color) {
+    if (!sInitialized) return;
+    for (int i = 0; i < length; i++) {
+        setPixel(x + i, y, color);
+    }
+}
+
+void DrawVLine(int x, int y, int length, uint32_t color) {
+    if (!sInitialized) return;
+    for (int i = 0; i < length; i++) {
+        setPixel(x, y + i, color);
+    }
+}
+
+// =============================================================================
 // Screen Info Functions
 // =============================================================================
 
@@ -302,25 +349,58 @@ int GetScreenHeight() { return getCurrentHeight(); }
 int GetGridWidth() { return getGridCols(); }
 int GetGridHeight() { return getGridRows(); }
 
-int ColToPixelX(int col) { return col * CHAR_WIDTH; }
-int RowToPixelY(int row) { return row * CHAR_HEIGHT; }
+int ColToPixelX(int col) { return col * OS_SCREEN_CHAR_WIDTH; }
+int RowToPixelY(int row) { return row * OS_SCREEN_CHAR_HEIGHT; }
 
 // =============================================================================
 // Layout Functions
 // =============================================================================
 
-int GetDividerCol() { return getGridCols() * 30 / 100; }
+int GetDividerCol() { return (getGridCols() * 30) / 100; }
 int GetDetailsPanelCol() { return GetDividerCol() + 2; }
-int GetListWidth() { return GetDividerCol() - 1; }
-int GetVisibleRows() { return getGridRows() - 4; }
+int GetListWidth() { return GetDividerCol(); }
+int GetVisibleRows() { return getGridRows() - 3; }
 int GetFooterRow() { return getGridRows() - 1; }
 
-int GetTitleNameWidth(bool showNumbers) {
-    int width = GetListWidth() - 4;
-    if (showNumbers) {
-        width -= 4;
+int GetTitleNameWidth(bool showLineNumbers) {
+    int baseWidth = GetListWidth() - 6;
+    if (showLineNumbers) {
+        baseWidth -= 3;
     }
-    return width;
+    return baseWidth > 0 ? baseWidth : 10;
+}
+
+// =============================================================================
+// Screen Config and Icon Functions
+// =============================================================================
+
+static ScreenConfig sCurrentConfig;
+
+const ScreenConfig& GetScreenConfig() {
+    sCurrentConfig.name = (sCurrentScreen == Screen::DRC) ? "DRC (GamePad)" : "TV";
+    sCurrentConfig.pixelWidth = getCurrentWidth();
+    sCurrentConfig.pixelHeight = getCurrentHeight();
+    sCurrentConfig.gridCols = getGridCols();
+    sCurrentConfig.gridRows = getGridRows();
+    sCurrentConfig.charWidth = OS_SCREEN_CHAR_WIDTH;
+    sCurrentConfig.charHeight = OS_SCREEN_CHAR_HEIGHT;
+    sCurrentConfig.is4x3 = false;
+    return sCurrentConfig;
+}
+
+int GetIconSize() {
+    int height = getCurrentHeight();
+    if (height >= 1080) return 192;
+    if (height >= 720) return 128;
+    return 96;
+}
+
+int GetIconX() {
+    return ColToPixelX(GetDetailsPanelCol());
+}
+
+int GetIconY() {
+    return RowToPixelY(3);
 }
 
 // =============================================================================
@@ -342,8 +422,6 @@ void selectScreen(int screen) {
     Renderer::SelectScreen(screen);
 }
 
-void setTvResolution(int resolution) {
-    Renderer::SetTvResolution(resolution);
-}
+// Note: setTvResolution is defined in main.cpp to also update list configs
 
 }

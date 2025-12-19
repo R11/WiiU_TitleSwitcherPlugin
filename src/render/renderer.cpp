@@ -187,44 +187,42 @@ void endFrameOSScreen()
 
 void drawTextOSScreen(int column, int row, const char* text, uint32_t color)
 {
-    // TODO: Bitmap font rendering for colored text needs visual improvements.
-    // For now, use the built-in OSScreen font for white or unset colors.
-    if (color == 0xFFFFFFFF || color == 0) {
-        OSScreenPutFontEx(SCREEN_TV, column, row, text);
-        OSScreenPutFontEx(SCREEN_DRC, column, row, text);
-        return;
-    }
-
-    // For colored text, render using our bitmap font pixel-by-pixel
+    // Always use bitmap font rendering for consistent positioning with web preview
     // Convert color from RGBA to RGBX format for OSScreenPutPixelEx
-    uint32_t rgbx = color & 0xFFFFFF00;
+    uint32_t rgbx = (color == 0) ? 0xFFFFFF00 : (color & 0xFFFFFF00);
 
     // Calculate pixel position from character grid position
     int baseX = column * OS_SCREEN_CHAR_WIDTH;
     int baseY = row * OS_SCREEN_CHAR_HEIGHT;
 
+    // 2x vertical scale to make 8x8 font fill 8x16, centered in 24px row
+    constexpr int SCALE_Y = 2;
+    constexpr int SCALED_HEIGHT = BitmapFont::CHAR_HEIGHT * SCALE_Y;  // 16px
+    int yOffset = (OS_SCREEN_CHAR_HEIGHT - SCALED_HEIGHT) / 2;  // Center in 24px row
+
     // Render each character
     for (int i = 0; text[i] != '\0'; i++) {
         const uint8_t* glyph = BitmapFont::GetGlyph(text[i]);
         if (!glyph) {
-            // Unknown character - skip
-            baseX += BitmapFont::CHAR_WIDTH;
+            baseX += OS_SCREEN_CHAR_WIDTH;
             continue;
         }
 
-        // Draw each pixel of the glyph
+        // Draw each pixel of the glyph with 2x vertical scale
         for (int gy = 0; gy < BitmapFont::CHAR_HEIGHT; gy++) {
             for (int gx = 0; gx < BitmapFont::CHAR_WIDTH; gx++) {
                 if (BitmapFont::IsPixelSet(glyph, gx, gy)) {
                     int px = baseX + gx;
-                    int py = baseY + gy;
+                    int py = baseY + yOffset + gy * SCALE_Y;
                     OSScreenPutPixelEx(SCREEN_TV, px, py, rgbx);
+                    OSScreenPutPixelEx(SCREEN_TV, px, py + 1, rgbx);
                     OSScreenPutPixelEx(SCREEN_DRC, px, py, rgbx);
+                    OSScreenPutPixelEx(SCREEN_DRC, px, py + 1, rgbx);
                 }
             }
         }
 
-        baseX += BitmapFont::CHAR_WIDTH;
+        baseX += OS_SCREEN_CHAR_WIDTH;
     }
 }
 
@@ -261,6 +259,38 @@ void drawPlaceholderOSScreen(int pixelX, int pixelY, int width, int height, uint
         for (int offsetX = 0; offsetX < width; offsetX++) {
             OSScreenPutPixelEx(SCREEN_TV, pixelX + offsetX, pixelY + offsetY, rgbxColor);
             OSScreenPutPixelEx(SCREEN_DRC, pixelX + offsetX, pixelY + offsetY, rgbxColor);
+        }
+    }
+}
+
+void drawPixelOSScreen(int x, int y, uint32_t color)
+{
+    if (x < 0 || x >= DRC_WIDTH || y < 0 || y >= DRC_HEIGHT) return;
+    uint32_t rgbx = color & 0xFFFFFF00;
+    OSScreenPutPixelEx(SCREEN_TV, x, y, rgbx);
+    OSScreenPutPixelEx(SCREEN_DRC, x, y, rgbx);
+}
+
+void drawHLineOSScreen(int x, int y, int length, uint32_t color)
+{
+    uint32_t rgbx = color & 0xFFFFFF00;
+    for (int i = 0; i < length; i++) {
+        int px = x + i;
+        if (px >= 0 && px < DRC_WIDTH && y >= 0 && y < DRC_HEIGHT) {
+            OSScreenPutPixelEx(SCREEN_TV, px, y, rgbx);
+            OSScreenPutPixelEx(SCREEN_DRC, px, y, rgbx);
+        }
+    }
+}
+
+void drawVLineOSScreen(int x, int y, int length, uint32_t color)
+{
+    uint32_t rgbx = color & 0xFFFFFF00;
+    for (int i = 0; i < length; i++) {
+        int py = y + i;
+        if (x >= 0 && x < DRC_WIDTH && py >= 0 && py < DRC_HEIGHT) {
+            OSScreenPutPixelEx(SCREEN_TV, x, py, rgbx);
+            OSScreenPutPixelEx(SCREEN_DRC, x, py, rgbx);
         }
     }
 }
@@ -497,6 +527,45 @@ void DrawPlaceholder(int pixelX, int pixelY, int width, int height, uint32_t col
     switch (selectedBackend) {
         case Backend::OS_SCREEN:
             drawPlaceholderOSScreen(pixelX, pixelY, width, height, color);
+            break;
+        case Backend::GX2:
+            break;
+    }
+}
+
+void DrawPixel(int x, int y, uint32_t color)
+{
+    if (!isInitialized) return;
+
+    switch (selectedBackend) {
+        case Backend::OS_SCREEN:
+            drawPixelOSScreen(x, y, color);
+            break;
+        case Backend::GX2:
+            break;
+    }
+}
+
+void DrawHLine(int x, int y, int length, uint32_t color)
+{
+    if (!isInitialized) return;
+
+    switch (selectedBackend) {
+        case Backend::OS_SCREEN:
+            drawHLineOSScreen(x, y, length, color);
+            break;
+        case Backend::GX2:
+            break;
+    }
+}
+
+void DrawVLine(int x, int y, int length, uint32_t color)
+{
+    if (!isInitialized) return;
+
+    switch (selectedBackend) {
+        case Backend::OS_SCREEN:
+            drawVLineOSScreen(x, y, length, color);
             break;
         case Backend::GX2:
             break;
