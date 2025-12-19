@@ -305,7 +305,6 @@ void drawDetailsPanel()
         Renderer::ImageHandle icon = ImageLoader::Get(title->titleId);
         Renderer::DrawImage(iconX, iconY, icon, ICON_SIZE, ICON_SIZE);
     } else {
-        // Draw placeholder while loading
         Renderer::DrawPlaceholder(iconX, iconY, ICON_SIZE, ICON_SIZE, 0x333333FF);
     }
 
@@ -404,17 +403,21 @@ void drawFooter()
     int count = Categories::GetFilteredCount();
     int selectedIdx = UI::ListView::GetSelectedIndex(sTitleListState);
 
-    // Bottom row: main controls with customizable button labels
-    char footer[100];
-    snprintf(footer, sizeof(footer),
-             "%s:Go %s:Close %s:Fav %s:Edit %s:Settings ZL/ZR:Cat [%d/%d]",
-             Buttons::Actions::CONFIRM.label,
-             Buttons::Actions::CANCEL.label,
-             Buttons::Actions::FAVORITE.label,
-             Buttons::Actions::EDIT.label,
-             Buttons::Actions::SETTINGS.label,
-             selectedIdx + 1,
-             count);
+    int pending, ready, failed, total;
+    ImageLoader::GetLoadingStats(&pending, &ready, &failed, &total);
+
+    char footer[120];
+        snprintf(footer, sizeof(footer),
+                 "%s:Go %s:Close %s:Fav %s:Edit %s:Settings ZL/ZR:Cat [%d/%d] %d/%d",
+                 Buttons::Actions::CONFIRM.label,
+                 Buttons::Actions::CANCEL.label,
+                 Buttons::Actions::FAVORITE.label,
+                 Buttons::Actions::EDIT.label,
+                 Buttons::Actions::SETTINGS.label,
+                 selectedIdx + 1,
+                 count,
+                 ready,
+                 total);
 
     Renderer::DrawText(0, Renderer::GetFooterRow(), footer);
 }
@@ -1556,18 +1559,17 @@ void Open()
 
     // Initialize screen rendering
     if (!Renderer::Init()) {
-        // Screen init failed - can't open menu
         return;
     }
 
-    // Initialize image loader for title icons
-    ImageLoader::Init();
-
-    // Ensure titles are loaded
+    // Ensure titles are loaded (usually done at plugin init)
     Titles::Load();
 
     // Initialize category filter
     Categories::Init();
+
+    // Retry any failed image loads (may succeed now if context changed)
+    ImageLoader::RetryFailed();
 
     // Restore last selection from settings
     sTitleListState = UI::ListView::State();  // Reset state
@@ -1587,7 +1589,6 @@ void Open()
 
     // Cleanup
     sIsOpen = false;
-    ImageLoader::Shutdown();
     Renderer::Shutdown();
 
     // Launch selected title if any

@@ -49,11 +49,12 @@
 // Plugin Modules
 // =============================================================================
 
-#include "menu/menu.h"                // Main menu system
-#include "input/buttons.h"            // Button mapping
-#include "titles/titles.h"            // Title management
-#include "storage/settings.h"         // Persistent settings
-#include "presets/title_presets.h"    // GameTDB preset metadata
+#include "menu/menu.h"
+#include "input/buttons.h"
+#include "titles/titles.h"
+#include "storage/settings.h"
+#include "presets/title_presets.h"
+#include "render/image_loader.h"
 
 // =============================================================================
 // Plugin Metadata
@@ -112,12 +113,13 @@ INITIALIZE_PLUGIN()
     // Initialize menu system
     Menu::Init();
 
-    // Preload title list in background
-    // This takes a few seconds but happens at boot, not when opening the menu
+    // Initialize image loader
+    ImageLoader::Init();
+
+    // Load title list (queues icon requests for each title)
     Titles::Load();
 
-    // Load preset metadata from SD card (GameTDB data)
-    // This provides publisher/developer/genre info for installed titles
+    // Load preset metadata from SD card
     TitlePresets::Load();
 
     // Show startup notification
@@ -131,6 +133,7 @@ INITIALIZE_PLUGIN()
  */
 DEINITIALIZE_PLUGIN()
 {
+    ImageLoader::Shutdown();
     Menu::Shutdown();
     NotificationModule_DeInitLibrary();
 }
