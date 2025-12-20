@@ -372,7 +372,7 @@ int RowToPixelY(int row) { return row * OS_SCREEN_CHAR_HEIGHT; }
 // Layout Functions
 // =============================================================================
 
-int GetDividerCol() { return (getGridCols() * 30) / 100; }
+int GetDividerCol() { return (getGridCols() * 20) / 100; }
 int GetDetailsPanelCol() { return GetDividerCol() + 2; }
 int GetListWidth() { return GetDividerCol(); }
 int GetVisibleRows() { return getGridRows() - 3; }

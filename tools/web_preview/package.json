@@ -1,0 +1,10 @@
+{
+  "name": "wiiu-menu-preview",
+  "private": true,
+  "scripts": {
+    "dev": "./dev.sh"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
