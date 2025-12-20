@@ -192,13 +192,18 @@ void BeginFrame(uint32_t bgColor) {
     sBgColor = bgColor;
     int width = getCurrentWidth();
     int height = getCurrentHeight();
+    uint32_t* fb = getCurrentFramebuffer();
+    if (!fb) return;
 
-    // Fill current screen with background color
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            setPixel(x, y, bgColor);
-        }
-    }
+    // Convert RGBA to ABGR once
+    uint8_t r = (bgColor >> 24) & 0xFF;
+    uint8_t g = (bgColor >> 16) & 0xFF;
+    uint8_t b = (bgColor >> 8) & 0xFF;
+    uint8_t a = bgColor & 0xFF;
+    uint32_t abgr = (a << 24) | (b << 16) | (g << 8) | r;
+
+    // Fill entire framebuffer at once (much faster than pixel-by-pixel)
+    std::fill(fb, fb + (width * height), abgr);
 }
 
 void EndFrame() {
@@ -236,17 +241,26 @@ void EndFrame() {
 void DrawText(int col, int row, const char* text, uint32_t color) {
     if (!sInitialized || !text) return;
 
-    // Match renderer.cpp exactly: no margins, same character spacing
-    constexpr int CHAR_W = 8;   // OS_SCREEN_CHAR_WIDTH
-    constexpr int CHAR_H = 24;  // OS_SCREEN_CHAR_HEIGHT
+    int width = getCurrentWidth();
+    int height = getCurrentHeight();
+    uint32_t* fb = getCurrentFramebuffer();
+    if (!fb) return;
+
+    // Convert color once (RGBA to ABGR)
+    uint8_t r = (color >> 24) & 0xFF;
+    uint8_t g = (color >> 16) & 0xFF;
+    uint8_t b = (color >> 8) & 0xFF;
+    uint8_t a = color & 0xFF;
+    uint32_t abgr = (a << 24) | (b << 16) | (g << 8) | r;
+
+    constexpr int CHAR_W = 8;
+    constexpr int CHAR_H = 24;
+    constexpr int SCALE_Y = 2;
+    constexpr int SCALED_HEIGHT = BitmapFont::CHAR_HEIGHT * SCALE_Y;
+    int yOffset = (CHAR_H - SCALED_HEIGHT) / 2;
 
     int baseX = col * CHAR_W;
     int baseY = row * CHAR_H;
-
-    // 2x vertical scale to make 8x8 font fill 8x16, centered in 24px row
-    constexpr int SCALE_Y = 2;
-    constexpr int SCALED_HEIGHT = BitmapFont::CHAR_HEIGHT * SCALE_Y;  // 16px
-    int yOffset = (CHAR_H - SCALED_HEIGHT) / 2;  // Center in 24px row = 4px
 
     for (int i = 0; text[i] != '\0'; i++) {
         const uint8_t* glyph = BitmapFont::GetGlyph(text[i]);
@@ -255,14 +269,16 @@ void DrawText(int col, int row, const char* text, uint32_t color) {
             continue;
         }
 
-        // Draw each pixel of the glyph with 2x vertical scale
         for (int gy = 0; gy < BitmapFont::CHAR_HEIGHT; gy++) {
             for (int gx = 0; gx < BitmapFont::CHAR_WIDTH; gx++) {
                 if (BitmapFont::IsPixelSet(glyph, gx, gy)) {
                     int px = baseX + gx;
                     int py = baseY + yOffset + gy * SCALE_Y;
-                    setPixel(px, py, color);
-                    setPixel(px, py + 1, color);
+                    // Direct framebuffer writes (skip bounds check for speed)
+                    if (px >= 0 && px < width && py >= 0 && py + 1 < height) {
+                        fb[py * width + px] = abgr;
+                        fb[(py + 1) * width + px] = abgr;
+                    }
                 }
             }
         }

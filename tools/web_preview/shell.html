@@ -341,17 +341,20 @@
             }
         }
 
-        // Key handler
+        // Ready flag - only handle input after Wasm is fully initialized
+        var wasmReady = false;
+
+        // Key handler - calls C++ immediately for zero-latency input
         document.addEventListener('keydown', function(e) {
-            if (typeof Module !== 'undefined' && Module._onKeyDown) {
-                Module._onKeyDown(e.keyCode);
+            if (wasmReady) {
+                Module._handleKeyDown(e.keyCode);
                 e.preventDefault();
             }
         });
 
         document.addEventListener('keyup', function(e) {
-            if (typeof Module !== 'undefined' && Module._onKeyUp) {
-                Module._onKeyUp(e.keyCode);
+            if (wasmReady) {
+                Module._handleKeyUp(e.keyCode);
                 e.preventDefault();
             }
         });
@@ -388,6 +391,7 @@
             },
             onRuntimeInitialized: function() {
                 console.log('[WASM] Runtime initialized');
+                wasmReady = true;
                 Module.setStatus('');
             },
             onAbort: function(what) {

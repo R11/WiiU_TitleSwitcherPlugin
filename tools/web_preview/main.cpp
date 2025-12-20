@@ -25,37 +25,47 @@ extern "C" {
     void onKeyUp(int keyCode);
 }
 
-namespace {
+// Dirty flag - only render when state changes
+static bool sDirty = true;
 
 /**
- * Main loop function called by Emscripten
+ * Render both screens to canvas
  */
-void mainLoop() {
-    // Render to DRC (GamePad)
+static void renderBothScreens() {
     Renderer::SelectScreen(0);
     Menu::RenderFrame();
 
-    // Render to TV
     Renderer::SelectScreen(1);
     Menu::RenderFrame();
 
-    // Push both framebuffers to canvases
     Renderer::EndFrame();
+}
 
-    // Handle input
+/**
+ * Process input and render immediately
+ */
+static void processAndRender() {
     Menu::FrameResult result = Menu::HandleInputFrame();
 
-    // If menu wants to close (launch title or cancel), reset to browse
     if (!result.shouldContinue) {
         if (result.titleToLaunch != 0) {
             printf("Would launch: %016llX\n", (unsigned long long)result.titleToLaunch);
         }
-        // In web preview, just reset to browse mode instead of closing
         Menu::ResetToBrowse();
     }
+
+    renderBothScreens();
+    sDirty = false;
 }
 
-} // anonymous namespace
+/**
+ * Main loop - only renders if dirty
+ */
+static void mainLoop() {
+    if (sDirty) {
+        processAndRender();
+    }
+}
 
 // =============================================================================
 // Entry Point
@@ -110,6 +120,24 @@ extern "C" {
 void setTvResolution(int resolution) {
     Renderer::SetTvResolution(resolution);
     printf("TV resolution changed to %dp\n", resolution);
+    sDirty = true;
+}
+
+/**
+ * Handle key down - called immediately from JS event handler
+ * Processes input and renders in the same call for zero latency
+ */
+void handleKeyDown(int keyCode) {
+    onKeyDown(keyCode);
+    processAndRender();
+}
+
+/**
+ * Handle key up - called immediately from JS event handler
+ */
+void handleKeyUp(int keyCode) {
+    onKeyUp(keyCode);
+    processAndRender();
 }
 
 } // extern "C"
