@@ -260,14 +260,16 @@ void drawDetailsPanelHeader(const Titles::TitleInfo* title)
 
     ImageLoader::Request(title->titleId, ImageLoader::Priority::HIGH);
 
-    int iconX = Measurements::GetIconPixelX(Renderer::GetDetailsPanelCol());
-    int iconY = Measurements::GetIconPixelY();
+    const Layout::PixelLayout& layout = Renderer::GetLayout();
+    int iconX = layout.details.icon.x;
+    int iconY = layout.details.icon.y;
+    int iconSize = layout.iconSize;
 
     if (ImageLoader::IsReady(title->titleId)) {
         Renderer::ImageHandle icon = ImageLoader::Get(title->titleId);
-        Renderer::DrawImage(iconX, iconY, icon, Measurements::ICON_SIZE, Measurements::ICON_SIZE);
+        Renderer::DrawImage(iconX, iconY, icon, iconSize, iconSize);
     } else {
-        Renderer::DrawPlaceholder(iconX, iconY, Measurements::ICON_SIZE, Measurements::ICON_SIZE, 0x333333FF);
+        Renderer::DrawPlaceholder(iconX, iconY, iconSize, iconSize, 0x333333FF);
     }
 }
 

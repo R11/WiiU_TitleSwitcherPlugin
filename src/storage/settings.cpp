@@ -67,6 +67,9 @@ constexpr const char* KEY_CATEGORIES_DATA  = "categoriesData";
 constexpr const char* KEY_TITLE_CAT_COUNT  = "titleCatCount";
 constexpr const char* KEY_TITLE_CAT_DATA   = "titleCatData";
 constexpr const char* KEY_NEXT_CAT_ID      = "nextCategoryId";
+constexpr const char* KEY_LAYOUT_FONT_SCALE    = "layoutFontScale";
+constexpr const char* KEY_LAYOUT_LIST_WIDTH    = "layoutListWidth";
+constexpr const char* KEY_LAYOUT_ICON_SIZE     = "layoutIconSize";
 
 // =============================================================================
 // Storage Helpers
@@ -139,7 +142,24 @@ void Load()
     LoadColor(KEY_CATEGORY_COLOR, gSettings.categoryColor);
 
     // -------------------------------------------------------------------------
-    // Step 5: Load next category ID
+    // Step 5: Load layout preferences
+    // -------------------------------------------------------------------------
+    int32_t layoutTemp;
+    if (WUPSStorageAPI_GetInt(nullptr, KEY_LAYOUT_FONT_SCALE, &layoutTemp) == WUPS_STORAGE_ERROR_SUCCESS) {
+        gSettings.layoutPrefs.fontScale = layoutTemp;
+    }
+    if (WUPSStorageAPI_GetInt(nullptr, KEY_LAYOUT_LIST_WIDTH, &layoutTemp) == WUPS_STORAGE_ERROR_SUCCESS) {
+        gSettings.layoutPrefs.listWidthPercent = layoutTemp;
+    }
+    if (WUPSStorageAPI_GetInt(nullptr, KEY_LAYOUT_ICON_SIZE, &layoutTemp) == WUPS_STORAGE_ERROR_SUCCESS) {
+        gSettings.layoutPrefs.iconSizePercent = layoutTemp;
+    }
+
+    // Apply loaded layout preferences to the layout system
+    Layout::SetCurrentPreferences(gSettings.layoutPrefs);
+
+    // -------------------------------------------------------------------------
+    // Step 6: Load next category ID
     // -------------------------------------------------------------------------
     int32_t nextId;
     if (WUPSStorageAPI_GetInt(nullptr, KEY_NEXT_CAT_ID, &nextId) == WUPS_STORAGE_ERROR_SUCCESS) {
@@ -147,7 +167,7 @@ void Load()
     }
 
     // -------------------------------------------------------------------------
-    // Step 6: Load favorites
+    // Step 7: Load favorites
     // -------------------------------------------------------------------------
     // Favorites are stored as a binary blob (array of uint64_t)
     int32_t favCount = 0;
@@ -171,7 +191,7 @@ void Load()
     }
 
     // -------------------------------------------------------------------------
-    // Step 7: Load categories
+    // Step 8: Load categories
     // -------------------------------------------------------------------------
     int32_t catCount = 0;
     WUPSStorageAPI_GetInt(nullptr, KEY_CATEGORIES_COUNT, &catCount);
@@ -193,7 +213,7 @@ void Load()
     }
 
     // -------------------------------------------------------------------------
-    // Step 8: Load title-category assignments
+    // Step 9: Load title-category assignments
     // -------------------------------------------------------------------------
     int32_t tcCount = 0;
     WUPSStorageAPI_GetInt(nullptr, KEY_TITLE_CAT_COUNT, &tcCount);
@@ -246,6 +266,13 @@ void Save()
     WUPSStorageAPI_StoreInt(nullptr, KEY_FAVORITE_COLOR, static_cast<int32_t>(gSettings.favoriteColor));
     WUPSStorageAPI_StoreInt(nullptr, KEY_HEADER_COLOR, static_cast<int32_t>(gSettings.headerColor));
     WUPSStorageAPI_StoreInt(nullptr, KEY_CATEGORY_COLOR, static_cast<int32_t>(gSettings.categoryColor));
+
+    // -------------------------------------------------------------------------
+    // Save layout preferences
+    // -------------------------------------------------------------------------
+    WUPSStorageAPI_StoreInt(nullptr, KEY_LAYOUT_FONT_SCALE, gSettings.layoutPrefs.fontScale);
+    WUPSStorageAPI_StoreInt(nullptr, KEY_LAYOUT_LIST_WIDTH, gSettings.layoutPrefs.listWidthPercent);
+    WUPSStorageAPI_StoreInt(nullptr, KEY_LAYOUT_ICON_SIZE, gSettings.layoutPrefs.iconSizePercent);
 
     // -------------------------------------------------------------------------
     // Save favorites

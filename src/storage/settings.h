@@ -49,6 +49,7 @@
 
 #include <cstdint>
 #include <vector>
+#include "../ui/layout.h"
 
 namespace Settings {
 
@@ -182,6 +183,13 @@ struct PluginSettings {
     bool showFavorites;
 
     // -------------------------------------------------------------------------
+    // Layout Preferences
+    // -------------------------------------------------------------------------
+
+    // User-customizable layout settings
+    Layout::LayoutPreferences layoutPrefs;
+
+    // -------------------------------------------------------------------------
     // Colors
     // -------------------------------------------------------------------------
 
@@ -223,6 +231,7 @@ struct PluginSettings {
         lastCategoryIndex(0),
         showNumbers(false),
         showFavorites(true),
+        layoutPrefs(Layout::LayoutPreferences::Default()),
         bgColor(DEFAULT_BG_COLOR),
         titleColor(DEFAULT_TITLE_COLOR),
         highlightedTitleColor(DEFAULT_HIGHLIGHTED_COLOR),

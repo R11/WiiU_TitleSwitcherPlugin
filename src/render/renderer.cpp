@@ -650,4 +650,14 @@ int GetTitleNameWidth(bool showLineNumbers)
     return baseWidth > 0 ? baseWidth : 10;
 }
 
+const Layout::PixelLayout& GetLayout()
+{
+    return Layout::GetCurrentLayout();
+}
+
+void SetLayoutPreferences(const Layout::LayoutPreferences& prefs)
+{
+    Layout::SetCurrentPreferences(prefs);
+}
+
 }

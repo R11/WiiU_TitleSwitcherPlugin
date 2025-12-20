@@ -410,6 +410,37 @@ int GetIconY() {
 void SetBackend(Backend backend) { (void)backend; }
 Backend GetBackend() { return Backend::OS_SCREEN; }
 
+// =============================================================================
+// Layout System Access
+// =============================================================================
+
+const Layout::PixelLayout& GetLayout() {
+    // Determine layout screen type based on current screen/resolution
+    Layout::ScreenType layoutType;
+    if (sCurrentScreen == Screen::DRC) {
+        layoutType = Layout::ScreenType::DRC;
+    } else {
+        // TV - select based on resolution height
+        if (sTvHeight >= 1080) {
+            layoutType = Layout::ScreenType::TV_1080P;
+        } else if (sTvHeight >= 720) {
+            layoutType = Layout::ScreenType::TV_720P;
+        } else {
+            layoutType = Layout::ScreenType::TV_480P;
+        }
+    }
+
+    if (Layout::GetCurrentScreenType() != layoutType) {
+        Layout::SetCurrentScreenType(layoutType);
+    }
+
+    return Layout::GetCurrentLayout();
+}
+
+void SetLayoutPreferences(const Layout::LayoutPreferences& prefs) {
+    Layout::SetCurrentPreferences(prefs);
+}
+
 } // namespace Renderer
 
 // =============================================================================

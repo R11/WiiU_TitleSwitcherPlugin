@@ -8,6 +8,7 @@
 #pragma once
 
 #include <cstdint>
+#include "layout_stub.h"
 
 namespace Renderer {
 
@@ -129,5 +130,12 @@ int GetIconY();
 
 void SetBackend(Backend backend);
 Backend GetBackend();
+
+// =============================================================================
+// Layout System Access
+// =============================================================================
+
+const Layout::PixelLayout& GetLayout();
+void SetLayoutPreferences(const Layout::LayoutPreferences& prefs);
 
 } // namespace Renderer

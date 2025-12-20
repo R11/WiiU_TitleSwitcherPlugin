@@ -6,6 +6,7 @@
 #pragma once
 
 #include <cstdint>
+#include "../ui/layout.h"
 
 namespace Renderer {
 
@@ -60,5 +61,9 @@ int GetListWidth();
 int GetVisibleRows();
 int GetFooterRow();
 int GetTitleNameWidth(bool showLineNumbers);
+
+// Layout system access
+const Layout::PixelLayout& GetLayout();
+void SetLayoutPreferences(const Layout::LayoutPreferences& prefs);
 
 }
