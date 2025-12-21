@@ -87,7 +87,7 @@ constexpr int MAX_TITLE_CATEGORIES = 512;
 // =============================================================================
 
 constexpr uint32_t DEFAULT_BG_COLOR          = 0x1E1E2EFF;  // Base
-constexpr uint32_t DEFAULT_TITLE_COLOR       = 0xCDD6F4FF;  // Text
+constexpr uint32_t DEFAULT_TITLE_COLOR       = 0xFFFFFFFF;  // Text
 constexpr uint32_t DEFAULT_HIGHLIGHTED_COLOR = 0x89B4FAFF;  // Blue
 constexpr uint32_t DEFAULT_FAVORITE_COLOR    = 0xF9E2AFFF;  // Yellow
 constexpr uint32_t DEFAULT_HEADER_COLOR      = 0xA6E3A1FF;  // Green

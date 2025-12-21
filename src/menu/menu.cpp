@@ -40,9 +40,12 @@ UI::ListView::State sEditCatsListState;
 UI::ListView::State sSettingsListState;
 UI::ListView::State sManageCatsListState;
 UI::ListView::State sSystemAppsListState;
+UI::ListView::State sColorsListState;
 
 SettingsSubMode sSettingsSubMode = SettingsSubMode::MAIN;
+SettingsSubMode sColorReturnSubmode = SettingsSubMode::MAIN;
 int sEditingSettingIndex = -1;
+int sEditingColorOffset = -1;
 int sEditingCategoryId = -1;
 TextInput::Field sInputField;
 
@@ -55,11 +58,21 @@ const SettingItem sSettingItems[] = {
     ACTION_SETTING("System Apps",       "Launch system applications",   "(Browser, Settings, etc.)", ACTION_SYSTEM_APPS),
     TOGGLE_SETTING("Show Numbers",      "Show line numbers before",     "each title in the list.",   showNumbers),
     TOGGLE_SETTING("Show Favorites",    "Show favorite marker (*)",     "in the title list.",        showFavorites),
-    COLOR_SETTING("Background",         "Menu background color.",       "RGBA hex format.",          bgColor),
+    ACTION_SETTING("Customize Colors",  "Change menu colors:",          "background, text, etc.",    ACTION_COLORS),
     ACTION_SETTING("Manage Categories", "Create, rename, or delete",    "custom categories.",        ACTION_MANAGE_CATEGORIES),
     ACTION_SETTING("Debug Grid",        "Show grid overlay with",       "dimensions and positions.", ACTION_DEBUG_GRID),
 };
 const int SETTINGS_ITEM_COUNT = sizeof(sSettingItems) / sizeof(sSettingItems[0]);
+
+const ColorOption sColorOptions[] = {
+    COLOR_OPTION("Background",        bgColor),
+    COLOR_OPTION("Title Text",        titleColor),
+    COLOR_OPTION("Highlighted Title", highlightedTitleColor),
+    COLOR_OPTION("Favorite Marker",   favoriteColor),
+    COLOR_OPTION("Header Text",       headerColor),
+    COLOR_OPTION("Category Text",     categoryColor),
+};
+const int COLOR_OPTION_COUNT = sizeof(sColorOptions) / sizeof(sColorOptions[0]);
 
 const SystemAppOption sSystemApps[] = {
     {"Return to Menu",       "Exit game and return to Wii U Menu",         SYSAPP_RETURN_TO_MENU},

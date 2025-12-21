@@ -185,7 +185,10 @@ void renderColorInput()
     Renderer::DrawText(0, 0, "EDIT COLOR");
     drawHeaderDivider();
 
-    const char* colorName = (sEditingSettingIndex >= 0) ? sSettingItems[sEditingSettingIndex].name : "Unknown";
+    const char* colorName = "Unknown";
+    if (sColorReturnSubmode == SettingsSubMode::COLORS && sEditingSettingIndex >= 0) {
+        colorName = sColorOptions[sEditingSettingIndex].name;
+    }
     Renderer::DrawTextF(0, LIST_START_ROW, "Editing: %s", colorName);
     Renderer::DrawText(0, LIST_START_ROW + Measurements::ROW_OFFSET_CONTENT_START, "Enter RGBA hex value (8 digits):");
 
@@ -222,6 +225,48 @@ void renderNameInput()
                       Buttons::Actions::INPUT_DELETE.label,
                       Buttons::Actions::INPUT_CONFIRM.label,
                       Buttons::Actions::INPUT_CANCEL.label);
+}
+
+void renderColors()
+{
+    Renderer::DrawText(0, 0, "CUSTOMIZE COLORS");
+    drawHeaderDivider();
+    drawDivider();
+
+    UI::ListView::Config listConfig = UI::ListView::LeftPanelConfig();
+    sColorsListState.itemCount = COLOR_OPTION_COUNT;
+
+    UI::ListView::Render(sColorsListState, listConfig, [](int index, bool isSelected) {
+        UI::ListView::ItemView view;
+        const ColorOption& opt = sColorOptions[index];
+        view.prefix = isSelected ? "> " : "  ";
+
+        static char textBuf[64];
+        uint32_t value = *getColorPtr(opt.dataOffset);
+        snprintf(textBuf, sizeof(textBuf), "%s: %08X", opt.name, value);
+        view.text = textBuf;
+        return view;
+    });
+
+    drawDetailsPanelSectionHeader("Preview:");
+
+    int selectedIdx = UI::ListView::GetSelectedIndex(sColorsListState);
+    if (isValidSelection(selectedIdx, COLOR_OPTION_COUNT)) {
+        const ColorOption& opt = sColorOptions[selectedIdx];
+        uint32_t color = *getColorPtr(opt.dataOffset);
+
+        Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_SECTION_START,
+                          "Sample Text", color);
+        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_GAP,
+                          "RGBA: %08X", color);
+        Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_HINT,
+                          "A: Edit color");
+    }
+
+    Renderer::DrawTextF(0, Renderer::GetFooterRow(), "%s:Edit %s:Back  [%d/%d]",
+                      Buttons::Actions::CONFIRM.label,
+                      Buttons::Actions::CANCEL.label,
+                      selectedIdx + 1, COLOR_OPTION_COUNT);
 }
 
 void renderSystemApps()
@@ -282,21 +327,13 @@ void handleSettingsMainInput(uint32_t pressed)
                 *value = !(*value);
                 break;
             }
-            case SettingType::COLOR: {
-                sEditingSettingIndex = selectedIdx;
-                uint32_t* color = getColorPtr(item.dataOffset);
-                char hexStr[16];
-                snprintf(hexStr, sizeof(hexStr), "%08X", *color);
-                sInputField.Init(8, TextInput::Library::HEX);
-                sInputField.SetValue(hexStr);
-                sSettingsSubMode = SettingsSubMode::COLOR_INPUT;
-                break;
-            }
             case SettingType::BRIGHTNESS: {
                 int brightness = getCurrentBrightness();
                 setBrightness((brightness % 5) + 1);
                 break;
             }
+            case SettingType::COLOR:
+                break;
             case SettingType::ACTION: {
                 if (item.dataOffset == ACTION_MANAGE_CATEGORIES) {
                     sManageCatsListState = UI::ListView::State();
@@ -304,6 +341,9 @@ void handleSettingsMainInput(uint32_t pressed)
                 } else if (item.dataOffset == ACTION_SYSTEM_APPS) {
                     sSystemAppsListState = UI::ListView::State();
                     sSettingsSubMode = SettingsSubMode::SYSTEM_APPS;
+                } else if (item.dataOffset == ACTION_COLORS) {
+                    sColorsListState = UI::ListView::State();
+                    sSettingsSubMode = SettingsSubMode::COLORS;
                 } else if (item.dataOffset == ACTION_DEBUG_GRID) {
                     sCurrentMode = Mode::DEBUG_GRID;
                 }
@@ -418,19 +458,18 @@ void handleColorInputInput(uint32_t pressed, uint32_t held)
             }
         }
 
-        if (sEditingSettingIndex >= 0) {
-            const SettingItem& item = sSettingItems[sEditingSettingIndex];
-            if (item.type == SettingType::COLOR) {
-                uint32_t* color = getColorPtr(item.dataOffset);
-                *color = value;
-            }
+        if (sEditingColorOffset >= 0) {
+            uint32_t* color = getColorPtr(sEditingColorOffset);
+            *color = value;
         }
 
         sEditingSettingIndex = -1;
-        sSettingsSubMode = SettingsSubMode::MAIN;
+        sEditingColorOffset = -1;
+        sSettingsSubMode = sColorReturnSubmode;
     } else if (result == TextInput::Result::CANCELLED) {
         sEditingSettingIndex = -1;
-        sSettingsSubMode = SettingsSubMode::MAIN;
+        sEditingColorOffset = -1;
+        sSettingsSubMode = sColorReturnSubmode;
     }
 }
 
@@ -492,6 +531,35 @@ void launchSystemApp(int appId)
     }
 }
 
+void handleColorsInput(uint32_t pressed)
+{
+    UI::ListView::Config listConfig = UI::ListView::InputOnlyConfig(
+        Renderer::GetFooterRow() - LIST_START_ROW - 1);
+    listConfig.canConfirm = true;
+    listConfig.canCancel = true;
+
+    sColorsListState.itemCount = COLOR_OPTION_COUNT;
+
+    UI::ListView::HandleInput(sColorsListState, pressed, listConfig);
+    int selectedIdx = UI::ListView::GetSelectedIndex(sColorsListState);
+
+    UI::ListView::Action action = UI::ListView::GetAction(pressed, listConfig);
+    if (action == UI::ListView::Action::CONFIRM && isValidSelection(selectedIdx, COLOR_OPTION_COUNT)) {
+        const ColorOption& opt = sColorOptions[selectedIdx];
+        sEditingSettingIndex = selectedIdx;
+        sEditingColorOffset = opt.dataOffset;
+        sColorReturnSubmode = SettingsSubMode::COLORS;
+        uint32_t* color = getColorPtr(opt.dataOffset);
+        char hexStr[16];
+        snprintf(hexStr, sizeof(hexStr), "%08X", *color);
+        sInputField.Init(8, TextInput::Library::HEX);
+        sInputField.SetValue(hexStr);
+        sSettingsSubMode = SettingsSubMode::COLOR_INPUT;
+    } else if (action == UI::ListView::Action::CANCEL) {
+        sSettingsSubMode = SettingsSubMode::MAIN;
+    }
+}
+
 void handleSystemAppsInput(uint32_t pressed)
 {
     UI::ListView::Config listConfig = UI::ListView::InputOnlyConfig(
@@ -534,6 +602,9 @@ void Render()
         case SettingsSubMode::SYSTEM_APPS:
             renderSystemApps();
             break;
+        case SettingsSubMode::COLORS:
+            renderColors();
+            break;
         case SettingsSubMode::COLOR_INPUT:
             renderColorInput();
             break;
@@ -554,6 +625,9 @@ void HandleInput(uint32_t pressed, uint32_t held)
             break;
         case SettingsSubMode::SYSTEM_APPS:
             handleSystemAppsInput(pressed);
+            break;
+        case SettingsSubMode::COLORS:
+            handleColorsInput(pressed);
             break;
         case SettingsSubMode::COLOR_INPUT:
             handleColorInputInput(pressed, held);

@@ -25,6 +25,7 @@ enum class SettingsSubMode {
     MAIN,
     MANAGE_CATS,
     SYSTEM_APPS,
+    COLORS,
     COLOR_INPUT,
     NAME_INPUT
 };
@@ -39,7 +40,13 @@ enum class SettingType {
 enum SettingAction {
     ACTION_MANAGE_CATEGORIES = -1,
     ACTION_SYSTEM_APPS = -2,
-    ACTION_DEBUG_GRID = -3
+    ACTION_DEBUG_GRID = -3,
+    ACTION_COLORS = -4
+};
+
+struct ColorOption {
+    const char* name;
+    int dataOffset;
 };
 
 struct SettingItem {
@@ -56,6 +63,9 @@ struct SettingItem {
     {n, d1, d2, SettingType::COLOR, (int)offsetof(Settings::PluginSettings, member)}
 #define ACTION_SETTING(n, d1, d2, actionId) \
     {n, d1, d2, SettingType::ACTION, actionId}
+
+#define COLOR_OPTION(n, member) \
+    {n, (int)offsetof(Settings::PluginSettings, member)}
 
 // =============================================================================
 // System Apps Types
@@ -85,9 +95,12 @@ extern UI::ListView::State sEditCatsListState;
 extern UI::ListView::State sSettingsListState;
 extern UI::ListView::State sManageCatsListState;
 extern UI::ListView::State sSystemAppsListState;
+extern UI::ListView::State sColorsListState;
 
 extern SettingsSubMode sSettingsSubMode;
+extern SettingsSubMode sColorReturnSubmode;
 extern int sEditingSettingIndex;
+extern int sEditingColorOffset;
 extern int sEditingCategoryId;
 extern TextInput::Field sInputField;
 
@@ -101,6 +114,9 @@ extern const int SETTINGS_ITEM_COUNT;
 
 extern const SystemAppOption sSystemApps[];
 extern const int SYSTEM_APP_COUNT;
+
+extern const ColorOption sColorOptions[];
+extern const int COLOR_OPTION_COUNT;
 
 // =============================================================================
 // Shared Helper Functions
