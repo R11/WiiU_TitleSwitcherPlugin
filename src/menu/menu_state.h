@@ -41,7 +41,8 @@ enum SettingAction {
     ACTION_MANAGE_CATEGORIES = -1,
     ACTION_SYSTEM_APPS = -2,
     ACTION_DEBUG_GRID = -3,
-    ACTION_COLORS = -4
+    ACTION_COLORS = -4,
+    ACTION_MIIVERSE_TEST = -5
 };
 
 struct ColorOption {

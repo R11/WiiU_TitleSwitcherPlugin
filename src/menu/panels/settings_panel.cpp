@@ -346,6 +346,8 @@ void handleSettingsMainInput(uint32_t pressed)
                     sSettingsSubMode = SettingsSubMode::COLORS;
                 } else if (item.dataOffset == ACTION_DEBUG_GRID) {
                     sCurrentMode = Mode::DEBUG_GRID;
+                } else if (item.dataOffset == ACTION_MIIVERSE_TEST) {
+                    sCurrentMode = Mode::MIIVERSE_TEST;
                 }
                 break;
             }
