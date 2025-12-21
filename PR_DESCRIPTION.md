@@ -6,10 +6,10 @@ Adds a minimal prototype for fetching Miiverse posts from Pretendo Network direc
 
 - Implements `MiiverseAPI` namespace with token acquisition and post fetching
 - Uses `libcurlwrapper` for HTTPS requests (no external server needed)
-- Includes test harness for validating connectivity
+- **Adds test panel accessible from Settings menu**
 - Documents ParamPack format and API endpoints
 
-## Files Added
+## Files Added/Modified
 
 | File | Purpose |
 |------|---------|
@@ -18,6 +18,13 @@ Adds a minimal prototype for fetching Miiverse posts from Pretendo Network direc
 | `src/network/miiverse_test.h` | Test function declarations |
 | `src/network/miiverse_test.cpp` | Test harness for token + fetch |
 | `src/network/README.md` | Full documentation |
+| `src/menu/panels/miiverse_panel.h` | Test panel header |
+| `src/menu/panels/miiverse_panel.cpp` | Test panel UI implementation |
+| `src/menu/menu.h` | Added MIIVERSE_TEST mode |
+| `src/menu/menu.cpp` | Panel dispatch for new mode |
+| `src/menu/menu_state.h` | Added ACTION_MIIVERSE_TEST |
+| `src/menu/panels/settings_panel.cpp` | Menu entry handler |
+| `Makefile` | Added src/network, libcurlwrapper |
 
 ## Test Plan
 
@@ -28,28 +35,40 @@ Adds a minimal prototype for fetching Miiverse posts from Pretendo Network direc
    ```
    sd:/wiiu/environments/aroma/modules/
    ```
-3. **Build with libcurlwrapper**: Add to Makefile when integrating:
-   ```makefile
-   LIBS := -lcurlwrapper ...(existing libs)
-   SOURCES := ... src/network
-   ```
 
 ### Testing Steps
 
 1. Build and deploy the plugin to Wii U
-2. Trigger `MiiverseTest::runBasicTest()` (e.g., via menu action or button combo)
-3. Watch notifications for results:
-   - `"Token acquired: XXXX...XXXX"` = token acquisition works
-   - `"Found N posts"` = API fetch works
-   - `"First post by: Username"` = parsing works
+2. Open Title Switcher menu (L + R + Minus)
+3. Go to **Settings** (press Y)
+4. Select **"Miiverse Test"** from the list
+5. Press **A** to run the API test
+6. View results on screen:
+   - Status indicator (READY → INIT → TOKEN → FETCH → SUCCESS/ERROR)
+   - Token preview if acquired
+   - Post count and sample posts on success
+   - Error message on failure
 
 ### Expected Results
 
-| Test | Success | Failure |
-|------|---------|---------|
-| Init | "API initialized OK" | "Failed to init (CURLWrapperModule loaded?)" |
-| Token | "Token acquired: ..." | "Failed to acquire service token" |
-| Fetch | "Found N posts" | "Fetch failed: HTTP XXX" or error message |
+| Status | What It Means |
+|--------|---------------|
+| `READY` | Press A to start test |
+| `INIT...` | Initializing libcurlwrapper |
+| `TOKEN...` | Acquiring service token from console |
+| `FETCH...` | Making HTTPS request to Pretendo |
+| `SUCCESS` | Posts retrieved and parsed |
+| `ERROR` | Something failed (see error message) |
+
+### Possible Error Messages
+
+| Error | Cause |
+|-------|-------|
+| "Failed to init (CURLWrapperModule loaded?)" | Module not installed |
+| "Failed to acquire service token" | PNID not logged in, or wrong client ID |
+| "Fetch failed: HTTP 401" | Token rejected by Pretendo |
+| "Fetch failed: HTTP 404" | No posts for this title/community |
+| "Not running on Wii U hardware" | Test run in non-Wii U environment |
 
 ### Known Unknowns (Need Hardware Validation)
 
@@ -77,6 +96,31 @@ GET https://api.olv.pretendo.cc/v1/posts?title_id=XXX
 Base64-encoded backslash-delimited string:
 ```
 \title_id\{DECIMAL}\platform_id\0\region_id\2\language_id\1\country_id\49\...
+```
+
+### Test Panel UI
+
+```
+┌─────────────────────────────────────────┐
+│ MIIVERSE API TEST                       │
+│ ─────────────────────────               │
+│                                         │
+│ Status:   SUCCESS                       │
+│ Found 5 posts!                          │
+│                                         │
+│ Token:    ABCD1234...XYZ98765           │
+│                                         │
+│ Posts found: 5                          │
+│                                         │
+│ Sample posts:                           │
+│   1. PlayerName                         │
+│      This is a post about Mario Kart!   │
+│      Yeah! x3                           │
+│   2. AnotherUser                        │
+│      Great game!                        │
+│                                         │
+│ [A:Run Test]  [B:Back]                  │
+└─────────────────────────────────────────┘
 ```
 
 ## Next Steps (After Validation)
