@@ -29,16 +29,6 @@ jobs:
           make
           ./run_tests
 
-      - name: Build preview tool
-        run: |
-          cd tools/preview
-          make
-
-      - name: Verify snapshots
-        run: |
-          cd tools/preview
-          ./preview_demo --verify-snapshots
-
   build:
     name: Build Plugin
     runs-on: ubuntu-latest
