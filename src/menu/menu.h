@@ -6,6 +6,7 @@
 #pragma once
 
 #include <cstdint>
+#include "../common/layout_constants.h"
 
 namespace Menu {
 
@@ -25,10 +26,10 @@ struct FrameResult {
     uint64_t titleToLaunch;  // non-zero = launch this title after close
 };
 
-constexpr int CATEGORY_ROW = 0;
-constexpr int HEADER_ROW = 1;
-constexpr int LIST_START_ROW = 2;
-constexpr int LIST_START_COL = 0;
+constexpr int CATEGORY_ROW = Layout::Rows::CATEGORY;
+constexpr int HEADER_ROW = Layout::Rows::HEADER;
+constexpr int LIST_START_ROW = Layout::Rows::LIST_START;
+constexpr int LIST_START_COL = Layout::Cols::LIST_START;
 
 void Init();
 void Shutdown();

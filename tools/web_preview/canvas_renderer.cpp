@@ -7,6 +7,7 @@
 
 #include "stubs/renderer_stub.h"
 #include "render/bitmap_font.h"
+#include "common/screen_constants.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -24,31 +25,18 @@ namespace Renderer {
 // Screen Configuration
 // =============================================================================
 
-// Screen type for dual-screen rendering
-enum class Screen {
+// Screen target for dual-screen rendering
+enum class ScreenTarget {
     DRC,    // GamePad (always 854x480)
     TV      // TV (variable resolution)
 };
 
-// DRC dimensions (fixed)
-static constexpr int DRC_WIDTH = 854;
-static constexpr int DRC_HEIGHT = 480;
-
 // TV dimensions (variable, default 720p)
-static int sTvWidth = 1280;
-static int sTvHeight = 720;
-
-// Grid dimensions - match OSScreen's fixed 100x18 grid for DRC
-// OSScreen uses these hardcoded values, not computed from pixels
-static constexpr int OS_SCREEN_COLS = 100;
-static constexpr int OS_SCREEN_ROWS = 18;
-
-// Character cell dimensions - match renderer.cpp exactly
-static constexpr int OS_SCREEN_CHAR_WIDTH = 8;
-static constexpr int OS_SCREEN_CHAR_HEIGHT = 24;
+static int sTvWidth = Screen::TV::P720::WIDTH;
+static int sTvHeight = Screen::TV::P720::HEIGHT;
 
 // Current screen being rendered
-static Screen sCurrentScreen = Screen::DRC;
+static ScreenTarget sCurrentScreen = ScreenTarget::DRC;
 
 // Framebuffers (RGBA format)
 static uint32_t* sDrcFramebuffer = nullptr;
@@ -61,25 +49,25 @@ static uint32_t sBgColor = 0x1E1E2EFF;
 // =============================================================================
 
 static int getCurrentWidth() {
-    return (sCurrentScreen == Screen::DRC) ? DRC_WIDTH : sTvWidth;
+    return (sCurrentScreen == ScreenTarget::DRC) ? Screen::DRC::WIDTH : sTvWidth;
 }
 
 static int getCurrentHeight() {
-    return (sCurrentScreen == Screen::DRC) ? DRC_HEIGHT : sTvHeight;
+    return (sCurrentScreen == ScreenTarget::DRC) ? Screen::DRC::HEIGHT : sTvHeight;
 }
 
 static uint32_t* getCurrentFramebuffer() {
-    return (sCurrentScreen == Screen::DRC) ? sDrcFramebuffer : sTvFramebuffer;
+    return (sCurrentScreen == ScreenTarget::DRC) ? sDrcFramebuffer : sTvFramebuffer;
 }
 
 static int getGridCols() {
     // Use fixed OSScreen grid dimensions to match real hardware
-    return OS_SCREEN_COLS;
+    return Screen::Grid::COLS;
 }
 
 static int getGridRows() {
     // Use fixed OSScreen grid dimensions to match real hardware
-    return OS_SCREEN_ROWS;
+    return Screen::Grid::ROWS;
 }
 
 /**
@@ -125,9 +113,9 @@ bool Init() {
     if (sInitialized) return true;
 
     // Allocate DRC framebuffer
-    sDrcFramebuffer = new uint32_t[DRC_WIDTH * DRC_HEIGHT];
+    sDrcFramebuffer = new uint32_t[Screen::DRC::WIDTH * Screen::DRC::HEIGHT];
     if (!sDrcFramebuffer) return false;
-    std::memset(sDrcFramebuffer, 0, DRC_WIDTH * DRC_HEIGHT * sizeof(uint32_t));
+    std::memset(sDrcFramebuffer, 0, Screen::DRC::WIDTH * Screen::DRC::HEIGHT * sizeof(uint32_t));
 
     // Allocate TV framebuffer (max size for 1080p)
     sTvFramebuffer = new uint32_t[1920 * 1080];
@@ -163,7 +151,7 @@ bool IsInitialized() {
 // =============================================================================
 
 void SelectScreen(int screen) {
-    sCurrentScreen = (screen == 0) ? Screen::DRC : Screen::TV;
+    sCurrentScreen = (screen == 0) ? ScreenTarget::DRC : ScreenTarget::TV;
 }
 
 void SetTvResolution(int resolution) {
@@ -218,7 +206,7 @@ void EndFrame() {
             imageData.data.set(data);
             ctx.putImageData(imageData, 0, 0);
         }
-    }, DRC_WIDTH, DRC_HEIGHT, sDrcFramebuffer);
+    }, Screen::DRC::WIDTH, Screen::DRC::HEIGHT, sDrcFramebuffer);
 
     // Push TV framebuffer
     EM_ASM({
@@ -365,17 +353,17 @@ int GetScreenHeight() { return getCurrentHeight(); }
 int GetGridWidth() { return getGridCols(); }
 int GetGridHeight() { return getGridRows(); }
 
-int ColToPixelX(int col) { return col * OS_SCREEN_CHAR_WIDTH; }
-int RowToPixelY(int row) { return row * OS_SCREEN_CHAR_HEIGHT; }
+int ColToPixelX(int col) { return col * Screen::Grid::CHAR_WIDTH; }
+int RowToPixelY(int row) { return row * Screen::Grid::CHAR_HEIGHT; }
 
 // =============================================================================
 // Layout Functions
 // =============================================================================
 
-int GetDividerCol() { return (getGridCols() * 20) / 100; }
+int GetDividerCol() { return (getGridCols() * 50) / 100; }
 int GetDetailsPanelCol() { return GetDividerCol() + 2; }
 int GetListWidth() { return GetDividerCol(); }
-int GetVisibleRows() { return getGridRows() - 3; }
+int GetVisibleRows() { return getGridRows() - 5; }
 int GetFooterRow() { return getGridRows() - 1; }
 
 int GetTitleNameWidth(bool showLineNumbers) {
@@ -393,13 +381,13 @@ int GetTitleNameWidth(bool showLineNumbers) {
 static ScreenConfig sCurrentConfig;
 
 const ScreenConfig& GetScreenConfig() {
-    sCurrentConfig.name = (sCurrentScreen == Screen::DRC) ? "DRC (GamePad)" : "TV";
+    sCurrentConfig.name = (sCurrentScreen == ScreenTarget::DRC) ? "DRC (GamePad)" : "TV";
     sCurrentConfig.pixelWidth = getCurrentWidth();
     sCurrentConfig.pixelHeight = getCurrentHeight();
     sCurrentConfig.gridCols = getGridCols();
     sCurrentConfig.gridRows = getGridRows();
-    sCurrentConfig.charWidth = OS_SCREEN_CHAR_WIDTH;
-    sCurrentConfig.charHeight = OS_SCREEN_CHAR_HEIGHT;
+    sCurrentConfig.charWidth = Screen::Grid::CHAR_WIDTH;
+    sCurrentConfig.charHeight = Screen::Grid::CHAR_HEIGHT;
     sCurrentConfig.is4x3 = false;
     return sCurrentConfig;
 }
@@ -433,7 +421,7 @@ Backend GetBackend() { return Backend::OS_SCREEN; }
 const Layout::PixelLayout& GetLayout() {
     // Determine layout screen type based on current screen/resolution
     Layout::ScreenType layoutType;
-    if (sCurrentScreen == Screen::DRC) {
+    if (sCurrentScreen == ScreenTarget::DRC) {
         layoutType = Layout::ScreenType::DRC;
     } else {
         // TV - select based on resolution height

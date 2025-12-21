@@ -37,6 +37,10 @@ include_directories(
 set(MENU_SOURCES
     ${CMAKE_SOURCE_DIR}/../../src/menu/menu.cpp
     ${CMAKE_SOURCE_DIR}/../../src/menu/categories.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/menu/panels/browse_panel.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/menu/panels/settings_panel.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/menu/panels/edit_panel.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/menu/panels/debug_panel.cpp
     ${CMAKE_SOURCE_DIR}/../../src/ui/list_view.cpp
     ${CMAKE_SOURCE_DIR}/../../src/input/text_input.cpp
     ${CMAKE_SOURCE_DIR}/../../src/render/measurements.cpp

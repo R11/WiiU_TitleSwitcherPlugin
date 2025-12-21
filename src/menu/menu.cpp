@@ -1,24 +1,26 @@
 /**
  * Main Menu Implementation
+ * Core lifecycle, state management, and mode dispatching.
  */
 
 #include "menu.h"
+#include "menu_state.h"
 #include "categories.h"
+#include "panels/browse_panel.h"
+#include "panels/settings_panel.h"
+#include "panels/edit_panel.h"
+#include "panels/debug_panel.h"
 #include "../render/renderer.h"
 #include "../render/image_loader.h"
 #include "../render/measurements.h"
 #include "../input/buttons.h"
-#include "../input/text_input.h"
 #include "../titles/titles.h"
 #include "../storage/settings.h"
-#include "../presets/title_presets.h"
 #include "../ui/list_view.h"
 
 #include <vpad/input.h>
 #include <sysapp/launch.h>
-#include <sysapp/switch.h>
 #include <sysapp/title.h>
-#include <nn/ccr/sys.h>
 #include <coreinit/time.h>
 #include <notifications/notifications.h>
 
@@ -27,7 +29,7 @@
 
 namespace Menu {
 
-namespace {
+namespace Internal {
 
 bool sIsOpen = false;
 bool sInitialized = false;
@@ -35,75 +37,21 @@ Mode sCurrentMode = Mode::BROWSE;
 
 UI::ListView::State sTitleListState;
 UI::ListView::State sEditCatsListState;
-
-enum class SettingsSubMode {
-    MAIN,
-    MANAGE_CATS,
-    SYSTEM_APPS,
-    COLOR_INPUT,
-    NAME_INPUT
-};
-
-enum class SettingType {
-    TOGGLE,
-    COLOR,
-    BRIGHTNESS,
-    ACTION
-};
-
-enum SettingAction {
-    ACTION_MANAGE_CATEGORIES = -1,
-    ACTION_SYSTEM_APPS = -2,
-    ACTION_DEBUG_GRID = -3
-};
-
-struct SystemAppOption {
-    const char* name;
-    const char* description;
-    int appId;
-};
-
-constexpr int SYSAPP_RETURN_TO_MENU = -1;
-constexpr int SYSAPP_BROWSER = -2;
-constexpr int SYSAPP_ESHOP = -3;
-constexpr int SYSAPP_CONTROLLER_SYNC = -4;
-
-static const SystemAppOption sSystemApps[] = {
-    {"Return to Menu",       "Exit game and return to Wii U Menu",         SYSAPP_RETURN_TO_MENU},
-    {"Internet Browser",     "Open the Internet Browser",                   SYSAPP_BROWSER},
-    {"Nintendo eShop",       "Open the Nintendo eShop",                     SYSAPP_ESHOP},
-    {"Mii Maker",            "Open Mii Maker",                              SYSTEM_APP_ID_MII_MAKER},
-    {"System Settings",      "Open System Settings",                        SYSTEM_APP_ID_SYSTEM_SETTINGS},
-    // {"Controller Sync",      "Sync controllers (Gamepad, Wiimotes)",        SYSAPP_CONTROLLER_SYNC},
-    // {"Notifications",        "View system notifications",                   SYSTEM_APP_ID_NOTIFICATIONS},
-    // {"User Settings",        "Manage user accounts",                        SYSTEM_APP_ID_USER_SETTINGS},
-    {"Parental Controls",    "Open Parental Controls",                      SYSTEM_APP_ID_PARENTAL_CONTROLS},
-    {"Daily Log",            "View play activity",                          SYSTEM_APP_ID_DAILY_LOG},
-};
-
-static constexpr int SYSTEM_APP_COUNT = sizeof(sSystemApps) / sizeof(sSystemApps[0]);
-
+UI::ListView::State sSettingsListState;
+UI::ListView::State sManageCatsListState;
 UI::ListView::State sSystemAppsListState;
 
-struct SettingItem {
-    const char* name;
-    const char* descLine1;
-    const char* descLine2;
-    SettingType type;
-    int dataOffset;
-};
+SettingsSubMode sSettingsSubMode = SettingsSubMode::MAIN;
+int sEditingSettingIndex = -1;
+int sEditingCategoryId = -1;
+TextInput::Field sInputField;
 
-#define TOGGLE_SETTING(n, d1, d2, member) \
-    {n, d1, d2, SettingType::TOGGLE, (int)offsetof(Settings::PluginSettings, member)}
-#define COLOR_SETTING(n, d1, d2, member) \
-    {n, d1, d2, SettingType::COLOR, (int)offsetof(Settings::PluginSettings, member)}
-// #define BRIGHTNESS_SETTING(n, d1, d2) \
-//     {n, d1, d2, SettingType::BRIGHTNESS, 0}
-#define ACTION_SETTING(n, d1, d2, actionId) \
-    {n, d1, d2, SettingType::ACTION, actionId}
+OSTime sApplicationStartTime = 0;
+bool sInForeground = false;
+bool sOpeningInProgress = false;
+const uint32_t STARTUP_GRACE_MS = 3000;
 
-static const SettingItem sSettingItems[] = {
-    // BRIGHTNESS_SETTING("Gamepad Brightness", "Adjust Gamepad screen",   "brightness (1-5)."),
+const SettingItem sSettingItems[] = {
     ACTION_SETTING("System Apps",       "Launch system applications",   "(Browser, Settings, etc.)", ACTION_SYSTEM_APPS),
     TOGGLE_SETTING("Show Numbers",      "Show line numbers before",     "each title in the list.",   showNumbers),
     TOGGLE_SETTING("Show Favorites",    "Show favorite marker (*)",     "in the title list.",        showFavorites),
@@ -111,28 +59,28 @@ static const SettingItem sSettingItems[] = {
     ACTION_SETTING("Manage Categories", "Create, rename, or delete",    "custom categories.",        ACTION_MANAGE_CATEGORIES),
     ACTION_SETTING("Debug Grid",        "Show grid overlay with",       "dimensions and positions.", ACTION_DEBUG_GRID),
 };
+const int SETTINGS_ITEM_COUNT = sizeof(sSettingItems) / sizeof(sSettingItems[0]);
 
-static constexpr int SETTINGS_ITEM_COUNT = sizeof(sSettingItems) / sizeof(sSettingItems[0]);
+const SystemAppOption sSystemApps[] = {
+    {"Return to Menu",       "Exit game and return to Wii U Menu",         SYSAPP_RETURN_TO_MENU},
+    {"Internet Browser",     "Open the Internet Browser",                   SYSAPP_BROWSER},
+    {"Nintendo eShop",       "Open the Nintendo eShop",                     SYSAPP_ESHOP},
+    {"Mii Maker",            "Open Mii Maker",                              SYSTEM_APP_ID_MII_MAKER},
+    {"System Settings",      "Open System Settings",                        SYSTEM_APP_ID_SYSTEM_SETTINGS},
+    {"Parental Controls",    "Open Parental Controls",                      SYSTEM_APP_ID_PARENTAL_CONTROLS},
+    {"Daily Log",            "View play activity",                          SYSTEM_APP_ID_DAILY_LOG},
+};
+const int SYSTEM_APP_COUNT = sizeof(sSystemApps) / sizeof(sSystemApps[0]);
 
-UI::ListView::State sSettingsListState;
-SettingsSubMode sSettingsSubMode = SettingsSubMode::MAIN;
-UI::ListView::State sManageCatsListState;
-int sEditingSettingIndex = -1;
-int sEditingCategoryId = -1;
-TextInput::Field sInputField;
-
-bool* getTogglePtr(int offset) {
+bool* getTogglePtr(int offset)
+{
     return (bool*)((char*)&Settings::Get() + offset);
 }
 
-uint32_t* getColorPtr(int offset) {
+uint32_t* getColorPtr(int offset)
+{
     return (uint32_t*)((char*)&Settings::Get() + offset);
 }
-
-OSTime sApplicationStartTime = 0;
-bool sInForeground = false;
-bool sOpeningInProgress = false;
-constexpr uint32_t STARTUP_GRACE_MS = 3000;
 
 void clampSelection()
 {
@@ -145,1230 +93,36 @@ void drawHeaderDivider()
     Renderer::DrawText(0, HEADER_ROW, Measurements::HEADER_DIVIDER);
 }
 
-void drawDetailsPanelSectionHeader(const char* title, bool shortUnderline = false)
+void drawDetailsPanelSectionHeader(const char* title, bool shortUnderline)
 {
     int col = Renderer::GetDetailsPanelCol();
-    Renderer::DrawText(col, LIST_START_ROW, title);
+    Renderer::DrawText(col, LIST_START_ROW, title, Settings::Get().headerColor);
     Renderer::DrawText(col, LIST_START_ROW + Measurements::ROW_OFFSET_UNDERLINE,
-                       shortUnderline ? Measurements::SECTION_UNDERLINE_SHORT
-                                      : Measurements::SECTION_UNDERLINE);
+                      shortUnderline ? Measurements::SECTION_UNDERLINE_SHORT : Measurements::SECTION_UNDERLINE);
 }
 
 const char* getSettingActionHint(SettingType type)
 {
     switch (type) {
-        case SettingType::TOGGLE:     return "Press A to toggle";
-        case SettingType::COLOR:      return "Press A to edit";
-        case SettingType::BRIGHTNESS: return "Press A to adjust";
-        case SettingType::ACTION:     return "Press A to open";
-    }
-    return "";
-}
-
-inline bool isValidSelection(int index, int count)
-{
-    return index >= 0 && index < count;
-}
-
-void drawCategoryBar()
-{
-    char line[80];
-    int col = 0;
-
-    const Settings::PluginSettings& settings = Settings::Get();
-
-    // Draw each visible category tab
-    int catCount = Categories::GetTotalCategoryCount();
-    int currentCat = Categories::GetCurrentCategoryIndex();
-
-    for (int i = 0; i < catCount && col < Measurements::CATEGORY_BAR_MAX_WIDTH; i++) {
-        // Skip hidden categories
-        if (!Categories::IsCategoryVisible(i)) {
-            continue;
-        }
-
-        const char* name = Categories::GetCategoryName(i);
-        uint32_t color;
-
-        if (i == currentCat) {
-            // Highlighted category - use highlight color
-            snprintf(line, sizeof(line), "[%s] ", name);
-            color = settings.highlightedTitleColor;
-        } else {
-            snprintf(line, sizeof(line), " %s  ", name);
-            color = settings.categoryColor;
-        }
-
-        Renderer::DrawText(col, CATEGORY_ROW, line, color);
-        col += strlen(line);
-    }
-}
-
-void drawDivider()
-{
-    for (int row = LIST_START_ROW; row < Renderer::GetFooterRow(); row++) {
-        Renderer::DrawText(Renderer::GetDividerCol(), row, "|");
-    }
-}
-
-void drawTitleList()
-{
-    int count = Categories::GetFilteredCount();
-    sTitleListState.itemCount = count;
-
-    UI::ListView::Config listConfig = UI::ListView::LeftPanelConfig(Renderer::GetVisibleRows());
-    listConfig.width = Renderer::GetListWidth();
-    listConfig.showLineNumbers = Settings::Get().showNumbers;
-
-    UI::ListView::Render(sTitleListState, listConfig, [](int index, bool isSelected) {
-        UI::ListView::ItemView view;
-        const Titles::TitleInfo* title = Categories::GetFilteredTitle(index);
-
-        if (!title) {
-            view.text = "(error)";
-            return view;
-        }
-
-        view.text = title->name;
-        view.prefix = isSelected ? "> " : "  ";
-
-        // Apply colors from settings
-        const Settings::PluginSettings& settings = Settings::Get();
-        bool isFavorite = Settings::IsFavorite(title->titleId);
-
-        if (isSelected) {
-            view.textColor = settings.highlightedTitleColor;
-            view.prefixColor = settings.highlightedTitleColor;
-        } else if (isFavorite) {
-            view.textColor = settings.favoriteColor;
-        } else {
-            view.textColor = settings.titleColor;
-        }
-
-        // Favorite marker as suffix if enabled
-        if (settings.showFavorites && isFavorite) {
-            view.suffix = " *";
-        }
-
-        return view;
-    });
-}
-
-void drawDetailsPanelHeader(const Titles::TitleInfo* title)
-{
-    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW, title->name);
-
-    ImageLoader::Request(title->titleId, ImageLoader::Priority::HIGH);
-
-    const Layout::PixelLayout& layout = Renderer::GetLayout();
-    int iconX = layout.details.icon.x;
-    int iconY = layout.details.icon.y;
-    int iconSize = layout.iconSize;
-
-    if (ImageLoader::IsReady(title->titleId)) {
-        Renderer::ImageHandle icon = ImageLoader::Get(title->titleId);
-        Renderer::DrawImage(iconX, iconY, icon, iconSize, iconSize);
-    } else {
-        Renderer::DrawPlaceholder(iconX, iconY, iconSize, iconSize, 0x333333FF);
-    }
-}
-
-void drawDetailsPanelBasicInfo(const Titles::TitleInfo* title, int& currentRow)
-{
-    int col = Renderer::GetDetailsPanelCol();
-
-    char idStr[32];
-    snprintf(idStr, sizeof(idStr), "ID: %016llX",
-             static_cast<unsigned long long>(title->titleId));
-    Renderer::DrawText(col, currentRow++, idStr);
-
-    const char* favStatus = Settings::IsFavorite(title->titleId) ? "Yes" : "No";
-    Renderer::DrawTextF(col, currentRow++, "Favorite: %s", favStatus);
-
-    if (title->productCode[0] != '\0') {
-        Renderer::DrawTextF(col, currentRow++, "Game ID: %s", title->productCode);
-    } else {
-        Renderer::DrawText(col, currentRow++, "Game ID: (none)");
-    }
-}
-
-void drawDetailsPanelPreset(const TitlePresets::TitlePreset* preset, int& currentRow)
-{
-    if (!preset) return;
-
-    int col = Renderer::GetDetailsPanelCol();
-    int maxRow = Renderer::GetFooterRow() - 3;
-
-    currentRow++;
-
-    if (preset->publisher[0] != '\0') {
-        Renderer::DrawTextF(col, currentRow++, "Pub: %s", preset->publisher);
-    }
-
-    if (preset->developer[0] != '\0' && currentRow < maxRow) {
-        Renderer::DrawTextF(col, currentRow++, "Dev: %s", preset->developer);
-    }
-
-    // Release date
-    if (preset->releaseYear > 0 && currentRow < maxRow) {
-        if (preset->releaseMonth > 0 && preset->releaseDay > 0) {
-            Renderer::DrawTextF(col, currentRow++, "Released: %04d-%02d-%02d",
-                               preset->releaseYear, preset->releaseMonth, preset->releaseDay);
-        } else if (preset->releaseMonth > 0) {
-            Renderer::DrawTextF(col, currentRow++, "Released: %04d-%02d",
-                               preset->releaseYear, preset->releaseMonth);
-        } else {
-            Renderer::DrawTextF(col, currentRow++, "Released: %04d", preset->releaseYear);
-        }
-    }
-
-    // Genre and region
-    if (currentRow < maxRow) {
-        if (preset->genre[0] != '\0' && preset->region[0] != '\0') {
-            Renderer::DrawTextF(col, currentRow++, "%s / %s", preset->genre, preset->region);
-        } else if (preset->genre[0] != '\0') {
-            Renderer::DrawTextF(col, currentRow++, "Genre: %s", preset->genre);
-        } else if (preset->region[0] != '\0') {
-            Renderer::DrawTextF(col, currentRow++, "Region: %s", preset->region);
-        }
-    }
-}
-
-/**
- * Draw category assignments for this title.
- */
-void drawDetailsPanelCategories(uint64_t titleId, int& currentRow)
-{
-    if (currentRow >= Renderer::GetFooterRow() - 2) return;
-
-    int col = Renderer::GetDetailsPanelCol();
-
-    currentRow++;  // Blank line before categories
-    Renderer::DrawText(col, currentRow++, "Categories:");
-
-    uint16_t catIds[Settings::MAX_CATEGORIES];
-    int catCount = Settings::GetCategoriesForTitle(titleId, catIds, Settings::MAX_CATEGORIES);
-
-    if (catCount == 0) {
-        Renderer::DrawText(col + Measurements::INDENT_SUB_ITEM, currentRow, "(none)");
-    } else {
-        for (int i = 0; i < catCount && currentRow < Renderer::GetFooterRow() - 1; i++) {
-            const Settings::Category* cat = Settings::GetCategory(catIds[i]);
-            if (cat) {
-                Renderer::DrawTextF(col + Measurements::INDENT_SUB_ITEM, currentRow++, "- %s", cat->name);
-            }
-        }
-    }
-}
-
-/**
- * Draw the details panel on the right side.
- * Orchestrates the individual section renderers.
- */
-void drawDetailsPanel()
-{
-    int count = Categories::GetFilteredCount();
-    int selectedIdx = UI::ListView::GetSelectedIndex(sTitleListState);
-    if (count == 0 || selectedIdx < 0 || selectedIdx >= count) {
-        return;
-    }
-
-    const Titles::TitleInfo* title = Categories::GetFilteredTitle(selectedIdx);
-    if (!title) return;
-
-    // Header: title name and icon
-    drawDetailsPanelHeader(title);
-
-    // Info sections start after icon area
-    int currentRow = Measurements::GetInfoStartRow(LIST_START_ROW);
-
-    // Basic info: ID, favorite, game ID
-    drawDetailsPanelBasicInfo(title, currentRow);
-
-    // Preset metadata (if available)
-    const TitlePresets::TitlePreset* preset = nullptr;
-    if (title->productCode[0] != '\0') {
-        preset = TitlePresets::GetPresetByGameId(title->productCode);
-    }
-    drawDetailsPanelPreset(preset, currentRow);
-
-    // Category assignments
-    drawDetailsPanelCategories(title->titleId, currentRow);
-}
-
-/**
- * Draw the footer with controls and status.
- */
-void drawFooter()
-{
-    int count = Categories::GetFilteredCount();
-    int selectedIdx = UI::ListView::GetSelectedIndex(sTitleListState);
-
-    int pending, ready, failed, total;
-    ImageLoader::GetLoadingStats(&pending, &ready, &failed, &total);
-
-    char footer[120];
-        snprintf(footer, sizeof(footer),
-                 "%s:Go %s:Close %s:Fav %s:Edit %s:Settings ZL/ZR:Cat [%d/%d] %d/%d",
-                 Buttons::Actions::CONFIRM.label,
-                 Buttons::Actions::CANCEL.label,
-                 Buttons::Actions::FAVORITE.label,
-                 Buttons::Actions::EDIT.label,
-                 Buttons::Actions::SETTINGS.label,
-                 selectedIdx + 1,
-                 count,
-                 ready,
-                 total);
-
-    Renderer::DrawText(0, Renderer::GetFooterRow(), footer);
-}
-
-/**
- * Render the main browse mode screen.
- */
-void renderBrowseMode()
-{
-    drawCategoryBar();
-    drawHeaderDivider();
-    drawDivider();
-    drawTitleList();
-    drawDetailsPanel();
-    drawFooter();
-}
-
-/**
- * Handle input in browse mode.
- * @param pressed Buttons just pressed this frame
- * @return Title ID to launch, or 0 if none
- */
-uint64_t handleBrowseModeInput(uint32_t pressed)
-{
-    int count = Categories::GetFilteredCount();
-    sTitleListState.itemCount = count;
-
-    // Configure ListView for navigation
-    UI::ListView::Config listConfig = UI::ListView::BrowseModeConfig(Renderer::GetVisibleRows());
-
-    // Handle navigation via ListView
-    UI::ListView::HandleInput(sTitleListState, pressed, listConfig);
-    int selectedIdx = UI::ListView::GetSelectedIndex(sTitleListState);
-
-    // Category navigation (ZL/ZR) - handled separately as these change the list
-    if (Buttons::Actions::CATEGORY_PREV.Pressed(pressed)) {
-        Categories::PreviousCategory();
-        sTitleListState = UI::ListView::State();  // Reset list state
-        clampSelection();
-    }
-    if (Buttons::Actions::CATEGORY_NEXT.Pressed(pressed)) {
-        Categories::NextCategory();
-        sTitleListState = UI::ListView::State();  // Reset list state
-        clampSelection();
-    }
-
-    // Handle actions
-    UI::ListView::Action action = UI::ListView::GetAction(pressed, listConfig);
-    switch (action) {
-        case UI::ListView::Action::FAVORITE:
-            // Toggle favorite
-            if (isValidSelection(selectedIdx, count)) {
-                const Titles::TitleInfo* title = Categories::GetFilteredTitle(selectedIdx);
-                if (title) {
-                    Settings::ToggleFavorite(title->titleId);
-                    // Re-filter in case we're in Favorites category
-                    Categories::RefreshFilter();
-                    clampSelection();
-                }
-            }
-            break;
-
-        case UI::ListView::Action::CANCEL:
-            // Close menu
-            sIsOpen = false;
-            return 0;
-
-        case UI::ListView::Action::CONFIRM:
-            // Launch title
-            if (isValidSelection(selectedIdx, count)) {
-                const Titles::TitleInfo* title = Categories::GetFilteredTitle(selectedIdx);
-                if (title) {
-                    sIsOpen = false;
-                    return title->titleId;
-                }
-            }
-            break;
-
+        case SettingType::TOGGLE:
+            return "A: Toggle value";
+        case SettingType::COLOR:
+            return "A: Edit color";
+        case SettingType::BRIGHTNESS:
+            return "A: Cycle brightness";
+        case SettingType::ACTION:
+            return "A: Select";
         default:
-            break;
-    }
-
-    // Edit mode (X) - handled separately as it's not a standard ListView action
-    if (Buttons::Actions::EDIT.Pressed(pressed)) {
-        sEditCatsListState = UI::ListView::State();  // Reset list state
-        sCurrentMode = Mode::EDIT;
-    }
-
-    // Settings (Plus) - handled separately
-    if (Buttons::Actions::SETTINGS.Pressed(pressed)) {
-        sSettingsListState = UI::ListView::State();  // Reset list state
-        sSettingsSubMode = SettingsSubMode::MAIN;
-        sCurrentMode = Mode::SETTINGS;
-    }
-
-    return 0;
-}
-
-/**
- * Render the edit mode screen.
- * Left side: Title list (read-only)
- * Right side: Category checkboxes
- */
-void renderEditMode()
-{
-    // Get the title being edited
-    int titleIdx = UI::ListView::GetSelectedIndex(sTitleListState);
-    const Titles::TitleInfo* title = Categories::GetFilteredTitle(titleIdx);
-    if (!title) {
-        Renderer::DrawText(0, 0, "Error: No title selected");
-        return;
-    }
-
-    // --- Header ---
-    Renderer::DrawText(0, 0, "EDIT TITLE CATEGORIES");
-    drawHeaderDivider();
-
-    // --- Left side: Title info (abbreviated) ---
-    char nameLine[32];
-    strncpy(nameLine, title->name, 28);
-    nameLine[28] = '\0';
-    Renderer::DrawTextF(0, LIST_START_ROW, "> %s", nameLine);
-
-    // Show title ID
-    Renderer::DrawTextF(0, LIST_START_ROW + Measurements::ROW_OFFSET_CONTENT_START, "ID: %016llX",
-                      static_cast<unsigned long long>(title->titleId));
-
-    // --- Divider ---
-    drawDivider();
-
-    // --- Right side: Category checkboxes using ListView ---
-    drawDetailsPanelSectionHeader("Categories:");
-
-    // Get user-defined categories
-    int catCount = Settings::GetCategoryCount();
-    const auto& categories = Settings::Get().categories;
-    uint64_t titleId = title->titleId;
-
-    if (catCount == 0) {
-        Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_SECTION_START,
-                         "No categories defined.");
-        Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_CONTENT_LINE2,
-                         "Create in Settings (+)");
-    } else {
-        UI::ListView::Config listConfig = UI::ListView::DetailsPanelConfig(
-            Measurements::ROW_OFFSET_SECTION_START,
-            Measurements::CATEGORY_EDIT_VISIBLE_ROWS);
-        listConfig.canToggle = true;
-
-        sEditCatsListState.itemCount = catCount;
-
-        UI::ListView::Render(sEditCatsListState, listConfig, [&categories, titleId](int index, bool isSelected) {
-            UI::ListView::ItemView view;
-            const Settings::Category& cat = categories[index];
-            bool inCategory = Settings::TitleHasCategory(titleId, cat.id);
-
-            // Build prefix with cursor and checkbox
-            static char prefixBuf[16];
-            snprintf(prefixBuf, sizeof(prefixBuf), "%s%s ",
-                    isSelected ? ">" : " ",
-                    inCategory ? "[X]" : "[ ]");
-            view.prefix = prefixBuf;
-            view.text = cat.name;
-            return view;
-        });
-    }
-
-    // --- Footer ---
-    int selectedIdx = UI::ListView::GetSelectedIndex(sEditCatsListState);
-    char footer[80];
-    snprintf(footer, sizeof(footer),
-             "%s:Toggle %s:Back  [Category %d/%d]",
-             Buttons::Actions::CONFIRM.label,
-             Buttons::Actions::CANCEL.label,
-             catCount > 0 ? selectedIdx + 1 : 0,
-             catCount > 0 ? catCount : 1);
-    Renderer::DrawText(0, Renderer::GetFooterRow(), footer);
-}
-
-/**
- * Handle input in edit mode.
- * @param pressed Buttons just pressed this frame
- */
-void handleEditModeInput(uint32_t pressed)
-{
-    int titleIdx = UI::ListView::GetSelectedIndex(sTitleListState);
-    const Titles::TitleInfo* title = Categories::GetFilteredTitle(titleIdx);
-    if (!title) {
-        // No title selected - go back
-        sCurrentMode = Mode::BROWSE;
-        return;
-    }
-
-    int catCount = Settings::GetCategoryCount();
-
-    // Configure ListView for checkbox-style list
-    UI::ListView::Config listConfig = UI::ListView::EditModeConfig(Measurements::CATEGORY_EDIT_VISIBLE_ROWS);
-
-    sEditCatsListState.itemCount = catCount;
-
-    // Handle navigation
-    UI::ListView::HandleInput(sEditCatsListState, pressed, listConfig);
-    int selectedIdx = UI::ListView::GetSelectedIndex(sEditCatsListState);
-
-    // Handle actions
-    UI::ListView::Action action = UI::ListView::GetAction(pressed, listConfig);
-    switch (action) {
-        case UI::ListView::Action::TOGGLE:
-            // Toggle category assignment
-            if (catCount > 0 && selectedIdx >= 0 && selectedIdx < catCount) {
-                const auto& categories = Settings::Get().categories;
-                uint16_t catId = categories[selectedIdx].id;
-
-                if (Settings::TitleHasCategory(title->titleId, catId)) {
-                    Settings::RemoveTitleFromCategory(title->titleId, catId);
-                } else {
-                    Settings::AssignTitleToCategory(title->titleId, catId);
-                }
-                // Refresh the filter in case this affects the current view
-                Categories::RefreshFilter();
-            }
-            break;
-
-        case UI::ListView::Action::CANCEL:
-            // Save changes before exiting
-            Settings::Save();
-            sCurrentMode = Mode::BROWSE;
-            break;
-
-        default:
-            break;
+            return "";
     }
 }
 
-/**
- * Get current gamepad brightness level (1-5).
- */
-int getCurrentBrightness()
-{
-    CCRSysLCDMode mode;
-    if (CCRSysGetCurrentLCDMode(&mode) == 0) {
-        return static_cast<int>(mode) + 1;  // Convert 0-4 to 1-5
-    }
-    return 3;  // Default to middle if read fails
 }
 
-/**
- * Set gamepad brightness level (1-5).
- */
-void setBrightness(int level)
-{
-    if (level < 1) level = 1;
-    if (level > 5) level = 5;
-    CCRSysLCDMode mode = static_cast<CCRSysLCDMode>(level - 1);  // Convert 1-5 to 0-4
-    CCRSysSetCurrentLCDMode(mode);
-}
+using namespace Internal;
 
-/**
- * Render the main settings list.
- */
-void renderSettingsMain()
-{
-    // --- Header ---
-    Renderer::DrawText(0, 0, "SETTINGS");
-    drawHeaderDivider();
+namespace {
 
-    // --- Divider ---
-    drawDivider();
-
-    // --- Left side: Settings list using ListView ---
-    UI::ListView::Config listConfig = UI::ListView::LeftPanelConfig();
-
-    sSettingsListState.itemCount = SETTINGS_ITEM_COUNT;
-
-    UI::ListView::Render(sSettingsListState, listConfig, [](int index, bool isSelected) {
-        UI::ListView::ItemView view;
-        const SettingItem& item = sSettingItems[index];
-        view.prefix = isSelected ? "> " : "  ";
-
-        // Build text based on setting type
-        static char textBuf[64];
-        switch (item.type) {
-            case SettingType::TOGGLE: {
-                bool value = *getTogglePtr(item.dataOffset);
-                snprintf(textBuf, sizeof(textBuf), "%s: %s", item.name, value ? "ON" : "OFF");
-                break;
-            }
-            case SettingType::COLOR: {
-                uint32_t value = *getColorPtr(item.dataOffset);
-                snprintf(textBuf, sizeof(textBuf), "%s: %08X", item.name, value);
-                break;
-            }
-            case SettingType::BRIGHTNESS: {
-                int brightness = getCurrentBrightness();
-                char bar[8] = "-----";
-                for (int b = 0; b < brightness && b < 5; b++) bar[b] = '=';
-                snprintf(textBuf, sizeof(textBuf), "%s: [%s] %d", item.name, bar, brightness);
-                break;
-            }
-            case SettingType::ACTION: {
-                if (item.dataOffset == ACTION_MANAGE_CATEGORIES) {
-                    snprintf(textBuf, sizeof(textBuf), "%s (%d)", item.name, Settings::GetCategoryCount());
-                } else {
-                    snprintf(textBuf, sizeof(textBuf), "%s", item.name);
-                }
-                break;
-            }
-        }
-        view.text = textBuf;
-        return view;
-    });
-
-    // --- Right side: Description ---
-    drawDetailsPanelSectionHeader("Description:");
-
-    // Show description for selected item
-    int selectedIdx = UI::ListView::GetSelectedIndex(sSettingsListState);
-    if (isValidSelection(selectedIdx, SETTINGS_ITEM_COUNT)) {
-        const SettingItem& selected = sSettingItems[selectedIdx];
-        Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_SECTION_START, selected.descLine1);
-        Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_CONTENT_LINE2, selected.descLine2);
-
-        // Show action hint based on type
-        Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_HINT,
-                          getSettingActionHint(selected.type));
-    }
-
-    // --- Footer ---
-    Renderer::DrawTextF(0, Renderer::GetFooterRow(), "%s:Edit %s:Back  [%d/%d]",
-                      Buttons::Actions::CONFIRM.label,
-                      Buttons::Actions::CANCEL.label,
-                      selectedIdx + 1, SETTINGS_ITEM_COUNT);
-}
-
-/**
- * Render the manage categories submenu.
- */
-void renderManageCategories()
-{
-    // --- Header ---
-    Renderer::DrawText(0, 0, "MANAGE CATEGORIES");
-    drawHeaderDivider();
-
-    // --- Divider ---
-    drawDivider();
-
-    int catCount = Settings::GetCategoryCount();
-    const auto& categories = Settings::Get().categories;
-
-    // --- Left side: Category list using ListView ---
-    UI::ListView::Config listConfig = UI::ListView::LeftPanelConfig(Measurements::CATEGORY_MANAGE_VISIBLE_ROWS);
-    listConfig.canReorder = true;
-    listConfig.canDelete = true;
-
-    sManageCatsListState.itemCount = catCount;
-
-    if (catCount == 0) {
-        Renderer::DrawText(2, LIST_START_ROW, "(No categories)");
-        Renderer::DrawTextF(2, LIST_START_ROW + Measurements::ROW_OFFSET_CONTENT_START, "Press %s to create one", Buttons::Actions::SETTINGS.label);
-    } else {
-        UI::ListView::Render(sManageCatsListState, listConfig, [&categories](int index, bool isSelected) {
-            UI::ListView::ItemView view;
-            const Settings::Category& cat = categories[index];
-            view.text = cat.name;
-            view.prefix = isSelected ? "> " : "  ";
-            view.suffix = cat.hidden ? " (hidden)" : "";
-            return view;
-        });
-    }
-
-    // --- Right side: Actions ---
-    drawDetailsPanelSectionHeader("Actions:", true);
-
-    int selectedIdx = UI::ListView::GetSelectedIndex(sManageCatsListState);
-    if (catCount == 0) {
-        Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_SECTION_START, "No categories yet.");
-        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_GAP, "%s: Add New",
-                          Buttons::Actions::SETTINGS.label);
-    } else if (selectedIdx >= 0 && selectedIdx < catCount) {
-        const Settings::Category& cat = categories[selectedIdx];
-        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_SECTION_START, "Category: %s", cat.name);
-
-        // Show visibility status
-        const char* visStatus = cat.hidden ? "Hidden" : "Visible";
-        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_CONTENT_LINE2, "Status: %s", visStatus);
-
-        // Action hints
-        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_HINT, "%s: Rename",
-                          Buttons::Actions::CONFIRM.label);
-        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_INFO_START, "%s: Delete",
-                          Buttons::Actions::EDIT.label);
-        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_INFO_LINE2, "%s: %s",
-                          Buttons::Actions::FAVORITE.label,
-                          cat.hidden ? "Show" : "Hide");
-        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_INFO_LINE3, "%s: Add New",
-                          Buttons::Actions::SETTINGS.label);
-        Renderer::DrawTextF(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_ACTIONS, "%s/%s: Move Up/Down",
-                          Buttons::Actions::NAV_PAGE_UP.label,
-                          Buttons::Actions::NAV_PAGE_DOWN.label);
-    }
-
-    // --- Footer ---
-    Renderer::DrawTextF(0, Renderer::GetFooterRow(), "%s:Rename %s:Back %s:Hide %s:Add  [%d/%d]",
-                      Buttons::Actions::CONFIRM.label,
-                      Buttons::Actions::CANCEL.label,
-                      Buttons::Actions::FAVORITE.label,
-                      Buttons::Actions::SETTINGS.label,
-                      catCount > 0 ? selectedIdx + 1 : 0, catCount);
-}
-
-/**
- * Render color input mode.
- */
-void renderColorInput()
-{
-    Renderer::DrawText(0, 0, "EDIT COLOR");
-    drawHeaderDivider();
-
-    const char* colorName = (sEditingSettingIndex >= 0) ? sSettingItems[sEditingSettingIndex].name : "Unknown";
-    Renderer::DrawTextF(0, LIST_START_ROW, "Editing: %s", colorName);
-    Renderer::DrawText(0, LIST_START_ROW + Measurements::ROW_OFFSET_CONTENT_START, "Enter RGBA hex value (8 digits):");
-
-    // Render the input field
-    sInputField.Render(0, LIST_START_ROW + Measurements::ROW_OFFSET_CONTENT_LINE2);
-
-    // Instructions
-    Renderer::DrawText(0, LIST_START_ROW + Measurements::ROW_OFFSET_INFO_START, "Up/Down: Change character");
-    Renderer::DrawTextF(0, LIST_START_ROW + Measurements::ROW_OFFSET_INFO_LINE2, "%s/%s: Move cursor",
-                      Buttons::Actions::INPUT_RIGHT.label,
-                      Buttons::Actions::INPUT_LEFT.label);
-    Renderer::DrawTextF(0, LIST_START_ROW + Measurements::ROW_OFFSET_INFO_LINE3, "%s: Delete  %s: Confirm  %s: Cancel",
-                      Buttons::Actions::INPUT_DELETE.label,
-                      Buttons::Actions::INPUT_CONFIRM.label,
-                      Buttons::Actions::INPUT_CANCEL.label);
-}
-
-/**
- * Render category name input mode.
- */
-void renderNameInput()
-{
-    Renderer::DrawText(0, 0, "CATEGORY NAME");
-    drawHeaderDivider();
-
-    if (sEditingCategoryId < 0) {
-        Renderer::DrawText(0, LIST_START_ROW, "Enter name for new category:");
-    } else {
-        Renderer::DrawText(0, LIST_START_ROW, "Enter new name:");
-    }
-
-    // Render the input field
-    sInputField.Render(0, LIST_START_ROW + Measurements::ROW_OFFSET_CONTENT_START);
-
-    // Instructions
-    Renderer::DrawText(0, LIST_START_ROW + Measurements::ROW_OFFSET_GAP, "Up/Down: Change character");
-    Renderer::DrawTextF(0, LIST_START_ROW + Measurements::ROW_OFFSET_HINT, "%s/%s: Move cursor",
-                      Buttons::Actions::INPUT_RIGHT.label,
-                      Buttons::Actions::INPUT_LEFT.label);
-    Renderer::DrawTextF(0, LIST_START_ROW + Measurements::ROW_OFFSET_INFO_START, "%s: Delete  %s: Confirm  %s: Cancel",
-                      Buttons::Actions::INPUT_DELETE.label,
-                      Buttons::Actions::INPUT_CONFIRM.label,
-                      Buttons::Actions::INPUT_CANCEL.label);
-}
-
-/**
- * Render the system apps submenu.
- */
-void renderSystemApps()
-{
-    // --- Header ---
-    Renderer::DrawText(0, 0, "SYSTEM APPS");
-    drawHeaderDivider();
-
-    // --- Divider ---
-    drawDivider();
-
-    // --- Left side: System app list using ListView ---
-    UI::ListView::Config listConfig = UI::ListView::LeftPanelConfig();
-
-    sSystemAppsListState.itemCount = SYSTEM_APP_COUNT;
-
-    UI::ListView::Render(sSystemAppsListState, listConfig, [](int index, bool isSelected) {
-        UI::ListView::ItemView view;
-        view.text = sSystemApps[index].name;
-        view.prefix = isSelected ? "> " : "  ";
-        return view;
-    });
-
-    // --- Right side: Description ---
-    drawDetailsPanelSectionHeader("Description:");
-
-    // Show description for selected app
-    int selectedIdx = UI::ListView::GetSelectedIndex(sSystemAppsListState);
-    if (isValidSelection(selectedIdx, SYSTEM_APP_COUNT)) {
-        const SystemAppOption& app = sSystemApps[selectedIdx];
-        Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_SECTION_START, app.description);
-    }
-
-    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_GAP, "Press A to launch");
-    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_INFO_START, "Note: The game will be");
-    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_INFO_LINE2, "suspended while the");
-    Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_INFO_LINE3, "system app is open.");
-
-    // --- Footer ---
-    Renderer::DrawTextF(0, Renderer::GetFooterRow(), "%s:Launch %s:Back  [%d/%d]",
-                      Buttons::Actions::CONFIRM.label,
-                      Buttons::Actions::CANCEL.label,
-                      selectedIdx + 1, SYSTEM_APP_COUNT);
-}
-
-/**
- * Render the settings mode screen.
- */
-void renderSettingsMode()
-{
-    switch (sSettingsSubMode) {
-        case SettingsSubMode::MAIN:
-            renderSettingsMain();
-            break;
-        case SettingsSubMode::MANAGE_CATS:
-            renderManageCategories();
-            break;
-        case SettingsSubMode::SYSTEM_APPS:
-            renderSystemApps();
-            break;
-        case SettingsSubMode::COLOR_INPUT:
-            renderColorInput();
-            break;
-        case SettingsSubMode::NAME_INPUT:
-            renderNameInput();
-            break;
-    }
-}
-
-/**
- * Handle main settings list input.
- */
-void handleSettingsMainInput(uint32_t pressed)
-{
-    // Configure ListView for navigation
-    UI::ListView::Config listConfig = UI::ListView::InputOnlyConfig(
-        Renderer::GetFooterRow() - LIST_START_ROW - 1);
-    listConfig.canConfirm = true;
-    listConfig.canCancel = true;
-    // Disable skip navigation - we use Left/Right for brightness adjustment
-    listConfig.smallSkip = 1;  // Make Left/Right act like Up/Down
-
-    sSettingsListState.itemCount = SETTINGS_ITEM_COUNT;
-
-    // Handle navigation
-    UI::ListView::HandleInput(sSettingsListState, pressed, listConfig);
-    int selectedIdx = UI::ListView::GetSelectedIndex(sSettingsListState);
-
-    // Handle actions
-    UI::ListView::Action action = UI::ListView::GetAction(pressed, listConfig);
-    if (action == UI::ListView::Action::CONFIRM && selectedIdx >= 0) {
-        const SettingItem& item = sSettingItems[selectedIdx];
-
-        switch (item.type) {
-            case SettingType::TOGGLE: {
-                // Toggle the boolean value
-                bool* value = getTogglePtr(item.dataOffset);
-                *value = !(*value);
-                break;
-            }
-            case SettingType::COLOR: {
-                // Edit color - initialize input field with current value
-                sEditingSettingIndex = selectedIdx;
-                uint32_t* color = getColorPtr(item.dataOffset);
-                char hexStr[16];
-                snprintf(hexStr, sizeof(hexStr), "%08X", *color);
-                sInputField.Init(8, TextInput::Library::HEX);
-                sInputField.SetValue(hexStr);
-                sSettingsSubMode = SettingsSubMode::COLOR_INPUT;
-                break;
-            }
-            case SettingType::BRIGHTNESS: {
-                // A cycles through brightness levels
-                int brightness = getCurrentBrightness();
-                setBrightness((brightness % 5) + 1);
-                break;
-            }
-            case SettingType::ACTION: {
-                // Handle action based on action ID
-                if (item.dataOffset == ACTION_MANAGE_CATEGORIES) {
-                    sManageCatsListState = UI::ListView::State();  // Reset list state
-                    sSettingsSubMode = SettingsSubMode::MANAGE_CATS;
-                } else if (item.dataOffset == ACTION_SYSTEM_APPS) {
-                    sSystemAppsListState = UI::ListView::State();  // Reset state
-                    sSettingsSubMode = SettingsSubMode::SYSTEM_APPS;
-                } else if (item.dataOffset == ACTION_DEBUG_GRID) {
-                    sCurrentMode = Mode::DEBUG_GRID;
-                }
-                break;
-            }
-        }
-    }
-
-    // Back
-    if (action == UI::ListView::Action::CANCEL) {
-        Settings::Save();
-        sCurrentMode = Mode::BROWSE;
-    }
-}
-
-/**
- * Handle manage categories input.
- */
-void handleManageCategoriesInput(uint32_t pressed)
-{
-    int catCount = Settings::GetCategoryCount();
-    const auto& categories = Settings::Get().categories;
-
-    // Configure ListView
-    UI::ListView::Config listConfig = UI::ListView::InputOnlyConfig(Measurements::CATEGORY_MANAGE_VISIBLE_ROWS);
-    listConfig.canConfirm = true;
-    listConfig.canCancel = true;
-    listConfig.canReorder = true;
-    listConfig.canDelete = true;
-    listConfig.canFavorite = true;  // Y for toggle visibility
-
-    sManageCatsListState.itemCount = catCount;
-
-    // Handle navigation
-    UI::ListView::HandleInput(sManageCatsListState, pressed, listConfig);
-    int selectedIdx = UI::ListView::GetSelectedIndex(sManageCatsListState);
-
-    // Add new category (+) - handled separately
-    if (Buttons::Actions::SETTINGS.Pressed(pressed)) {
-        sEditingCategoryId = -1;  // -1 = new
-        sInputField.Init(Settings::MAX_CATEGORY_NAME - 1, TextInput::Library::ALPHA_NUMERIC);
-        sInputField.Clear();
-        sSettingsSubMode = SettingsSubMode::NAME_INPUT;
-        return;
-    }
-
-    // Handle actions
-    UI::ListView::Action action = UI::ListView::GetAction(pressed, listConfig);
-    switch (action) {
-        case UI::ListView::Action::CONFIRM:
-            // Rename selected category
-            if (isValidSelection(selectedIdx, catCount)) {
-                const Settings::Category& cat = categories[selectedIdx];
-                sEditingCategoryId = cat.id;
-                sInputField.Init(Settings::MAX_CATEGORY_NAME - 1, TextInput::Library::ALPHA_NUMERIC);
-                sInputField.SetValue(cat.name);
-                sSettingsSubMode = SettingsSubMode::NAME_INPUT;
-            }
-            break;
-
-        case UI::ListView::Action::DELETE:
-            // Delete category
-            if (isValidSelection(selectedIdx, catCount)) {
-                uint16_t catId = categories[selectedIdx].id;
-                Settings::DeleteCategory(catId);
-                // Update item count and clamp selection
-                sManageCatsListState.SetItemCount(Settings::GetCategoryCount(), listConfig.visibleRows);
-                Categories::RefreshFilter();
-            }
-            break;
-
-        case UI::ListView::Action::FAVORITE:
-            // Toggle visibility
-            if (isValidSelection(selectedIdx, catCount)) {
-                uint16_t catId = categories[selectedIdx].id;
-                bool currentlyHidden = Settings::IsCategoryHidden(catId);
-                Settings::SetCategoryHidden(catId, !currentlyHidden);
-            }
-            break;
-
-        case UI::ListView::Action::MOVE_UP:
-            // Move category up
-            if (catCount > 0 && selectedIdx > 0 && selectedIdx < catCount) {
-                uint16_t catId = categories[selectedIdx].id;
-                Settings::MoveCategoryUp(catId);
-                // Follow the moved category
-                sManageCatsListState.selectedIndex--;
-            }
-            break;
-
-        case UI::ListView::Action::MOVE_DOWN:
-            // Move category down
-            if (catCount > 0 && selectedIdx >= 0 && selectedIdx < catCount - 1) {
-                uint16_t catId = categories[selectedIdx].id;
-                Settings::MoveCategoryDown(catId);
-                // Follow the moved category
-                sManageCatsListState.selectedIndex++;
-            }
-            break;
-
-        case UI::ListView::Action::CANCEL:
-            // Back
-            sSettingsSubMode = SettingsSubMode::MAIN;
-            break;
-
-        default:
-            break;
-    }
-}
-
-/**
- * Handle color input.
- */
-void handleColorInputInput(uint32_t pressed, uint32_t held)
-{
-    TextInput::Result result = sInputField.HandleInput(pressed, held);
-
-    if (result == TextInput::Result::CONFIRMED) {
-        // Parse the hex value
-        char hexStr[16];
-        sInputField.GetValue(hexStr, sizeof(hexStr));
-
-        // Convert to uint32_t
-        uint32_t value = 0;
-        for (int i = 0; hexStr[i] != '\0' && i < 8; i++) {
-            char c = hexStr[i];
-            value <<= 4;
-            if (c >= '0' && c <= '9') {
-                value |= (c - '0');
-            } else if (c >= 'A' && c <= 'F') {
-                value |= (c - 'A' + 10);
-            } else if (c >= 'a' && c <= 'f') {
-                value |= (c - 'a' + 10);
-            }
-        }
-
-        // Set the color using the data-driven system
-        if (sEditingSettingIndex >= 0) {
-            const SettingItem& item = sSettingItems[sEditingSettingIndex];
-            if (item.type == SettingType::COLOR) {
-                uint32_t* color = getColorPtr(item.dataOffset);
-                *color = value;
-            }
-        }
-
-        sEditingSettingIndex = -1;
-        sSettingsSubMode = SettingsSubMode::MAIN;
-    } else if (result == TextInput::Result::CANCELLED) {
-        sEditingSettingIndex = -1;
-        sSettingsSubMode = SettingsSubMode::MAIN;
-    }
-}
-
-/**
- * Handle name input.
- */
-void handleNameInputInput(uint32_t pressed, uint32_t held)
-{
-    TextInput::Result result = sInputField.HandleInput(pressed, held);
-
-    if (result == TextInput::Result::CONFIRMED) {
-        char name[Settings::MAX_CATEGORY_NAME];
-        sInputField.GetValue(name, sizeof(name));
-
-        // Only proceed if name is not empty
-        if (name[0] != '\0') {
-            if (sEditingCategoryId < 0) {
-                // Create new category
-                Settings::CreateCategory(name);
-            } else {
-                // Rename existing category
-                Settings::RenameCategory(static_cast<uint16_t>(sEditingCategoryId), name);
-            }
-
-            // Refresh category filter
-            Categories::RefreshFilter();
-        }
-
-        sEditingCategoryId = -1;
-        sSettingsSubMode = SettingsSubMode::MANAGE_CATS;
-    } else if (result == TextInput::Result::CANCELLED) {
-        sEditingCategoryId = -1;
-        sSettingsSubMode = SettingsSubMode::MANAGE_CATS;
-    }
-}
-
-/**
- * Launch a system app by ID.
- * Closes the menu and launches the requested app.
- */
-void launchSystemApp(int appId)
-{
-    // Close the menu first
-    sIsOpen = false;
-
-    switch (appId) {
-        case SYSAPP_RETURN_TO_MENU:
-            SYSLaunchMenu();
-            break;
-        case SYSAPP_BROWSER:
-            SYSSwitchToBrowser(nullptr);
-            break;
-        case SYSAPP_ESHOP:
-            SYSSwitchToEShop(nullptr);
-            break;
-        case SYSAPP_CONTROLLER_SYNC:
-            SYSSwitchToSyncControllerOnHBM();
-            break;
-        default:
-            // Standard system app - use _SYSLaunchSettings or SYSLaunchMiiStudio
-            if (appId == SYSTEM_APP_ID_MII_MAKER) {
-                SYSLaunchMiiStudio(nullptr);
-            } else if (appId == SYSTEM_APP_ID_SYSTEM_SETTINGS) {
-                _SYSLaunchSettings(nullptr);
-            } else if (appId == SYSTEM_APP_ID_PARENTAL_CONTROLS) {
-                _SYSLaunchParental(nullptr);
-            } else if (appId == SYSTEM_APP_ID_NOTIFICATIONS) {
-                _SYSLaunchNotifications(nullptr);
-            } else {
-                // Try generic title launch for other system apps
-                // Note: This may not work for all apps
-                SYSLaunchMenu();  // Fallback to menu
-            }
-            break;
-    }
-}
-
-/**
- * Handle system apps submenu input.
- */
-void handleSystemAppsInput(uint32_t pressed)
-{
-    // Configure ListView for input handling
-    UI::ListView::Config listConfig = UI::ListView::InputOnlyConfig(
-        Renderer::GetFooterRow() - LIST_START_ROW - 1);
-    listConfig.canConfirm = true;
-    listConfig.canCancel = true;
-
-    sSystemAppsListState.itemCount = SYSTEM_APP_COUNT;
-
-    // Handle navigation
-    UI::ListView::HandleInput(sSystemAppsListState, pressed, listConfig);
-
-    // Handle actions
-    UI::ListView::Action action = UI::ListView::GetAction(pressed, listConfig);
-    switch (action) {
-        case UI::ListView::Action::CONFIRM: {
-            int idx = UI::ListView::GetSelectedIndex(sSystemAppsListState);
-            if (idx >= 0 && idx < SYSTEM_APP_COUNT) {
-                launchSystemApp(sSystemApps[idx].appId);
-            }
-            break;
-        }
-        case UI::ListView::Action::CANCEL:
-            sSettingsSubMode = SettingsSubMode::MAIN;
-            break;
-        default:
-            break;
-    }
-}
-
-/**
- * Handle input in settings mode.
- * @param pressed Buttons just pressed this frame
- * @param held    Buttons held this frame (for text input repeat)
- */
-void handleSettingsModeInput(uint32_t pressed, uint32_t held)
-{
-    switch (sSettingsSubMode) {
-        case SettingsSubMode::MAIN:
-            handleSettingsMainInput(pressed);
-            break;
-        case SettingsSubMode::MANAGE_CATS:
-            handleManageCategoriesInput(pressed);
-            break;
-        case SettingsSubMode::SYSTEM_APPS:
-            handleSystemAppsInput(pressed);
-            break;
-        case SettingsSubMode::COLOR_INPUT:
-            handleColorInputInput(pressed, held);
-            break;
-        case SettingsSubMode::NAME_INPUT:
-            handleNameInputInput(pressed, held);
-            break;
-    }
-}
-
-void renderDebugGridMode()
-{
-    int w = Renderer::GetScreenWidth();
-    int h = Renderer::GetScreenHeight();
-
-    // ABSOLUTE PIXEL POSITIONS (red) - actual screen coordinates
-    // These are fixed regardless of any OSScreen margins
-    Renderer::DrawVLine(0, 0, h, 0xFF0000FF);        // Left edge X=0
-    Renderer::DrawVLine(w - 1, 0, h, 0xFF0000FF);    // Right edge X=853
-    Renderer::DrawVLine(w / 2, 0, h, 0xFF000080);    // Screen center X=427 (dimmer)
-    Renderer::DrawHLine(0, 0, w, 0xFF0000FF);        // Top edge Y=0
-    Renderer::DrawHLine(0, h - 1, w, 0xFF0000FF);    // Bottom edge Y=479
-    Renderer::DrawHLine(0, h / 2, w, 0xFF000080);    // Screen center Y=240 (dimmer)
-
-    // Corner pixels for visibility
-    Renderer::DrawPixel(0, 0, 0xFF0000FF);
-    Renderer::DrawPixel(w - 1, 0, 0xFF0000FF);
-    Renderer::DrawPixel(0, h - 1, 0xFF0000FF);
-    Renderer::DrawPixel(w - 1, h - 1, 0xFF0000FF);
-
-    // CHARACTER GRID POSITIONS (green) - where does text actually render?
-    Renderer::DrawText(0, 0, "X", 0x00FF00FF);       // Character at col 0, row 0
-    Renderer::DrawText(50, 0, "M", 0x00FF00FF);      // Character at col 50 (grid center)
-    Renderer::DrawText(99, 0, "E", 0x00FF00FF);      // Character at col 99 (rightmost)
-
-    // CALCULATED positions (cyan) - where we think columns should be
-    int calcCol0 = 0 * 8;
-    int calcCol50 = 50 * 8;
-    int calcCol99 = 99 * 8;
-
-    Renderer::DrawVLine(calcCol0, 50, h - 100, 0x00FFFFFF);
-    Renderer::DrawVLine(calcCol50, 50, h - 100, 0x00FFFFFF);
-    Renderer::DrawVLine(calcCol99, 50, h - 100, 0x00FFFFFF);
-
-    // DIVIDER position (yellow)
-    int dividerCol = Renderer::GetDividerCol();
-    int dividerPixel = Renderer::ColToPixelX(dividerCol);
-    Renderer::DrawVLine(dividerPixel, 50, h - 100, 0xFFFF00FF);
-
-    // Labels
-    Renderer::DrawTextF(1, 3, 0xFFFFFFFF, "SCREEN: %dx%d pixels", w, h);
-    Renderer::DrawTextF(1, 4, 0xFFFFFFFF, "GRID: 100x18 chars @ 8x24 = 800x432");
-    Renderer::DrawTextF(1, 5, 0xFF8080FF, "RED = actual screen edges (pixel 0, %d, %d)", w / 2, w - 1);
-    Renderer::DrawTextF(1, 6, 0x80FFFFFF, "CYAN = calculated col 0,50,99 (pixels 0,400,792)");
-    Renderer::DrawTextF(1, 7, 0x80FF80FF, "GREEN X,M,E = where col 0,50,99 actually render");
-    Renderer::DrawTextF(1, 8, 0xFFFF80FF, "YELLOW = divider at col %d (pixel %d)", dividerCol, dividerPixel);
-    Renderer::DrawText(1, 10, "If X is RIGHT of red edge, OSScreen has LEFT MARGIN", 0xFFFFFFFF);
-    Renderer::DrawText(1, 11, "If M is RIGHT of red center, OSScreen centers grid", 0xFFFFFFFF);
-
-    Renderer::DrawTextF(1, 13, 0xCDD6F4FF, "Expected margins: L=%d R=%d (total %d unaccounted)",
-                        (w - 800) / 2, (w - 800) / 2, w - 800);
-    Renderer::DrawTextF(1, 14, 0xCDD6F4FF, "                  T=%d B=%d (total %d unaccounted)",
-                        (h - 432) / 2, (h - 432) / 2, h - 432);
-
-    Renderer::DrawText(1, Renderer::GetGridHeight() - 1, "[B:Back]", 0x888888FF);
-}
-
-/**
- * Handle input in debug grid mode.
- */
-void handleDebugGridModeInput(uint32_t pressed)
-{
-    // B to go back to settings
-    if (Buttons::Actions::CANCEL.Pressed(pressed)) {
-        sCurrentMode = Mode::SETTINGS;
-    }
-}
-
-/**
- * Process a single frame (render + input).
- * Non-blocking - returns immediately after one frame.
- * @return FrameResult indicating whether to continue and any title to launch
- */
 FrameResult processFrameInternal()
 {
     FrameResult result = {true, 0};
@@ -1378,37 +132,31 @@ FrameResult processFrameInternal()
         return result;
     }
 
-    // Begin frame (waits for vsync, clears screen)
     Renderer::BeginFrame(Settings::Get().bgColor);
 
-    // Render based on current mode
     switch (sCurrentMode) {
         case Mode::BROWSE:
-            renderBrowseMode();
+            BrowsePanel::Render();
             break;
         case Mode::EDIT:
-            renderEditMode();
+            EditPanel::Render();
             break;
         case Mode::SETTINGS:
-            renderSettingsMode();
+            SettingsPanel::Render();
             break;
         case Mode::DEBUG_GRID:
-            renderDebugGridMode();
+            DebugPanel::Render();
             break;
     }
 
-    // Process image loading queue
-    // HIGH priority (selected title) loads immediately, others throttled
     static uint32_t frameCounter = 0;
     frameCounter++;
     if (ImageLoader::HasHighPriorityPending() || frameCounter % 10 == 0) {
         ImageLoader::Update();
     }
 
-    // End frame (flush and flip)
     Renderer::EndFrame();
 
-    // Read input
     VPADStatus vpadStatus;
     VPADReadError vpadError;
     int32_t readResult = VPADRead(VPAD_CHAN_0, &vpadStatus, 1, &vpadError);
@@ -1417,24 +165,22 @@ FrameResult processFrameInternal()
         uint32_t pressed = vpadStatus.trigger;
         uint32_t held = vpadStatus.hold;
 
-        // Handle input based on current mode
         switch (sCurrentMode) {
             case Mode::BROWSE:
-                result.titleToLaunch = handleBrowseModeInput(pressed);
+                result.titleToLaunch = BrowsePanel::HandleInput(pressed);
                 break;
             case Mode::EDIT:
-                handleEditModeInput(pressed);
+                EditPanel::HandleInput(pressed);
                 break;
             case Mode::SETTINGS:
-                handleSettingsModeInput(pressed, held);
+                SettingsPanel::HandleInput(pressed, held);
                 break;
             case Mode::DEBUG_GRID:
-                handleDebugGridModeInput(pressed);
+                DebugPanel::HandleInput(pressed);
                 break;
         }
     }
 
-    // Check if menu was closed during input handling
     if (!sIsOpen) {
         result.shouldContinue = false;
     }
@@ -1442,10 +188,6 @@ FrameResult processFrameInternal()
     return result;
 }
 
-/**
- * Main menu loop (blocking).
- * @return Title ID to launch, or 0 if cancelled
- */
 uint64_t runMenuLoop()
 {
     while (sIsOpen) {
@@ -1499,9 +241,6 @@ bool IsSafeToOpen()
         return false;
     }
 
-    // Note: ProcUIIsRunning() check removed - some games (e.g. Picross 3D)
-    // don't use ProcUI normally but the menu can still work fine.
-
     return true;
 }
 
@@ -1514,8 +253,6 @@ void Open()
 {
     if (sIsOpen) return;
 
-    // Mark that we're in the opening phase to prevent foreground release
-    // from interrupting initialization (fixes flash in Shovel Knight)
     sOpeningInProgress = true;
 
     if (!Renderer::Init()) {
@@ -1563,22 +300,20 @@ void RenderFrame()
 {
     if (!sIsOpen) return;
 
-    // Begin frame
     Renderer::BeginFrame(Settings::Get().bgColor);
 
-    // Render based on current mode
     switch (sCurrentMode) {
         case Mode::BROWSE:
-            renderBrowseMode();
+            BrowsePanel::Render();
             break;
         case Mode::EDIT:
-            renderEditMode();
+            EditPanel::Render();
             break;
         case Mode::SETTINGS:
-            renderSettingsMode();
+            SettingsPanel::Render();
             break;
         case Mode::DEBUG_GRID:
-            renderDebugGridMode();
+            DebugPanel::Render();
             break;
     }
 }
@@ -1592,14 +327,12 @@ FrameResult HandleInputFrame()
         return result;
     }
 
-    // Process image loading queue
     static uint32_t frameCounter = 0;
     frameCounter++;
     if (ImageLoader::HasHighPriorityPending() || frameCounter % 10 == 0) {
         ImageLoader::Update();
     }
 
-    // Read input
     VPADStatus vpadStatus;
     VPADReadError vpadError;
     int32_t readResult = VPADRead(VPAD_CHAN_0, &vpadStatus, 1, &vpadError);
@@ -1608,24 +341,22 @@ FrameResult HandleInputFrame()
         uint32_t pressed = vpadStatus.trigger;
         uint32_t held = vpadStatus.hold;
 
-        // Handle input based on current mode
         switch (sCurrentMode) {
             case Mode::BROWSE:
-                result.titleToLaunch = handleBrowseModeInput(pressed);
+                result.titleToLaunch = BrowsePanel::HandleInput(pressed);
                 break;
             case Mode::EDIT:
-                handleEditModeInput(pressed);
+                EditPanel::HandleInput(pressed);
                 break;
             case Mode::SETTINGS:
-                handleSettingsModeInput(pressed, held);
+                SettingsPanel::HandleInput(pressed, held);
                 break;
             case Mode::DEBUG_GRID:
-                handleDebugGridModeInput(pressed);
+                DebugPanel::HandleInput(pressed);
                 break;
         }
     }
 
-    // Check if menu was closed during input handling
     if (!sIsOpen) {
         result.shouldContinue = false;
     }
@@ -1672,8 +403,6 @@ void OnForegroundAcquired()
 
 void OnForegroundReleased()
 {
-    // Ignore foreground releases during menu opening to prevent flash
-    // (some games briefly release foreground during initialization)
     if (sOpeningInProgress) {
         return;
     }
@@ -1685,4 +414,4 @@ void OnForegroundReleased()
     }
 }
 
-} // namespace Menu
+}
