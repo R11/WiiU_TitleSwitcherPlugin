@@ -14,7 +14,8 @@ enum class Mode {
     BROWSE,
     EDIT,
     SETTINGS,
-    DEBUG_GRID
+    DEBUG_GRID,
+    MIIVERSE_TEST
 };
 
 /**

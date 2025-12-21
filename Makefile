@@ -22,9 +22,9 @@ WUMS_ROOT := $(DEVKITPRO)/wums
 #-------------------------------------------------------------------------------
 TARGET		:=	TitleSwitcherPlugin
 BUILD		:=	build
-SOURCES		:=	src src/common src/input src/render src/render/gx2 src/render/gx2/shaders src/titles src/storage src/menu src/menu/panels src/utils src/editor src/presets src/ui
+SOURCES		:=	src src/common src/input src/render src/render/gx2 src/render/gx2/shaders src/titles src/storage src/menu src/menu/panels src/utils src/editor src/presets src/ui src/network
 DATA		:=	data
-INCLUDES	:=	src src/common src/input src/render src/render/gx2 src/render/gx2/shaders src/titles src/storage src/menu src/menu/panels src/utils src/editor src/presets src/ui
+INCLUDES	:=	src src/common src/input src/render src/render/gx2 src/render/gx2/shaders src/titles src/storage src/menu src/menu/panels src/utils src/editor src/presets src/ui src/network
 
 #-------------------------------------------------------------------------------
 # options for code generation
@@ -44,7 +44,7 @@ CXXFLAGS += -DDEBUG -g
 CFLAGS += -DDEBUG -g
 endif
 
-LIBS	:= -lnotifications -lmappedmemory -lgd -lpng -ljpeg -lz -lwups -lwut
+LIBS	:= -lcurl -lmbedtls -lmbedx509 -lmbedcrypto -lnotifications -lmappedmemory -lgd -lpng -ljpeg -lz -lwups -lwut
 
 #-------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level

@@ -10,6 +10,7 @@
 #include "panels/settings_panel.h"
 #include "panels/edit_panel.h"
 #include "panels/debug_panel.h"
+#include "panels/miiverse_panel.h"
 #include "../render/renderer.h"
 #include "../render/image_loader.h"
 #include "../render/measurements.h"
@@ -60,6 +61,7 @@ const SettingItem sSettingItems[] = {
     TOGGLE_SETTING("Show Favorites",    "Show favorite marker (*)",     "in the title list.",        showFavorites),
     ACTION_SETTING("Customize Colors",  "Change menu colors:",          "background, text, etc.",    ACTION_COLORS),
     ACTION_SETTING("Manage Categories", "Create, rename, or delete",    "custom categories.",        ACTION_MANAGE_CATEGORIES),
+    ACTION_SETTING("Miiverse Test",     "Test Pretendo Miiverse API",   "(requires CURLWrapper)",    ACTION_MIIVERSE_TEST),
     ACTION_SETTING("Debug Grid",        "Show grid overlay with",       "dimensions and positions.", ACTION_DEBUG_GRID),
 };
 const int SETTINGS_ITEM_COUNT = sizeof(sSettingItems) / sizeof(sSettingItems[0]);
@@ -160,6 +162,9 @@ FrameResult processFrameInternal()
         case Mode::DEBUG_GRID:
             DebugPanel::Render();
             break;
+        case Mode::MIIVERSE_TEST:
+            MiiversePanel::Render();
+            break;
     }
 
     static uint32_t frameCounter = 0;
@@ -190,6 +195,9 @@ FrameResult processFrameInternal()
                 break;
             case Mode::DEBUG_GRID:
                 DebugPanel::HandleInput(pressed);
+                break;
+            case Mode::MIIVERSE_TEST:
+                MiiversePanel::HandleInput(pressed);
                 break;
         }
     }
@@ -328,6 +336,9 @@ void RenderFrame()
         case Mode::DEBUG_GRID:
             DebugPanel::Render();
             break;
+        case Mode::MIIVERSE_TEST:
+            MiiversePanel::Render();
+            break;
     }
 }
 
@@ -366,6 +377,9 @@ FrameResult HandleInputFrame()
                 break;
             case Mode::DEBUG_GRID:
                 DebugPanel::HandleInput(pressed);
+                break;
+            case Mode::MIIVERSE_TEST:
+                MiiversePanel::HandleInput(pressed);
                 break;
         }
     }
