@@ -196,6 +196,9 @@ FrameResult processFrameInternal()
             case Mode::DEBUG_GRID:
                 DebugPanel::HandleInput(pressed);
                 break;
+            case Mode::MIIVERSE_TEST:
+                MiiversePanel::HandleInput(pressed);
+                break;
         }
     }
 

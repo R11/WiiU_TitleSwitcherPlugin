@@ -3,8 +3,6 @@
 
 #ifdef __WIIU__
 #include <notifications/notifications.h>
-#include <whb/log.h>
-#include <whb/log_console.h>
 #endif
 
 #include <string>
@@ -16,14 +14,16 @@ namespace {
 void log(const char* message) {
 #ifdef __WIIU__
     NotificationModule_AddInfoNotification(message);
-    WHBLogPrintf("%s", message);
+#else
+    (void)message;
 #endif
 }
 
 void logError(const char* message) {
 #ifdef __WIIU__
     NotificationModule_AddErrorNotification(message);
-    WHBLogPrintf("ERROR: %s", message);
+#else
+    (void)message;
 #endif
 }
 
