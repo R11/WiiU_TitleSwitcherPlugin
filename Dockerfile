@@ -5,10 +5,10 @@ COPY --from=ghcr.io/wiiu-env/wiiupluginsystem:latest /artifacts $DEVKITPRO
 COPY --from=ghcr.io/wiiu-env/libnotifications:latest /artifacts $DEVKITPRO
 COPY --from=ghcr.io/wiiu-env/libmappedmemory:20230621 /artifacts $DEVKITPRO
 
-# Install libgd and dependencies for image loading
+# Install libgd, libcurl, and dependencies
 # Retry with backoff - devkitPro servers sometimes rate-limit CI runners
 RUN for i in 1 2 3 4 5; do \
-      dkp-pacman -Sy --noconfirm --overwrite '*' ppc-libgd ppc-libpng ppc-libjpeg-turbo ppc-zlib && break || \
+      dkp-pacman -Sy --noconfirm --overwrite '*' ppc-libgd ppc-libpng ppc-libjpeg-turbo ppc-zlib wiiu-curl && break || \
       echo "Attempt $i failed, retrying in $((i*10)) seconds..." && sleep $((i*10)); \
     done
 
