@@ -91,7 +91,7 @@ constexpr int CATEGORY_BAR_MAX_WIDTH = 60;
 /// Column indent for sub-items (e.g., category list items)
 constexpr int INDENT_SUB_ITEM = 2;
 
-constexpr const char* HEADER_DIVIDER = "------------------------------------------------------------";
+constexpr const char* HEADER_DIVIDER = "------------------------------------------------------------------------------------------------------------------------------------------------------------------------------";
 constexpr const char* SECTION_UNDERLINE = "------------";
 constexpr const char* SECTION_UNDERLINE_SHORT = "--------";
 

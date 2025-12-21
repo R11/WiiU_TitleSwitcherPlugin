@@ -6,6 +6,7 @@
 #pragma once
 
 #include <cstdint>
+#include "../ui/layout.h"
 
 namespace Renderer {
 
@@ -41,6 +42,11 @@ bool SupportsImages();
 void DrawImage(int pixelX, int pixelY, ImageHandle image, int width = 0, int height = 0);
 void DrawPlaceholder(int pixelX, int pixelY, int width, int height, uint32_t color);
 
+// Pixel drawing (for debug overlays)
+void DrawPixel(int x, int y, uint32_t color);
+void DrawHLine(int x, int y, int length, uint32_t color);
+void DrawVLine(int x, int y, int length, uint32_t color);
+
 int ColToPixelX(int column);
 int RowToPixelY(int row);
 
@@ -55,5 +61,9 @@ int GetListWidth();
 int GetVisibleRows();
 int GetFooterRow();
 int GetTitleNameWidth(bool showLineNumbers);
+
+// Layout system access
+const Layout::PixelLayout& GetLayout();
+void SetLayoutPreferences(const Layout::LayoutPreferences& prefs);
 
 }

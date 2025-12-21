@@ -25,11 +25,11 @@ cd tests && make && ./run_tests
 ```
 Tests use Google Test framework with mocked WUPS/WUT APIs.
 
-### Preview Tool
+### Web Preview (Primary UI Testing)
 ```bash
-cd tools/preview && make && ./preview_demo
+cd tools/web_preview/build && make && open ../index.html
 ```
-ASCII renderer for validating UI layouts without hardware. Options: `--screen drc|tv1080|tv720|tv480`, `--no-color`, `--compact`.
+Canvas-based browser preview for testing UI layouts. Supports DRC and TV resolutions with interactive switching. **The web preview must be kept in sync with the main codebase** - when modifying UI code, update `tools/web_preview/stubs/` and rebuild before testing.
 
 ## Architecture
 
@@ -100,24 +100,23 @@ Built-in categories defined in `categories.cpp`. User categories stored in setti
 
 ## Git Hooks
 
-Install the pre-commit hook to automatically run tests and update snapshots:
+Install the pre-commit hook to automatically run tests:
 ```bash
 ./scripts/install-hooks.sh
 ```
 
-The pre-commit hook will:
-- Run unit tests (abort commit if they fail)
-- Regenerate snapshots and stage any changes
+The pre-commit hook will run unit tests and abort the commit if they fail.
 
 To skip temporarily: `git commit --no-verify`
 
 ## Testing Changes
 
 1. Run unit tests: `cd tests && make && ./run_tests`
-2. Run preview tool: `cd tools/preview && make && ./preview_demo`
-3. Verify snapshots: `cd tools/preview && ./preview_demo --verify-snapshots`
-4. Build plugin: `./build.sh`
-5. Test on hardware or Cemu
+2. Rebuild and test web preview: `cd tools/web_preview/build && make && open ../index.html`
+3. Build plugin: `./build.sh`
+4. Test on hardware or Cemu
+
+When making UI changes, always update `tools/web_preview/stubs/` to match and rebuild the web preview.
 
 ## Dependencies
 

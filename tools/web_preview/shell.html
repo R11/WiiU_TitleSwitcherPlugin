@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Wii U Title Switcher - Menu Preview</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #11111b;
+            color: #cdd6f4;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #89b4fa;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+
+        .subtitle {
+            color: #6c7086;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .screens-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .screen-wrapper {
+            position: relative;
+            border: 3px solid #313244;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .screen-wrapper.tv {
+            border-color: #45475a;
+        }
+
+        .screen-wrapper.drc {
+            border-color: #89b4fa;
+        }
+
+        .screen-wrapper canvas {
+            display: block;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        .screen-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+        }
+
+        .screen-wrapper.tv .screen-label {
+            color: #a6e3a1;
+        }
+
+        .screen-wrapper.drc .screen-label {
+            color: #f5c2e7;
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .control-group {
+            background: #1e1e2e;
+            border: 1px solid #313244;
+            border-radius: 8px;
+            padding: 15px 20px;
+        }
+
+        .control-group h3 {
+            color: #89b4fa;
+            font-size: 14px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #313244;
+            padding-bottom: 5px;
+        }
+
+        .key-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 5px 0;
+            font-size: 13px;
+        }
+
+        .key {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 28px;
+            height: 24px;
+            padding: 0 6px;
+            background: #313244;
+            border: 1px solid #45475a;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 11px;
+            color: #f9e2af;
+        }
+
+        .arrow-keys {
+            display: grid;
+            grid-template-columns: repeat(3, 32px);
+            grid-template-rows: repeat(2, 28px);
+            gap: 2px;
+            margin: 10px 0;
+        }
+
+        .arrow-keys .key {
+            width: 32px;
+            height: 28px;
+        }
+
+        .arrow-keys .key:first-child {
+            grid-column: 2;
+        }
+
+        .action {
+            color: #a6adc8;
+        }
+
+        .tv-options {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .tv-options label {
+            color: #a6adc8;
+            font-size: 13px;
+        }
+
+        .tv-options select {
+            background: #313244;
+            color: #cdd6f4;
+            border: 1px solid #45475a;
+            border-radius: 4px;
+            padding: 5px 10px;
+            font-size: 13px;
+        }
+
+        .status {
+            margin-top: 15px;
+            padding: 10px 15px;
+            background: #1e1e2e;
+            border: 1px solid #313244;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .status .ready { color: #a6e3a1; }
+        .status .loading { color: #f9e2af; }
+        .status .error { color: #f38ba8; }
+
+        #output {
+            display: none;
+        }
+
+        @media (max-width: 900px) {
+            .controls {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Wii U Title Switcher</h1>
+    <p class="subtitle">Interactive Menu Preview - Dual Screen</p>
+
+    <div class="screens-container">
+        <!-- TV Screen (top) -->
+        <div class="screen-wrapper tv">
+            <canvas id="screen-tv" width="1280" height="720"></canvas>
+            <span class="screen-label">TV (720p)</span>
+        </div>
+
+        <!-- GamePad Screen (bottom) -->
+        <div class="screen-wrapper drc">
+            <canvas id="screen-drc" width="854" height="480"></canvas>
+            <span class="screen-label">GamePad (DRC)</span>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+            <h3>Navigation</h3>
+            <div class="key-row">
+                <span class="key">W</span>
+                <span class="key">A</span>
+                <span class="key">S</span>
+                <span class="key">D</span>
+                <span class="action">or Arrow keys</span>
+            </div>
+            <div class="key-row">
+                <span class="action">Move selection (D-pad)</span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>Actions</h3>
+            <div class="key-row">
+                <span class="key">J</span>
+                <span class="action">Confirm (A)</span>
+            </div>
+            <div class="key-row">
+                <span class="key">K</span>
+                <span class="action">Back (B)</span>
+            </div>
+            <div class="key-row">
+                <span class="key">U</span>
+                <span class="action">Edit (X)</span>
+            </div>
+            <div class="key-row">
+                <span class="key">I</span>
+                <span class="action">Favorite (Y)</span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>Categories</h3>
+            <div class="key-row">
+                <span class="key">Q</span>
+                <span class="action">Prev Category (ZL)</span>
+            </div>
+            <div class="key-row">
+                <span class="key">E</span>
+                <span class="action">Next Category (ZR)</span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>Shoulders / Menu</h3>
+            <div class="key-row">
+                <span class="key">O</span>
+                <span class="action">L Button</span>
+            </div>
+            <div class="key-row">
+                <span class="key">P</span>
+                <span class="action">R Button</span>
+            </div>
+            <div class="key-row">
+                <span class="key">N</span>
+                <span class="action">Minus</span>
+            </div>
+            <div class="key-row">
+                <span class="key">M</span>
+                <span class="action">Settings (Plus)</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="tv-options">
+        <label for="tvResolution">TV Resolution:</label>
+        <select id="tvResolution" onchange="changeTvResolution(this.value)">
+            <option value="720" selected>720p (1280x720)</option>
+            <option value="1080">1080p (1920x1080)</option>
+            <option value="480">480p (854x480)</option>
+        </select>
+    </div>
+
+    <div class="status">
+        <span id="status-text" class="loading">Loading WebAssembly...</span>
+    </div>
+
+    <div id="output"></div>
+
+    <script>
+        // TV resolutions
+        const tvSizes = {
+            '1080': { width: 1920, height: 1080, label: 'TV (1080p)' },
+            '720': { width: 1280, height: 720, label: 'TV (720p)' },
+            '480': { width: 854, height: 480, label: 'TV (480p)' }
+        };
+
+        // DRC is always 854x480
+        const drcSize = { width: 854, height: 480 };
+
+        function updateCanvasScaling() {
+            const maxWidth = Math.min(window.innerWidth - 60, 1400);
+
+            // Scale TV canvas - allow it to be larger to show resolution differences
+            const tvCanvas = document.getElementById('screen-tv');
+            const tvScale = Math.min(1.0, maxWidth / tvCanvas.width);
+            tvCanvas.style.width = (tvCanvas.width * tvScale) + 'px';
+            tvCanvas.style.height = (tvCanvas.height * tvScale) + 'px';
+
+            // DRC canvas at 1:1 scale (854x480) to match actual GamePad
+            const drcCanvas = document.getElementById('screen-drc');
+            const drcScale = Math.min(1.0, maxWidth / drcCanvas.width);
+            drcCanvas.style.width = (drcCanvas.width * drcScale) + 'px';
+            drcCanvas.style.height = (drcCanvas.height * drcScale) + 'px';
+        }
+
+        function changeTvResolution(res) {
+            const size = tvSizes[res];
+            const canvas = document.getElementById('screen-tv');
+            const label = canvas.parentElement.querySelector('.screen-label');
+
+            canvas.width = size.width;
+            canvas.height = size.height;
+            label.textContent = size.label;
+
+            updateCanvasScaling();
+
+            // Notify WASM if loaded
+            if (typeof Module !== 'undefined' && Module._setTvResolution) {
+                Module._setTvResolution(parseInt(res));
+            }
+        }
+
+        // Ready flag - only handle input after Wasm is fully initialized
+        var wasmReady = false;
+
+        // Key handler - calls C++ immediately for zero-latency input
+        document.addEventListener('keydown', function(e) {
+            if (wasmReady) {
+                Module._handleKeyDown(e.keyCode);
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('keyup', function(e) {
+            if (wasmReady) {
+                Module._handleKeyUp(e.keyCode);
+                e.preventDefault();
+            }
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', updateCanvasScaling);
+
+        // Initialize
+        updateCanvasScaling();
+
+        // Module callbacks - must be defined before script loads
+        var Module = {
+            preRun: [],
+            postRun: [],
+            print: function(text) {
+                console.log('[WASM]', text);
+            },
+            printErr: function(text) {
+                console.error('[WASM Error]', text);
+                const statusEl = document.getElementById('status-text');
+                statusEl.textContent = 'Error: ' + text;
+                statusEl.className = 'error';
+            },
+            setStatus: function(text) {
+                console.log('[Status]', text || 'Ready');
+                const statusEl = document.getElementById('status-text');
+                if (text) {
+                    statusEl.textContent = text;
+                    statusEl.className = 'loading';
+                } else {
+                    statusEl.textContent = 'Ready - WASD to navigate, J=confirm, M=settings';
+                    statusEl.className = 'ready';
+                }
+            },
+            onRuntimeInitialized: function() {
+                console.log('[WASM] Runtime initialized');
+                wasmReady = true;
+                Module.setStatus('');
+            },
+            onAbort: function(what) {
+                console.error('[WASM] Abort:', what);
+                const statusEl = document.getElementById('status-text');
+                statusEl.textContent = 'Aborted: ' + what;
+                statusEl.className = 'error';
+            }
+        };
+        window.Module = Module;
+    </script>
+    {{{ SCRIPT }}}
+</body>
+</html>
