@@ -1,0 +1,20 @@
+# Dependencies (downloaded by setup)
+deps/
+.cache/
+.tmp/
+
+# Output directory
+output/
+
+# Base games (user-specific dumps)
+bases/
+
+# Sensitive files
+common_key.txt
+keys.txt
+
+# Wine prefix (large, machine-specific)
+wine_prefix/
+
+# Nintendont config template
+nincfg_template.bin
