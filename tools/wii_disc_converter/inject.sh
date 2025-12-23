@@ -657,38 +657,75 @@ inject_nes_snes() {
     log_step "Injecting $system ROM..."
 
     # For NES/SNES, the ROM is embedded in the RPX file
-    # We need wiiurpxtool to decompress the RPX, inject the ROM, and recompress
+    # Process: decompress RPX -> inject ROM -> recompress RPX
+
+    # Check for wiiurpxtool
+    if [[ ! -f "$TOOLS_DIR/wiiurpxtool" ]]; then
+        die "wiiurpxtool not found. Run --setup first."
+    fi
+
+    # Check for Python 3
+    if ! check_command python3; then
+        die "Python 3 required for NES/SNES injection. Run --setup first."
+    fi
 
     # Find the RPX file
     local rpx_file
     rpx_file=$(find "$base_dir/code" -name "*.rpx" | head -1)
 
     if [[ -z "$rpx_file" ]]; then
-        die "No RPX file found in base game"
+        die "No RPX file found in base game code/ folder"
     fi
+
+    local rpx_name=$(basename "$rpx_file")
+    log_info "Found RPX: $rpx_name"
 
     # Copy base to work directory
     cp -r "$base_dir/code" "$work_dir/"
     cp -r "$base_dir/content" "$work_dir/"
     cp -r "$base_dir/meta" "$work_dir/"
 
-    # Decompress RPX
-    local rpx_name=$(basename "$rpx_file")
+    local work_rpx="$work_dir/code/$rpx_name"
+
+    # Step 1: Decompress RPX
     log_info "Decompressing RPX..."
-    "$TOOLS_DIR/wiiurpxtool" -d "$work_dir/code/$rpx_name"
+    "$TOOLS_DIR/wiiurpxtool" -d "$work_rpx"
 
-    # The ROM location varies by game, but typically it's embedded in the RPX
-    # This is a simplified approach - full implementation would need to find
-    # the ROM offset within the decompressed RPX
+    if [[ $? -ne 0 ]]; then
+        die "Failed to decompress RPX"
+    fi
 
-    log_warn "NES/SNES injection requires finding ROM offset in RPX"
-    log_warn "This is a placeholder - full implementation pending"
+    # Step 2: Inject ROM using Python helper
+    log_info "Injecting ROM into RPX..."
 
-    # Recompress RPX
+    local inject_script="$SCRIPT_DIR/rpx_inject.py"
+    if [[ ! -f "$inject_script" ]]; then
+        die "rpx_inject.py not found in script directory"
+    fi
+
+    # Run the injection
+    if ! python3 "$inject_script" "$work_rpx" "$rom_file" "$system"; then
+        log_error "ROM injection failed"
+        log_info ""
+        log_info "This may happen if:"
+        log_info "  1. The ROM is larger than the base game's ROM"
+        log_info "  2. The ROM offset couldn't be auto-detected"
+        log_info ""
+        log_info "To inject manually:"
+        log_info "  1. Find the ROM offset in a hex editor (search for 'WUP-')"
+        log_info "  2. Run: python3 rpx_inject.py $work_rpx $rom_file $system --offset 0xOFFSET"
+        die "Injection failed"
+    fi
+
+    # Step 3: Recompress RPX
     log_info "Recompressing RPX..."
-    "$TOOLS_DIR/wiiurpxtool" -c "$work_dir/code/$rpx_name"
+    "$TOOLS_DIR/wiiurpxtool" -c "$work_rpx"
 
-    log_success "$system ROM injection structure created"
+    if [[ $? -ne 0 ]]; then
+        die "Failed to recompress RPX"
+    fi
+
+    log_success "$system ROM injected successfully"
 }
 
 inject_gba() {
