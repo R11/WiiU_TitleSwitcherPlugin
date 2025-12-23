@@ -1,215 +1,237 @@
-# Wii/GameCube Disc to Wii U Converter
+# Wii U Virtual Console Injector
 
-A Linux script that converts GameCube and Wii disc images to Wii U installable WUP format, similar to what TeconMoon's WiiVC Injector does on Windows.
+Linux scripts for converting ROMs and disc images to Wii U installable WUP format, without requiring Windows.
 
-## Overview
+## Scripts
 
-This tool helps you:
-1. **Convert disc images** from various formats (WBFS, NKit, CISO, etc.) to standard ISO
-2. **Inject games** into Wii Virtual Console format using TeconMoon's Injector via Wine
-3. **Package as WUP** for installation via WUP Installer GX2
-
-## Requirements
-
-- **Linux** (Ubuntu, Debian, Arch, Fedora, or similar)
-- **wit** (Wiimms ISO Tools) - for disc format conversion
-- **Wine** + .NET Framework 4.6.1 - for running TeconMoon's WiiVC Injector
-- **Java 8+** - for NUSPacker
-- **Wii U Common Key** - for creating installable packages
+| Script | Purpose | Systems |
+|--------|---------|---------|
+| `inject.sh` | Inject ROMs into VC format (native Linux) | NES, SNES, N64, GBA, DS, TG16 |
+| `convert.sh` | Convert disc images via Wine | Wii, GameCube |
 
 ## Quick Start
 
 ```bash
-# 1. Make the script executable
-chmod +x convert.sh
+# 1. Install dependencies
+./inject.sh --setup
 
-# 2. Install dependencies
-./convert.sh --setup
-
-# 3. Set up Wine and the injector (takes 10-15 mins first time)
-./convert.sh --setup-wine
-
-# 4. Add your Wii U common key
+# 2. Add your Wii U common key
 echo "YOUR_32_CHARACTER_HEX_KEY" > common_key.txt
 
-# 5. Convert your games!
-./convert.sh /path/to/your/roms /path/to/output
+# 3. Set up a base game (dump from your Wii U)
+./inject.sh --setup-base /path/to/vc/dump bases/gba_base
+
+# 4. Inject a ROM
+./inject.sh -s gba -r "Metroid Fusion.gba" -b bases/gba_base
 ```
 
-## Detailed Setup
+## Supported Systems
 
-### Step 1: Basic Dependencies
+### Native Linux (inject.sh)
+
+| System | Extensions | ROM Location in VC |
+|--------|------------|-------------------|
+| NES | `.nes`, `.fds` | Embedded in RPX |
+| SNES | `.sfc`, `.smc` | Embedded in RPX |
+| N64 | `.z64`, `.n64`, `.v64` | `content/rom/` |
+| GBA | `.gba`, `.gb`, `.gbc` | `content/alldata.psb.m` |
+| DS | `.nds`, `.srl` | `content/0010/rom.nds` |
+| TG16 | `.pce` | Embedded in RPX |
+
+### Via Wine (convert.sh)
+
+| System | Extensions |
+|--------|------------|
+| Wii | `.iso`, `.wbfs`, `.wia`, `.rvz`, `.ciso` |
+| GameCube | `.iso`, `.gcm`, `.gcz`, `.ciso`, `.nkit.iso` |
+
+## Requirements
+
+- **Java 8+** - for NUSPacker
+- **Python 3** - for inject_gba (GBA injection)
+- **ImageMagick** - for cover art conversion
+- **Wii U Common Key** - for creating installable packages
+- **Base VC Games** - decrypted dumps from your Wii U
+
+For Wii/GameCube (convert.sh):
+- **wit** (Wiimms ISO Tools)
+- **Wine** + .NET Framework 4.6.1
+
+## inject.sh Usage
+
+### Single ROM
 
 ```bash
+./inject.sh --system gba --rom game.gba --base bases/gba_base
+
+# With custom title and cover
+./inject.sh -s snes -r game.sfc -b bases/snes_base \
+    --title "My Game" --cover cover.png
+```
+
+### Batch Mode
+
+```bash
+# Inject all GBA ROMs in a folder
+./inject.sh --batch -s gba --roms ./gba_roms -b bases/gba_base
+```
+
+### Options
+
+| Option | Description |
+|--------|-------------|
+| `--system`, `-s` | Target system (nes, snes, n64, gba, ds, tg16) |
+| `--rom`, `-r` | ROM file to inject |
+| `--base`, `-b` | Decrypted base VC game folder |
+| `--output`, `-o` | Output directory (default: ./output) |
+| `--title`, `-t` | Custom game title |
+| `--cover` | Custom cover image (PNG/JPG) |
+| `--no-artwork` | Skip GameTDB cover download |
+| `--batch` | Process multiple ROMs |
+| `--roms` | Folder containing ROMs (batch mode) |
+| `--dry-run` | Preview without making changes |
+
+## Setting Up Base Games
+
+You need a decrypted base VC game for each system. These come from your own Wii U:
+
+1. **Dump a VC game** using [dumpling](https://github.com/emiyl/dumpling)
+2. **Decrypt it** (if encrypted):
+   ```bash
+   ./inject.sh --setup-base /path/to/dump bases/gba_base
+   ```
+3. The base folder should contain `code/`, `content/`, and `meta/` directories
+
+### Recommended Base Games
+
+| System | Suggested Base |
+|--------|---------------|
+| NES | Any NES VC title |
+| SNES | Any SNES VC title |
+| N64 | Donkey Kong 64, Paper Mario |
+| GBA | Minish Cap, Metroid Fusion |
+| DS | Brain Age, WarioWare |
+| TG16 | Any TG16 VC title |
+
+## Features
+
+### Automatic Cover Art
+
+The script downloads cover art from [GameTDB](https://www.gametdb.com/) automatically:
+
+- Icons (128x128)
+- TV boot screen (1280x720)
+- GamePad boot screen (854x480)
+
+Covers are cached in `.cache/covers/` to avoid re-downloading.
+
+### Title ID Generation
+
+Unique title IDs are generated based on the game ID and system, ensuring:
+- No conflicts with retail titles
+- Reproducible IDs for the same game
+- Custom IDs can be specified with `--title-id`
+
+### Metadata
+
+The script generates proper `meta.xml` with:
+- Game title in all languages
+- Publisher info
+- Title ID and version
+
+## convert.sh Usage (Wii/GameCube)
+
+For Wii and GameCube games, use `convert.sh` which uses Wine to run TeconMoon's WiiVC Injector:
+
+```bash
+# Setup Wine (first time only, takes 10-15 mins)
 ./convert.sh --setup
-```
-
-This installs:
-- **wit** - Wiimms ISO Tools for disc image conversion
-- **Java** - Required for NUSPacker
-- **NUSPacker** - Creates installable WUP packages
-- **Nintendont** - Required for GameCube games
-
-### Step 2: Wine Setup (for full functionality)
-
-```bash
 ./convert.sh --setup-wine
-```
 
-This installs:
-- **Wine** - Windows compatibility layer
-- **TeconMoon's WiiVC Injector** - The injection tool
-- **.NET Framework 4.6.1** - Required by the injector
-
-The .NET installation can take 10-15 minutes on first run.
-
-### Step 3: Common Key
-
-You need the Wii U common key to create installable packages. This is a 32-character hexadecimal string. Create a file called `common_key.txt` in the script directory with your key:
-
-```bash
-echo "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" > common_key.txt
-```
-
-The key is required by NUSPacker to encrypt the packages properly.
-
-## Usage
-
-### Convert a folder of games
-
-```bash
+# Convert games
 ./convert.sh /path/to/roms /path/to/output
+./convert.sh --single "Super Mario Sunshine.iso"
 ```
 
-### Convert a single game
-
-```bash
-./convert.sh --single "Super Mario Sunshine.iso" ./output
-```
-
-### GameCube only
-
-```bash
-./convert.sh --gc-only /path/to/roms
-```
-
-### Wii only
-
-```bash
-./convert.sh --wii-only /path/to/roms
-```
-
-### Dry run (see what would happen)
-
-```bash
-./convert.sh --dry-run /path/to/roms
-```
-
-## Supported Input Formats
-
-| Format | Extension | Notes |
-|--------|-----------|-------|
-| ISO | `.iso` | Standard disc image |
-| GCM | `.gcm` | GameCube disc image |
-| WBFS | `.wbfs` | Wii Backup File System |
-| NKit | `.nkit.iso` | Compressed/trimmed format |
-| CISO | `.ciso` | Compact ISO |
-| WIA | `.wia` | Wii ISO Archive |
-| RVZ | `.rvz` | Modern compressed format |
-| GCZ | `.gcz` | Dolphin's compressed format |
+See the comments in `convert.sh` for more details.
 
 ## Output
 
-The tool produces WUP packages that can be installed on a homebrew-enabled Wii U:
+Both scripts produce WUP packages for installation:
 
-1. Copy the output folders to `SD:/install/`
-2. Boot your Wii U with CFW (Tiramisu/Aroma)
+1. Copy output folders to `SD:/install/`
+2. Boot Wii U with CFW (Tiramisu/Aroma)
 3. Run **WUP Installer GX2**
 4. Install the packages
 
-### For GameCube Games
+## How Injection Works
 
-GameCube games require Nintendont to be installed:
-- Place `boot.dol` at `SD:/apps/nintendont/boot.dol`
-- The converter downloads this automatically during setup
+### GBA
 
-## How It Works
+The GBA VC uses `alldata.psb.m` to store the ROM in a compressed PSB format. The `inject_gba` tool handles extraction and re-injection.
 
-### For Wii Games
+### DS
 
-1. Converts the disc image to standard ISO format using `wit`
-2. Launches TeconMoon's WiiVC Injector via Wine
-3. The injector wraps the game as a Wii VC channel
-4. NUSPacker creates the installable WUP package
+DS ROMs are stored directly as `rom.nds` (or `rom.zip`) in the `content/0010/` folder. Simple file replacement.
 
-### For GameCube Games
+### N64
 
-1. Converts the disc image to standard ISO format
-2. TeconMoon's Injector creates a special Wii disc containing:
-   - The GameCube ISO
-   - A Nintendont autoboot forwarder
-3. This is then wrapped as a Wii VC channel
-4. NUSPacker creates the WUP package
+N64 ROMs go in `content/rom/` with a matching INI config in `content/config/`. Compatibility depends on having the right INI settings.
 
-When launched on Wii U, the game:
-1. Boots into vWii mode
-2. Nintendont loads automatically
-3. The GameCube game starts
+### NES/SNES/TG16
+
+ROMs are embedded in the RPX executable. Requires `wiiurpxtool` to decompress, find ROM offset, inject, and recompress.
+
+### Wii/GameCube
+
+Creates a Wii disc image containing the game plus a Nintendont autoboot forwarder, wrapped as a Wii VC channel.
 
 ## Troubleshooting
 
-### Wine crashes or .NET won't install
+### "inject_gba not found"
 
-Try using a fresh Wine prefix:
 ```bash
-rm -rf deps/wine_prefix
-./convert.sh --setup-wine
+./inject.sh --setup
+# Or manually:
+pip3 install ./deps/inject_gba --user
 ```
 
-### "wit not found"
+### Cover art not downloading
 
-Install manually:
-```bash
-# Ubuntu/Debian
-sudo apt install wit
+- Check your internet connection
+- Game ID may not be in GameTDB database
+- Use `--cover` to provide custom artwork
+- Use `--no-artwork` to skip
 
-# Arch
-sudo pacman -S wiimms-iso-tools
-```
+### Games don't work
+
+- Ensure base game is fully decrypted
+- Check that signature patches are active (Tiramisu/Aroma)
+- For N64, you may need a custom INI config
+- Some games have compatibility issues with VC emulators
 
 ### Common key errors
 
-Make sure your `common_key.txt`:
-- Contains exactly 32 hexadecimal characters
-- Has no spaces or newlines
-- Is in the same directory as `convert.sh`
-
-### Games don't work after installation
-
-- Ensure you have signature patches (Tiramisu/Aroma have this by default)
-- For GameCube, ensure Nintendont is properly installed
-- Try a different base game in the injector
-
-## Alternative: Manual Wine Approach
-
-If the automated Wine setup doesn't work, you can:
-
-1. Install Wine manually: `sudo apt install wine`
-2. Download TeconMoon's WiiVC Injector from [GitHub](https://github.com/piratesephiroth/TeconmoonWiiVCInjector/releases)
-3. Run with: `wine "TeconMoon's WiiVC Injector.exe"`
+Your `common_key.txt` must:
+- Contain exactly 32 hex characters
+- Have no spaces or newlines
+- Be in the script directory
 
 ## Credits
 
+- **ajd4096** - inject_gba
+- **0CBH0** - wiiurpxtool
+- **VitaSmith** - cdecrypt
+- **ihaveamac** - NUSPacker
 - **TeconMoon** - Original WiiVC Injector
-- **piratesephiroth** - WiiVC Injector fork with NKit support
 - **FIX94** - Nintendont
-- **Wiimm** - Wiimms ISO Tools
-- **ihaveamac** - NUSPacker fork
+- **GameTDB** - Cover art database
 
 ## Links
 
-- [TeconMoon's WiiVC Injector](https://github.com/piratesephiroth/TeconmoonWiiVCInjector)
-- [Wiimms ISO Tools](https://wit.wiimm.de/)
+- [inject_gba](https://github.com/ajd4096/inject_gba)
+- [wiiurpxtool](https://github.com/0CBH0/wiiurpxtool)
+- [cdecrypt](https://github.com/VitaSmith/cdecrypt)
 - [NUSPacker](https://github.com/ihaveamac/nuspacker)
-- [Nintendont](https://github.com/FIX94/Nintendont)
-- [UWUVCI Guide](https://uwuvci-prime.github.io/UWUVCI-Resources/)
+- [GameTDB](https://www.gametdb.com/)
+- [UWUVCI Guides](https://uwuvci-prime.github.io/UWUVCI-Resources/)
