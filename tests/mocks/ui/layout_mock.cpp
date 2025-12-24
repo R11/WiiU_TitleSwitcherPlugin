@@ -27,6 +27,10 @@ ScreenType GetCurrentScreenType() {
     return ScreenType::DRC;
 }
 
+void SetCurrentScreenType(ScreenType type) {
+    (void)type;
+}
+
 const LayoutPreferences& GetCurrentPreferences() {
     return sPrefs;
 }
