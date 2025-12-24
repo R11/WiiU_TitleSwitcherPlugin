@@ -213,6 +213,11 @@ ScreenType GetCurrentScreenType() {
     return sCurrentScreenType;
 }
 
+void SetCurrentScreenType(ScreenType type) {
+    sCurrentScreenType = type;
+    sLayoutValid = false;
+}
+
 const LayoutPreferences& GetCurrentPreferences() {
     return sCurrentPreferences;
 }

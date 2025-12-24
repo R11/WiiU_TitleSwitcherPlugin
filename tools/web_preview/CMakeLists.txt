@@ -42,6 +42,7 @@ set(MENU_SOURCES
     ${CMAKE_SOURCE_DIR}/../../src/menu/panels/edit_panel.cpp
     ${CMAKE_SOURCE_DIR}/../../src/menu/panels/debug_panel.cpp
     ${CMAKE_SOURCE_DIR}/../../src/ui/list_view.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/ui/layout.cpp
     ${CMAKE_SOURCE_DIR}/../../src/input/text_input.cpp
     ${CMAKE_SOURCE_DIR}/../../src/render/measurements.cpp
 )

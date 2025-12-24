@@ -5,6 +5,7 @@
 
 #include "renderer.h"
 #include "bitmap_font.h"
+#include "glyph_renderer.h"
 #include "../common/screen_constants.h"
 #include "../utils/dc.h"
 
@@ -182,43 +183,16 @@ void endFrameOSScreen()
 
 void drawTextOSScreen(int column, int row, const char* text, uint32_t color)
 {
-    // Always use bitmap font rendering for consistent positioning with web preview
-    // Convert color from RGBA to RGBX format for OSScreenPutPixelEx
     uint32_t rgbx = (color == 0) ? 0xFFFFFF00 : (color & 0xFFFFFF00);
-
-    // Calculate pixel position from character grid position
     int baseX = column * Screen::Grid::CHAR_WIDTH;
     int baseY = row * Screen::Grid::CHAR_HEIGHT;
 
-    // 2x vertical scale to make 8x8 font fill 8x16, centered in 24px row
-    constexpr int SCALE_Y = 2;
-    constexpr int SCALED_HEIGHT = BitmapFont::CHAR_HEIGHT * SCALE_Y;  // 16px
-    int yOffset = (Screen::Grid::CHAR_HEIGHT - SCALED_HEIGHT) / 2;  // Center in 24px row
-
-    // Render each character
-    for (int i = 0; text[i] != '\0'; i++) {
-        const uint8_t* glyph = BitmapFont::GetGlyph(text[i]);
-        if (!glyph) {
-            baseX += Screen::Grid::CHAR_WIDTH;
-            continue;
-        }
-
-        // Draw each pixel of the glyph with 2x vertical scale
-        for (int gy = 0; gy < BitmapFont::CHAR_HEIGHT; gy++) {
-            for (int gx = 0; gx < BitmapFont::CHAR_WIDTH; gx++) {
-                if (BitmapFont::IsPixelSet(glyph, gx, gy)) {
-                    int px = baseX + gx;
-                    int py = baseY + yOffset + gy * SCALE_Y;
-                    OSScreenPutPixelEx(SCREEN_TV, px, py, rgbx);
-                    OSScreenPutPixelEx(SCREEN_TV, px, py + 1, rgbx);
-                    OSScreenPutPixelEx(SCREEN_DRC, px, py, rgbx);
-                    OSScreenPutPixelEx(SCREEN_DRC, px, py + 1, rgbx);
-                }
-            }
-        }
-
-        baseX += Screen::Grid::CHAR_WIDTH;
-    }
+    GlyphRenderer::RenderText(baseX, baseY, text,
+        Screen::Grid::CHAR_WIDTH, Screen::Grid::CHAR_HEIGHT, 2,
+        [rgbx](int x, int y) {
+            OSScreenPutPixelEx(SCREEN_TV, x, y, rgbx);
+            OSScreenPutPixelEx(SCREEN_DRC, x, y, rgbx);
+        });
 }
 
 void drawImageOSScreen(int pixelX, int pixelY, ImageHandle image, int targetWidth, int targetHeight)

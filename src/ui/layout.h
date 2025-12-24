@@ -184,6 +184,11 @@ PixelLayout ComputeLayout(ScreenType screen, const LayoutPreferences& prefs);
 ScreenType GetCurrentScreenType();
 
 /**
+ * Set the current screen type (invalidates cached layout).
+ */
+void SetCurrentScreenType(ScreenType type);
+
+/**
  * Get the current preferences from settings.
  * Returns default preferences if settings not loaded.
  */

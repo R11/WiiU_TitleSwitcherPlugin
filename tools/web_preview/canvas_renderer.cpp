@@ -7,6 +7,7 @@
 
 #include "stubs/renderer_stub.h"
 #include "render/bitmap_font.h"
+#include "render/glyph_renderer.h"
 #include "common/screen_constants.h"
 
 #ifdef __EMSCRIPTEN__
@@ -234,7 +235,7 @@ void DrawText(int col, int row, const char* text, uint32_t color) {
     uint32_t* fb = getCurrentFramebuffer();
     if (!fb) return;
 
-    // Convert color once (RGBA to ABGR)
+    // Convert RGBA to ABGR for Canvas ImageData
     uint8_t r = (color >> 24) & 0xFF;
     uint8_t g = (color >> 16) & 0xFF;
     uint8_t b = (color >> 8) & 0xFF;
@@ -243,36 +244,15 @@ void DrawText(int col, int row, const char* text, uint32_t color) {
 
     constexpr int CHAR_W = 8;
     constexpr int CHAR_H = 24;
-    constexpr int SCALE_Y = 2;
-    constexpr int SCALED_HEIGHT = BitmapFont::CHAR_HEIGHT * SCALE_Y;
-    int yOffset = (CHAR_H - SCALED_HEIGHT) / 2;
-
     int baseX = col * CHAR_W;
     int baseY = row * CHAR_H;
 
-    for (int i = 0; text[i] != '\0'; i++) {
-        const uint8_t* glyph = BitmapFont::GetGlyph(text[i]);
-        if (!glyph) {
-            baseX += CHAR_W;
-            continue;
-        }
-
-        for (int gy = 0; gy < BitmapFont::CHAR_HEIGHT; gy++) {
-            for (int gx = 0; gx < BitmapFont::CHAR_WIDTH; gx++) {
-                if (BitmapFont::IsPixelSet(glyph, gx, gy)) {
-                    int px = baseX + gx;
-                    int py = baseY + yOffset + gy * SCALE_Y;
-                    // Direct framebuffer writes (skip bounds check for speed)
-                    if (px >= 0 && px < width && py >= 0 && py + 1 < height) {
-                        fb[py * width + px] = abgr;
-                        fb[(py + 1) * width + px] = abgr;
-                    }
-                }
+    GlyphRenderer::RenderText(baseX, baseY, text, CHAR_W, CHAR_H, 2,
+        [&](int x, int y) {
+            if (x >= 0 && x < width && y >= 0 && y < height) {
+                fb[y * width + x] = abgr;
             }
-        }
-
-        baseX += CHAR_W;
-    }
+        });
 }
 
 void DrawTextF(int col, int row, const char* fmt, ...) {
