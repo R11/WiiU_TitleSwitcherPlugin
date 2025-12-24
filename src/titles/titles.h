@@ -65,7 +65,7 @@ namespace Titles {
 
 // Maximum number of titles we can store
 // 512 should be more than enough for any Wii U library
-constexpr int MAX_TITLES = 512;
+constexpr int MAX_TITLES = 3000;
 
 // Maximum length of a title name (including null terminator)
 constexpr int MAX_NAME_LENGTH = 64;

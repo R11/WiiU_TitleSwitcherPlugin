@@ -65,7 +65,11 @@ constexpr const char* AROMA_CONFIG_DIR = "fs:/vol/external01/wiiu/environments/a
 
 // GameTDB presets file - contains metadata for ~2800+ Wii U titles
 // Can be regenerated with: tools/convert_gametdb.py
+#ifdef WEB_PREVIEW
+constexpr const char* PRESETS_FILE = "/presets/TitleSwitcher_presets.json";
+#else
 constexpr const char* PRESETS_FILE = "fs:/vol/external01/wiiu/environments/aroma/plugins/config/TitleSwitcher_presets.json";
+#endif
 
 // User content directory (for pixel editor saves, etc.)
 constexpr const char* USER_DATA_DIR = "fs:/vol/external01/wiiu/titleswitcher";

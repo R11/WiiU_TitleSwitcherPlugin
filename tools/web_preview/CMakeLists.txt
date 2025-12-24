@@ -15,6 +15,7 @@ if(EMSCRIPTEN)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s EXPORTED_RUNTIME_METHODS=[ccall,cwrap,HEAPU8]")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s USE_SDL=0")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --shell-file ${CMAKE_SOURCE_DIR}/shell.html")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --embed-file ${CMAKE_SOURCE_DIR}/../../examples/TitleSwitcher_presets.json@/presets/TitleSwitcher_presets.json")
 endif()
 
 # Define we're building for web preview
@@ -45,10 +46,11 @@ set(MENU_SOURCES
     ${CMAKE_SOURCE_DIR}/../../src/ui/layout.cpp
     ${CMAKE_SOURCE_DIR}/../../src/input/text_input.cpp
     ${CMAKE_SOURCE_DIR}/../../src/render/measurements.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/presets/title_presets.cpp
 )
 
 # Web preview specific sources
-# Mock implementations provide stubs for Settings, Titles, ImageLoader, TitlePresets
+# Mock implementations provide stubs for Settings, Titles, ImageLoader
 set(PREVIEW_SOURCES
     ${CMAKE_SOURCE_DIR}/main.cpp
     ${CMAKE_SOURCE_DIR}/canvas_renderer.cpp
@@ -56,7 +58,6 @@ set(PREVIEW_SOURCES
     ${CMAKE_SOURCE_DIR}/mock_settings.cpp
     ${CMAKE_SOURCE_DIR}/mock_titles.cpp
     ${CMAKE_SOURCE_DIR}/mock_image_loader.cpp
-    ${CMAKE_SOURCE_DIR}/mock_title_presets.cpp
 )
 
 add_executable(preview ${MENU_SOURCES} ${PREVIEW_SOURCES})
