@@ -13,6 +13,7 @@
 #include "../render/renderer.h"
 #include "../render/image_loader.h"
 #include "../render/measurements.h"
+#include "../screenshot/screenshot.h"
 #include "../input/buttons.h"
 #include "../titles/titles.h"
 #include "../storage/settings.h"
@@ -268,7 +269,11 @@ void Open()
 
     sOpeningInProgress = true;
 
+    // Capture game screenshot BEFORE Renderer::Init() takes over the display
+    Screenshot::CaptureFromGame();
+
     if (!Renderer::Init()) {
+        Screenshot::Release();
         NotificationModule_AddErrorNotification("Menu unavailable - not enough memory");
         sOpeningInProgress = false;
         return;
@@ -293,6 +298,7 @@ void Open()
 
     sIsOpen = false;
     Renderer::Shutdown();
+    Screenshot::Release();
 
     if (titleToLaunch != 0) {
         SYSLaunchTitle(titleToLaunch);

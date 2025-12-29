@@ -66,4 +66,9 @@ int GetTitleNameWidth(bool showLineNumbers);
 const Layout::PixelLayout& GetLayout();
 void SetLayoutPreferences(const Layout::LayoutPreferences& prefs);
 
+// Access to stored game framebuffers (for screenshot capture)
+// Must be called BEFORE Init() since OSScreen replaces the buffers
+bool GetStoredTVBuffer(void** outBuffer, uint32_t* outSize, int32_t* outMode);
+bool GetStoredDRCBuffer(void** outBuffer, uint32_t* outSize, int32_t* outMode);
+
 }
