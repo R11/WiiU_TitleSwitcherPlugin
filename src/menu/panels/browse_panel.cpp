@@ -10,6 +10,8 @@
 #include "../../render/renderer.h"
 #include "../../render/image_loader.h"
 #include "../../render/measurements.h"
+#include "../../screenshot/screenshot.h"
+#include "../../common/screen_constants.h"
 #include "../../input/buttons.h"
 #include "../../titles/titles.h"
 #include "../../storage/settings.h"
@@ -257,6 +259,45 @@ void drawFooter()
     Renderer::DrawText(1, Renderer::GetFooterRow(), footer);
 }
 
+void drawScreenshotPreview()
+{
+    if (!Screenshot::HasCapture()) {
+        return;
+    }
+
+    Renderer::ImageHandle screenshot = Screenshot::GetTVImage();
+    if (!screenshot) {
+        return;
+    }
+
+    const Layout::PixelLayout& layout = Renderer::GetLayout();
+
+    // Draw below the game icon in the details panel
+    // Scale down to fit nicely - use same width as icon area
+    int previewWidth = layout.iconSize;
+    int previewHeight = (previewWidth * 9) / 16;  // 16:9 aspect ratio
+
+    // Position below the info section
+    int previewX = layout.details.icon.x;
+    int previewY = layout.details.icon.y + layout.iconSize + 8;
+
+    // Check if we have room (don't overflow past footer)
+    int maxY = Renderer::RowToPixelY(Renderer::GetFooterRow() - 1);
+    if (previewY + previewHeight > maxY) {
+        previewHeight = maxY - previewY;
+        if (previewHeight < 20) {
+            return;  // Not enough space
+        }
+    }
+
+    // Draw label
+    int labelRow = (previewY - 4) / Screen::Grid::CHAR_HEIGHT;
+    Renderer::DrawText(Renderer::GetDetailsPanelCol(), labelRow, "Game Preview:", 0x808080FF);
+
+    // Draw the screenshot thumbnail
+    Renderer::DrawImage(previewX, previewY, screenshot, previewWidth, previewHeight);
+}
+
 }
 
 void Render()
@@ -266,6 +307,7 @@ void Render()
     drawDivider();
     drawTitleList();
     drawDetailsPanel();
+    drawScreenshotPreview();
     drawFooter();
 }
 

@@ -655,4 +655,26 @@ void SetLayoutPreferences(const Layout::LayoutPreferences& prefs)
     Layout::SetCurrentPreferences(prefs);
 }
 
+bool GetStoredTVBuffer(void** outBuffer, uint32_t* outSize, int32_t* outMode)
+{
+    if (!gStoredTVBuffer.buffer) {
+        return false;
+    }
+    if (outBuffer) *outBuffer = gStoredTVBuffer.buffer;
+    if (outSize) *outSize = gStoredTVBuffer.buffer_size;
+    if (outMode) *outMode = gStoredTVBuffer.mode;
+    return true;
+}
+
+bool GetStoredDRCBuffer(void** outBuffer, uint32_t* outSize, int32_t* outMode)
+{
+    if (!gStoredDRCBuffer.buffer) {
+        return false;
+    }
+    if (outBuffer) *outBuffer = gStoredDRCBuffer.buffer;
+    if (outSize) *outSize = gStoredDRCBuffer.buffer_size;
+    if (outMode) *outMode = gStoredDRCBuffer.mode;
+    return true;
+}
+
 }
