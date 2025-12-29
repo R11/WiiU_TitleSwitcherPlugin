@@ -7,10 +7,13 @@
 #include "menu_state.h"
 #include "categories.h"
 #include "panels/browse_panel.h"
+#include "panels/grid_panel.h"
 #include "panels/settings_panel.h"
 #include "panels/edit_panel.h"
 #include "panels/debug_panel.h"
 #include "../render/renderer.h"
+#include "../ui/screen.h"
+#include "../ui/grid_view.h"
 #include "../render/image_loader.h"
 #include "../render/measurements.h"
 #include "../input/buttons.h"
@@ -55,6 +58,7 @@ bool sOpeningInProgress = false;
 const uint32_t STARTUP_GRACE_MS = 3000;
 
 const SettingItem sSettingItems[] = {
+    TOGGLE_SETTING("Grid View",         "Use icon grid layout",         "instead of list view.",     useGridView),
     ACTION_SETTING("System Apps",       "Launch system applications",   "(Browser, Settings, etc.)", ACTION_SYSTEM_APPS),
     TOGGLE_SETTING("Show Numbers",      "Show line numbers before",     "each title in the list.",   showNumbers),
     TOGGLE_SETTING("Show Favorites",    "Show favorite marker (*)",     "in the title list.",        showFavorites),
@@ -151,6 +155,19 @@ FrameResult processFrameInternal()
         case Mode::BROWSE:
             BrowsePanel::Render();
             break;
+        case Mode::GRID_BROWSE: {
+            // Get screen configuration from settings
+            Screen::LayoutPreset preset = static_cast<Screen::LayoutPreset>(
+                Settings::Get().screenLayoutPreset);
+            Screen::Configuration config = Screen::GetPresetConfiguration(preset);
+
+            // Render DRC
+            if (config.drcMode != Screen::ContentMode::OFF) {
+                Screen::Descriptor drc = Screen::GetDRCDescriptor();
+                GridPanel::Render(drc, config.drcMode);
+            }
+            break;
+        }
         case Mode::EDIT:
             EditPanel::Render();
             break;
@@ -181,6 +198,9 @@ FrameResult processFrameInternal()
         switch (sCurrentMode) {
             case Mode::BROWSE:
                 result.titleToLaunch = BrowsePanel::HandleInput(pressed);
+                break;
+            case Mode::GRID_BROWSE:
+                result.titleToLaunch = GridPanel::HandleInput(pressed);
                 break;
             case Mode::EDIT:
                 EditPanel::HandleInput(pressed);
@@ -284,7 +304,15 @@ void Open()
 
     sIsOpen = true;
     sOpeningInProgress = false;
-    sCurrentMode = Mode::BROWSE;
+
+    // Choose initial mode based on settings
+    if (Settings::Get().useGridView) {
+        sCurrentMode = Mode::GRID_BROWSE;
+        GridPanel::Init();
+        GridPanel::SetIconSize(static_cast<GridView::IconSize>(Settings::Get().gridIconSize));
+    } else {
+        sCurrentMode = Mode::BROWSE;
+    }
 
     uint64_t titleToLaunch = runMenuLoop();
 
@@ -319,6 +347,17 @@ void RenderFrame()
         case Mode::BROWSE:
             BrowsePanel::Render();
             break;
+        case Mode::GRID_BROWSE: {
+            Screen::LayoutPreset preset = static_cast<Screen::LayoutPreset>(
+                Settings::Get().screenLayoutPreset);
+            Screen::Configuration config = Screen::GetPresetConfiguration(preset);
+
+            if (config.drcMode != Screen::ContentMode::OFF) {
+                Screen::Descriptor drc = Screen::GetDRCDescriptor();
+                GridPanel::Render(drc, config.drcMode);
+            }
+            break;
+        }
         case Mode::EDIT:
             EditPanel::Render();
             break;
@@ -358,6 +397,9 @@ FrameResult HandleInputFrame()
             case Mode::BROWSE:
                 result.titleToLaunch = BrowsePanel::HandleInput(pressed);
                 break;
+            case Mode::GRID_BROWSE:
+                result.titleToLaunch = GridPanel::HandleInput(pressed);
+                break;
             case Mode::EDIT:
                 EditPanel::HandleInput(pressed);
                 break;
@@ -379,7 +421,12 @@ FrameResult HandleInputFrame()
 
 void ResetToBrowse()
 {
-    sCurrentMode = Mode::BROWSE;
+    if (Settings::Get().useGridView) {
+        sCurrentMode = Mode::GRID_BROWSE;
+        GridPanel::Init();
+    } else {
+        sCurrentMode = Mode::BROWSE;
+    }
     sIsOpen = true;
 }
 
@@ -387,10 +434,16 @@ void InitForWebPreview()
 {
     sInitialized = true;
     sIsOpen = true;
-    sCurrentMode = Mode::BROWSE;
     sInForeground = true;
     sTitleListState = UI::ListView::State();
     clampSelection();
+
+    if (Settings::Get().useGridView) {
+        sCurrentMode = Mode::GRID_BROWSE;
+        GridPanel::Init();
+    } else {
+        sCurrentMode = Mode::BROWSE;
+    }
 }
 
 void OnApplicationStart()

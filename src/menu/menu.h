@@ -12,6 +12,7 @@ namespace Menu {
 
 enum class Mode {
     BROWSE,
+    GRID_BROWSE,
     EDIT,
     SETTINGS,
     DEBUG_GRID

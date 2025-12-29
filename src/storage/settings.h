@@ -190,6 +190,22 @@ struct PluginSettings {
     Layout::LayoutPreferences layoutPrefs;
 
     // -------------------------------------------------------------------------
+    // Grid View Settings
+    // -------------------------------------------------------------------------
+
+    // Use grid view instead of list view for browsing
+    // Default: false (list view)
+    bool useGridView;
+
+    // Icon size preset for grid view (0=Small, 1=Medium, 2=Large)
+    // Default: 1 (Medium)
+    int32_t gridIconSize;
+
+    // Screen layout preset for grid view (0=Standard, 1=Swapped, 2=Mirrored, etc.)
+    // Default: 0 (Standard - Grid on DRC, Details on TV)
+    int32_t screenLayoutPreset;
+
+    // -------------------------------------------------------------------------
     // Colors
     // -------------------------------------------------------------------------
 
@@ -232,6 +248,9 @@ struct PluginSettings {
         showNumbers(false),
         showFavorites(true),
         layoutPrefs(Layout::LayoutPreferences::Default()),
+        useGridView(false),
+        gridIconSize(1),
+        screenLayoutPreset(0),
         bgColor(DEFAULT_BG_COLOR),
         titleColor(DEFAULT_TITLE_COLOR),
         highlightedTitleColor(DEFAULT_HIGHLIGHTED_COLOR),
