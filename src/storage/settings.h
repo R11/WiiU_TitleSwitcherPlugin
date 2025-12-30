@@ -183,6 +183,18 @@ struct PluginSettings {
     bool showFavorites;
 
     // -------------------------------------------------------------------------
+    // Performance Options (for A/B testing optimizations)
+    // -------------------------------------------------------------------------
+
+    // Use direct pixel array access instead of gdImageGetPixel() calls
+    // Reduces function call overhead when parsing TGA/PNG/etc images
+    bool useDirectPixelConversion;
+
+    // Use direct framebuffer memory writes instead of OSScreenPutPixelEx()
+    // Eliminates per-pixel API call overhead during rendering
+    bool useDirectFramebuffer;
+
+    // -------------------------------------------------------------------------
     // Layout Preferences
     // -------------------------------------------------------------------------
 
@@ -231,6 +243,8 @@ struct PluginSettings {
         lastCategoryIndex(0),
         showNumbers(false),
         showFavorites(true),
+        useDirectPixelConversion(true),
+        useDirectFramebuffer(true),
         layoutPrefs(Layout::LayoutPreferences::Default()),
         bgColor(DEFAULT_BG_COLOR),
         titleColor(DEFAULT_TITLE_COLOR),

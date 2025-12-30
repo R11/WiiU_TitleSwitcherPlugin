@@ -2,6 +2,7 @@
 
 #include "image_store.h"
 #include "file_storage.h"
+#include "settings.h"
 
 #include <map>
 #include <vector>
@@ -69,39 +70,35 @@ void evictIfNeeded()
     }
 }
 
-// Parse image data into RGBA pixels
-Renderer::ImageHandle parseImage(const uint8_t* data, size_t size)
+// Load image using libgd and return the gdImagePtr
+gdImagePtr loadGdImage(const uint8_t* data, size_t size)
 {
     if (!data || size < 8) {
-        return Renderer::INVALID_IMAGE;
+        return nullptr;
     }
 
-    // Detect format and load with libgd
-    gdImagePtr gdImg = nullptr;
     if (data[0] == 0x89 && data[1] == 'P' && data[2] == 'N' && data[3] == 'G') {
-        gdImg = gdImageCreateFromPngPtr(static_cast<int>(size), const_cast<uint8_t*>(data));
+        return gdImageCreateFromPngPtr(static_cast<int>(size), const_cast<uint8_t*>(data));
     } else if (data[0] == 0xFF && data[1] == 0xD8) {
-        gdImg = gdImageCreateFromJpegPtr(static_cast<int>(size), const_cast<uint8_t*>(data));
+        return gdImageCreateFromJpegPtr(static_cast<int>(size), const_cast<uint8_t*>(data));
     } else if (data[0] == 'B' && data[1] == 'M') {
-        gdImg = gdImageCreateFromBmpPtr(static_cast<int>(size), const_cast<uint8_t*>(data));
+        return gdImageCreateFromBmpPtr(static_cast<int>(size), const_cast<uint8_t*>(data));
     } else {
-        gdImg = gdImageCreateFromTgaPtr(static_cast<int>(size), const_cast<uint8_t*>(data));
+        return gdImageCreateFromTgaPtr(static_cast<int>(size), const_cast<uint8_t*>(data));
     }
+}
 
-    if (!gdImg) {
-        return Renderer::INVALID_IMAGE;
-    }
-
+// Legacy parser using gdImageGetPixel accessor functions
+Renderer::ImageHandle parseImageLegacy(gdImagePtr gdImg)
+{
     int width = gdImageSX(gdImg);
     int height = gdImageSY(gdImg);
 
     uint32_t* pixels = static_cast<uint32_t*>(malloc(width * height * sizeof(uint32_t)));
     if (!pixels) {
-        gdImageDestroy(gdImg);
         return Renderer::INVALID_IMAGE;
     }
 
-    // Convert to RGBA
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
             int pixel = gdImageGetPixel(gdImg, x, y);
@@ -113,7 +110,55 @@ Renderer::ImageHandle parseImage(const uint8_t* data, size_t size)
         }
     }
 
-    gdImageDestroy(gdImg);
+    Renderer::ImageData* imageData = new Renderer::ImageData();
+    imageData->pixels = pixels;
+    imageData->width = width;
+    imageData->height = height;
+
+    return imageData;
+}
+
+// Optimized parser with direct pixel array access
+Renderer::ImageHandle parseImageDirect(gdImagePtr gdImg)
+{
+    int width = gdImageSX(gdImg);
+    int height = gdImageSY(gdImg);
+
+    uint32_t* pixels = static_cast<uint32_t*>(malloc(width * height * sizeof(uint32_t)));
+    if (!pixels) {
+        return Renderer::INVALID_IMAGE;
+    }
+
+    if (gdImageTrueColor(gdImg)) {
+        // Fast path: directly access truecolor pixel array
+        for (int y = 0; y < height; y++) {
+            int* srcRow = gdImg->tpixels[y];
+            uint32_t* dstRow = &pixels[y * width];
+            for (int x = 0; x < width; x++) {
+                int pixel = srcRow[x];
+                // libgd truecolor format: 0x00RRGGBB with alpha in high bits (0-127)
+                uint8_t gdAlpha = (pixel >> 24) & 0x7F;
+                uint8_t r = (pixel >> 16) & 0xFF;
+                uint8_t g = (pixel >> 8) & 0xFF;
+                uint8_t b = pixel & 0xFF;
+                // Convert libgd alpha (0=opaque, 127=transparent) to standard (255=opaque, 0=transparent)
+                uint8_t a = 255 - (gdAlpha * 2);
+                dstRow[x] = (r << 24) | (g << 16) | (b << 8) | a;
+            }
+        }
+    } else {
+        // Fallback for paletted images - use accessor functions
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int pixel = gdImageGetPixel(gdImg, x, y);
+                uint8_t r = gdImageRed(gdImg, pixel);
+                uint8_t g = gdImageGreen(gdImg, pixel);
+                uint8_t b = gdImageBlue(gdImg, pixel);
+                uint8_t a = 255 - (gdImageAlpha(gdImg, pixel) * 2);
+                pixels[y * width + x] = (r << 24) | (g << 16) | (b << 8) | a;
+            }
+        }
+    }
 
     Renderer::ImageData* imageData = new Renderer::ImageData();
     imageData->pixels = pixels;
@@ -121,6 +166,25 @@ Renderer::ImageHandle parseImage(const uint8_t* data, size_t size)
     imageData->height = height;
 
     return imageData;
+}
+
+// Parse image data into RGBA pixels
+Renderer::ImageHandle parseImage(const uint8_t* data, size_t size)
+{
+    gdImagePtr gdImg = loadGdImage(data, size);
+    if (!gdImg) {
+        return Renderer::INVALID_IMAGE;
+    }
+
+    Renderer::ImageHandle result;
+    if (Settings::Get().useDirectPixelConversion) {
+        result = parseImageDirect(gdImg);
+    } else {
+        result = parseImageLegacy(gdImg);
+    }
+
+    gdImageDestroy(gdImg);
+    return result;
 }
 
 // Try loading from SD card

@@ -7,6 +7,7 @@
 #include "bitmap_font.h"
 #include "glyph_renderer.h"
 #include "../common/screen_constants.h"
+#include "../storage/settings.h"
 #include "../utils/dc.h"
 
 #ifdef ENABLE_GX2_RENDERING
@@ -78,12 +79,33 @@ uint32_t drcFramebufferSize = 0;
 bool usingFallbackTV = false;
 bool usingFallbackDRC = false;
 
+// Direct framebuffer write state
+int tvPitch = 1280;
+int drcPitch = 896;
+size_t activeBufferOffset = 0;
+
+// Write a pixel directly to framebuffer memory
+inline void writePixelDirect(uint8_t* buffer, size_t bufferSize, int x, int y,
+                              int pitch, uint32_t rgbxColor)
+{
+    size_t offset = static_cast<size_t>(x + y * pitch) * 4 + activeBufferOffset;
+    if (offset + 3 >= bufferSize) return;
+    buffer[offset]     = (rgbxColor >> 24) & 0xFF;
+    buffer[offset + 1] = (rgbxColor >> 16) & 0xFF;
+    buffer[offset + 2] = (rgbxColor >> 8) & 0xFF;
+}
+
 
 bool initOSScreen()
 {
     homeButtonWasEnabled = OSIsHomeButtonMenuEnabled();
     DCSaveRegisters(&savedDCRegisters);
     OSScreenInit();
+
+    // Initialize pitch values from DC registers for direct framebuffer access
+    uint32_t tvScanWidth = DCReadReg32(SCREEN_TV, D1GRPH_X_END_REG);
+    tvPitch = (tvScanWidth > 0 && tvScanWidth <= 1920) ? static_cast<int>(tvScanWidth) : 1280;
+    drcPitch = 896;
 
     tvFramebufferSize = OSScreenGetBufferSizeEx(SCREEN_TV);
     drcFramebufferSize = OSScreenGetBufferSizeEx(SCREEN_DRC);
@@ -169,6 +191,16 @@ void shutdownOSScreen()
 void beginFrameOSScreen(uint32_t clearColor)
 {
     GX2WaitForVsync();
+
+    // Detect which half of the double buffer is active for direct writes
+    if (Settings::Get().useDirectFramebuffer && tvFramebuffer) {
+        uint32_t* testPtr = static_cast<uint32_t*>(tvFramebuffer);
+        uint32_t saved = *testPtr;
+        OSScreenPutPixelEx(SCREEN_TV, 0, 0, 0xDEADBEEF);
+        activeBufferOffset = (*testPtr == 0xDEADBEEF) ? 0 : tvFramebufferSize / 2;
+        *testPtr = saved;
+    }
+
     OSScreenClearBufferEx(SCREEN_TV, clearColor);
     OSScreenClearBufferEx(SCREEN_DRC, clearColor);
 }
@@ -187,12 +219,23 @@ void drawTextOSScreen(int column, int row, const char* text, uint32_t color)
     int baseX = column * Screen::Grid::CHAR_WIDTH;
     int baseY = row * Screen::Grid::CHAR_HEIGHT;
 
-    GlyphRenderer::RenderText(baseX, baseY, text,
-        Screen::Grid::CHAR_WIDTH, Screen::Grid::CHAR_HEIGHT, 2,
-        [rgbx](int x, int y) {
-            OSScreenPutPixelEx(SCREEN_TV, x, y, rgbx);
-            OSScreenPutPixelEx(SCREEN_DRC, x, y, rgbx);
-        });
+    if (Settings::Get().useDirectFramebuffer && tvFramebuffer && drcFramebuffer) {
+        uint8_t* tvBuffer = static_cast<uint8_t*>(tvFramebuffer);
+        uint8_t* drcBuffer = static_cast<uint8_t*>(drcFramebuffer);
+        GlyphRenderer::RenderText(baseX, baseY, text,
+            Screen::Grid::CHAR_WIDTH, Screen::Grid::CHAR_HEIGHT, 2,
+            [rgbx, tvBuffer, drcBuffer](int x, int y) {
+                writePixelDirect(tvBuffer, tvFramebufferSize, x, y, tvPitch, rgbx);
+                writePixelDirect(drcBuffer, drcFramebufferSize, x, y, drcPitch, rgbx);
+            });
+    } else {
+        GlyphRenderer::RenderText(baseX, baseY, text,
+            Screen::Grid::CHAR_WIDTH, Screen::Grid::CHAR_HEIGHT, 2,
+            [rgbx](int x, int y) {
+                OSScreenPutPixelEx(SCREEN_TV, x, y, rgbx);
+                OSScreenPutPixelEx(SCREEN_DRC, x, y, rgbx);
+            });
+    }
 }
 
 void drawImageOSScreen(int pixelX, int pixelY, ImageHandle image, int targetWidth, int targetHeight)
@@ -206,16 +249,39 @@ void drawImageOSScreen(int pixelX, int pixelY, ImageHandle image, int targetWidt
     int destWidth = (targetWidth > 0) ? targetWidth : sourceWidth;
     int destHeight = (targetHeight > 0) ? targetHeight : sourceHeight;
 
-    for (int destY = 0; destY < destHeight; destY++) {
-        int sourceY = (destY * sourceHeight) / destHeight;
-        for (int destX = 0; destX < destWidth; destX++) {
-            int sourceX = (destX * sourceWidth) / destWidth;
+    if (Settings::Get().useDirectFramebuffer && tvFramebuffer && drcFramebuffer) {
+        uint8_t* tvBuffer = static_cast<uint8_t*>(tvFramebuffer);
+        uint8_t* drcBuffer = static_cast<uint8_t*>(drcFramebuffer);
 
-            uint32_t pixel = image->pixels[sourceY * sourceWidth + sourceX];
-            uint32_t rgbxPixel = pixel & 0xFFFFFF00;
+        for (int destY = 0; destY < destHeight; destY++) {
+            int sourceY = (destY * sourceHeight) / destHeight;
+            int screenY = pixelY + destY;
+            if (screenY < 0 || screenY >= Screen::DRC::HEIGHT) continue;
 
-            OSScreenPutPixelEx(SCREEN_TV, pixelX + destX, pixelY + destY, rgbxPixel);
-            OSScreenPutPixelEx(SCREEN_DRC, pixelX + destX, pixelY + destY, rgbxPixel);
+            for (int destX = 0; destX < destWidth; destX++) {
+                int screenX = pixelX + destX;
+                if (screenX < 0 || screenX >= Screen::DRC::WIDTH) continue;
+
+                int sourceX = (destX * sourceWidth) / destWidth;
+                uint32_t pixel = image->pixels[sourceY * sourceWidth + sourceX];
+                uint32_t rgbxPixel = pixel & 0xFFFFFF00;
+
+                writePixelDirect(tvBuffer, tvFramebufferSize, screenX, screenY, tvPitch, rgbxPixel);
+                writePixelDirect(drcBuffer, drcFramebufferSize, screenX, screenY, drcPitch, rgbxPixel);
+            }
+        }
+    } else {
+        for (int destY = 0; destY < destHeight; destY++) {
+            int sourceY = (destY * sourceHeight) / destHeight;
+            for (int destX = 0; destX < destWidth; destX++) {
+                int sourceX = (destX * sourceWidth) / destWidth;
+
+                uint32_t pixel = image->pixels[sourceY * sourceWidth + sourceX];
+                uint32_t rgbxPixel = pixel & 0xFFFFFF00;
+
+                OSScreenPutPixelEx(SCREEN_TV, pixelX + destX, pixelY + destY, rgbxPixel);
+                OSScreenPutPixelEx(SCREEN_DRC, pixelX + destX, pixelY + destY, rgbxPixel);
+            }
         }
     }
 }
@@ -224,10 +290,28 @@ void drawPlaceholderOSScreen(int pixelX, int pixelY, int width, int height, uint
 {
     uint32_t rgbxColor = color & 0xFFFFFF00;
 
-    for (int offsetY = 0; offsetY < height; offsetY++) {
-        for (int offsetX = 0; offsetX < width; offsetX++) {
-            OSScreenPutPixelEx(SCREEN_TV, pixelX + offsetX, pixelY + offsetY, rgbxColor);
-            OSScreenPutPixelEx(SCREEN_DRC, pixelX + offsetX, pixelY + offsetY, rgbxColor);
+    if (Settings::Get().useDirectFramebuffer && tvFramebuffer && drcFramebuffer) {
+        uint8_t* tvBuffer = static_cast<uint8_t*>(tvFramebuffer);
+        uint8_t* drcBuffer = static_cast<uint8_t*>(drcFramebuffer);
+
+        for (int offsetY = 0; offsetY < height; offsetY++) {
+            int screenY = pixelY + offsetY;
+            if (screenY < 0 || screenY >= Screen::DRC::HEIGHT) continue;
+
+            for (int offsetX = 0; offsetX < width; offsetX++) {
+                int screenX = pixelX + offsetX;
+                if (screenX < 0 || screenX >= Screen::DRC::WIDTH) continue;
+
+                writePixelDirect(tvBuffer, tvFramebufferSize, screenX, screenY, tvPitch, rgbxColor);
+                writePixelDirect(drcBuffer, drcFramebufferSize, screenX, screenY, drcPitch, rgbxColor);
+            }
+        }
+    } else {
+        for (int offsetY = 0; offsetY < height; offsetY++) {
+            for (int offsetX = 0; offsetX < width; offsetX++) {
+                OSScreenPutPixelEx(SCREEN_TV, pixelX + offsetX, pixelY + offsetY, rgbxColor);
+                OSScreenPutPixelEx(SCREEN_DRC, pixelX + offsetX, pixelY + offsetY, rgbxColor);
+            }
         }
     }
 }
@@ -236,18 +320,40 @@ void drawPixelOSScreen(int x, int y, uint32_t color)
 {
     if (x < 0 || x >= Screen::DRC::WIDTH || y < 0 || y >= Screen::DRC::HEIGHT) return;
     uint32_t rgbx = color & 0xFFFFFF00;
-    OSScreenPutPixelEx(SCREEN_TV, x, y, rgbx);
-    OSScreenPutPixelEx(SCREEN_DRC, x, y, rgbx);
+
+    if (Settings::Get().useDirectFramebuffer && tvFramebuffer && drcFramebuffer) {
+        uint8_t* tvBuffer = static_cast<uint8_t*>(tvFramebuffer);
+        uint8_t* drcBuffer = static_cast<uint8_t*>(drcFramebuffer);
+        writePixelDirect(tvBuffer, tvFramebufferSize, x, y, tvPitch, rgbx);
+        writePixelDirect(drcBuffer, drcFramebufferSize, x, y, drcPitch, rgbx);
+    } else {
+        OSScreenPutPixelEx(SCREEN_TV, x, y, rgbx);
+        OSScreenPutPixelEx(SCREEN_DRC, x, y, rgbx);
+    }
 }
 
 void drawHLineOSScreen(int x, int y, int length, uint32_t color)
 {
     uint32_t rgbx = color & 0xFFFFFF00;
-    for (int i = 0; i < length; i++) {
-        int px = x + i;
-        if (px >= 0 && px < Screen::DRC::WIDTH && y >= 0 && y < Screen::DRC::HEIGHT) {
-            OSScreenPutPixelEx(SCREEN_TV, px, y, rgbx);
-            OSScreenPutPixelEx(SCREEN_DRC, px, y, rgbx);
+
+    if (Settings::Get().useDirectFramebuffer && tvFramebuffer && drcFramebuffer) {
+        uint8_t* tvBuffer = static_cast<uint8_t*>(tvFramebuffer);
+        uint8_t* drcBuffer = static_cast<uint8_t*>(drcFramebuffer);
+
+        for (int i = 0; i < length; i++) {
+            int px = x + i;
+            if (px >= 0 && px < Screen::DRC::WIDTH && y >= 0 && y < Screen::DRC::HEIGHT) {
+                writePixelDirect(tvBuffer, tvFramebufferSize, px, y, tvPitch, rgbx);
+                writePixelDirect(drcBuffer, drcFramebufferSize, px, y, drcPitch, rgbx);
+            }
+        }
+    } else {
+        for (int i = 0; i < length; i++) {
+            int px = x + i;
+            if (px >= 0 && px < Screen::DRC::WIDTH && y >= 0 && y < Screen::DRC::HEIGHT) {
+                OSScreenPutPixelEx(SCREEN_TV, px, y, rgbx);
+                OSScreenPutPixelEx(SCREEN_DRC, px, y, rgbx);
+            }
         }
     }
 }
@@ -255,11 +361,25 @@ void drawHLineOSScreen(int x, int y, int length, uint32_t color)
 void drawVLineOSScreen(int x, int y, int length, uint32_t color)
 {
     uint32_t rgbx = color & 0xFFFFFF00;
-    for (int i = 0; i < length; i++) {
-        int py = y + i;
-        if (x >= 0 && x < Screen::DRC::WIDTH && py >= 0 && py < Screen::DRC::HEIGHT) {
-            OSScreenPutPixelEx(SCREEN_TV, x, py, rgbx);
-            OSScreenPutPixelEx(SCREEN_DRC, x, py, rgbx);
+
+    if (Settings::Get().useDirectFramebuffer && tvFramebuffer && drcFramebuffer) {
+        uint8_t* tvBuffer = static_cast<uint8_t*>(tvFramebuffer);
+        uint8_t* drcBuffer = static_cast<uint8_t*>(drcFramebuffer);
+
+        for (int i = 0; i < length; i++) {
+            int py = y + i;
+            if (x >= 0 && x < Screen::DRC::WIDTH && py >= 0 && py < Screen::DRC::HEIGHT) {
+                writePixelDirect(tvBuffer, tvFramebufferSize, x, py, tvPitch, rgbx);
+                writePixelDirect(drcBuffer, drcFramebufferSize, x, py, drcPitch, rgbx);
+            }
+        }
+    } else {
+        for (int i = 0; i < length; i++) {
+            int py = y + i;
+            if (x >= 0 && x < Screen::DRC::WIDTH && py >= 0 && py < Screen::DRC::HEIGHT) {
+                OSScreenPutPixelEx(SCREEN_TV, x, py, rgbx);
+                OSScreenPutPixelEx(SCREEN_DRC, x, py, rgbx);
+            }
         }
     }
 }

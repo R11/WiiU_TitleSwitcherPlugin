@@ -79,6 +79,10 @@ constexpr uint32_t D1GRPH_CONTROL_REG = 0x1841;
 // Number of bytes per horizontal line (width * bytes_per_pixel, aligned)
 constexpr uint32_t D1GRPH_PITCH_REG   = 0x1848;
 
+// Graphics X end register
+// Contains the horizontal scan buffer width in pixels (640/854/1280/1920)
+constexpr uint32_t D1GRPH_X_END_REG   = 0x1844;
+
 // Overlay pitch register
 // Pitch for the overlay layer (used for video playback, etc.)
 constexpr uint32_t D1OVL_PITCH_REG    = 0x1866;
