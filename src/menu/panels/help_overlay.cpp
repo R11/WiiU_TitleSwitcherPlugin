@@ -284,7 +284,7 @@ bool HandleInput(uint32_t pressed)
 {
     if (!sVisible) return false;
 
-    if (Buttons::Actions::HELP.Pressed(pressed) || Buttons::Actions::CANCEL.Pressed(pressed)) {
+    if (Buttons::Actions::HELP.Pressed(pressed)) {
         Hide();
         return true;
     }

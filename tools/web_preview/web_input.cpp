@@ -2,19 +2,16 @@
  * Web Input System
  *
  * Maps keyboard events to VPAD button presses.
- * Simple letter-key mapping to avoid modifier keys and browser conflicts:
+ * Letter keys are reserved for typing in text fields.
  *
- *   WASD / Arrow keys -> D-pad
- *   J -> A button (confirm)
- *   K -> B button (back)
- *   U -> X button (edit)
- *   I -> Y button (favorite)
- *   Q -> ZL (prev category)
- *   E -> ZR (next category)
- *   O -> L button
- *   P -> R button
- *   M -> Plus (settings menu)
- *   N -> Minus
+ *   Arrow keys -> D-pad navigation
+ *   Enter -> A button (confirm)
+ *   Backspace -> B button (back)
+ *   Delete -> X button (delete)
+ *   Tab -> Plus (settings menu)
+ *   Escape -> Minus (help)
+ *   PageUp/PageDown -> L/R (page navigation)
+ *   Home/End -> ZL/ZR (category switch)
  */
 
 #include "vpad/input.h"
@@ -33,33 +30,28 @@ static uint32_t sPrevHeldButtons = 0;
 // Key code to VPAD button mapping
 uint32_t keyCodeToButton(int keyCode) {
     switch (keyCode) {
-        // WASD + Arrow keys -> D-pad
-        case 87: return VPAD_BUTTON_UP;     // W
-        case 83: return VPAD_BUTTON_DOWN;   // S
-        case 65: return VPAD_BUTTON_LEFT;   // A
-        case 68: return VPAD_BUTTON_RIGHT;  // D
+        // Arrow keys -> D-pad
         case 37: return VPAD_BUTTON_LEFT;   // ArrowLeft
         case 38: return VPAD_BUTTON_UP;     // ArrowUp
         case 39: return VPAD_BUTTON_RIGHT;  // ArrowRight
         case 40: return VPAD_BUTTON_DOWN;   // ArrowDown
 
-        // Action buttons (JKUI cluster)
-        case 74: return VPAD_BUTTON_A;      // J (confirm)
-        case 75: return VPAD_BUTTON_B;      // K (back)
-        case 85: return VPAD_BUTTON_X;      // U (edit)
-        case 73: return VPAD_BUTTON_Y;      // I (favorite)
+        // Primary actions
+        case 13: return VPAD_BUTTON_A;      // Enter (confirm)
+        case 8:  return VPAD_BUTTON_B;      // Backspace (back)
+        case 46: return VPAD_BUTTON_X;      // Delete (delete/edit)
 
-        // Category buttons
-        case 81: return VPAD_BUTTON_ZL;     // Q (prev category)
-        case 69: return VPAD_BUTTON_ZR;     // E (next category)
+        // Page navigation
+        case 33: return VPAD_BUTTON_L;      // PageUp
+        case 34: return VPAD_BUTTON_R;      // PageDown
 
-        // Shoulder buttons
-        case 79: return VPAD_BUTTON_L;      // O
-        case 80: return VPAD_BUTTON_R;      // P
+        // Category switching
+        case 36: return VPAD_BUTTON_ZL;     // Home (prev category)
+        case 35: return VPAD_BUTTON_ZR;     // End (next category)
 
         // Menu buttons
-        case 77: return VPAD_BUTTON_PLUS;   // M (settings menu)
-        case 78: return VPAD_BUTTON_MINUS;  // N
+        case 9:  return VPAD_BUTTON_PLUS;   // Tab (settings menu)
+        case 27: return VPAD_BUTTON_MINUS;  // Escape (help)
 
         default: return 0;
     }

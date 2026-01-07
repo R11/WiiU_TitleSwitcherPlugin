@@ -218,35 +218,46 @@
         <div class="control-group">
             <h3>Navigation</h3>
             <div class="key-row">
-                <span class="key">W</span>
-                <span class="key">A</span>
-                <span class="key">S</span>
-                <span class="key">D</span>
-                <span class="action">or Arrow keys</span>
+                <span class="key">↑↓←→</span>
+                <span class="action">Navigate</span>
+            </div>
+            <div class="key-row">
+                <span class="key">PgUp</span>
+                <span class="key">PgDn</span>
+                <span class="action">Page up/down</span>
+            </div>
+            <div class="key-row">
+                <span class="key">Home</span>
+                <span class="key">End</span>
+                <span class="action">Prev/Next category</span>
             </div>
         </div>
 
         <div class="control-group">
             <h3>Actions</h3>
             <div class="key-row">
-                <span class="key">J</span>
+                <span class="key">Enter</span>
                 <span class="action">Confirm (A)</span>
             </div>
             <div class="key-row">
-                <span class="key">K</span>
+                <span class="key">Backspace</span>
                 <span class="action">Back (B)</span>
+            </div>
+            <div class="key-row">
+                <span class="key">Delete</span>
+                <span class="action">Edit/Delete (X)</span>
             </div>
         </div>
 
         <div class="control-group">
-            <h3>Quick Keys</h3>
+            <h3>Menu</h3>
             <div class="key-row">
-                <span class="key">N</span>
-                <span class="action">Help (-)</span>
+                <span class="key">Esc</span>
+                <span class="action">Help</span>
             </div>
             <div class="key-row">
-                <span class="key">M</span>
-                <span class="action">Settings (+)</span>
+                <span class="key">Tab</span>
+                <span class="action">Settings</span>
             </div>
         </div>
     </div>
@@ -354,7 +365,7 @@
                     statusEl.textContent = text;
                     statusEl.className = 'loading';
                 } else {
-                    statusEl.textContent = 'Ready - WASD to navigate, J=confirm, N=help';
+                    statusEl.textContent = 'Ready - Arrow keys to navigate, Enter=confirm, Esc=help';
                     statusEl.className = 'ready';
                 }
             },
