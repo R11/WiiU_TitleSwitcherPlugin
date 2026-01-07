@@ -68,8 +68,6 @@ void Render()
                         (w - 800) / 2, (w - 800) / 2, w - 800);
     Renderer::DrawTextF(1, 14, 0xCDD6F4FF, "                  T=%d B=%d (total %d unaccounted)",
                         (h - 432) / 2, (h - 432) / 2, h - 432);
-
-    Renderer::DrawText(1, Renderer::GetGridHeight() - 1, "[B:Back]", 0x888888FF);
 }
 
 void HandleInput(uint32_t pressed)

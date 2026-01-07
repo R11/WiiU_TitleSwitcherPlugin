@@ -58,6 +58,7 @@ constexpr Button CANCEL        = { VPAD_BUTTON_B,     "B" };
 constexpr Button FAVORITE      = { VPAD_BUTTON_Y,     "Y" };
 constexpr Button EDIT          = { VPAD_BUTTON_X,     "X" };
 constexpr Button SETTINGS      = { VPAD_BUTTON_PLUS,  "+" };
+constexpr Button HELP          = { VPAD_BUTTON_MINUS, "-" };
 
 constexpr Button CATEGORY_PREV = { VPAD_BUTTON_ZL,    "ZL" };
 constexpr Button CATEGORY_NEXT = { VPAD_BUTTON_ZR,    "ZR" };

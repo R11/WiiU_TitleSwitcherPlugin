@@ -90,14 +90,11 @@ void Render()
     }
 
     int selectedIdx = UI::ListView::GetSelectedIndex(sEditCatsListState);
-    char footer[80];
-    snprintf(footer, sizeof(footer),
-             "%s:Toggle %s:Back  [Category %d/%d]",
-             Buttons::Actions::CONFIRM.label,
-             Buttons::Actions::CANCEL.label,
+    char footer[32];
+    snprintf(footer, sizeof(footer), "[%d/%d]",
              catCount > 0 ? selectedIdx + 1 : 0,
              catCount > 0 ? catCount : 1);
-    Renderer::DrawText(0, Renderer::GetFooterRow(), footer);
+    Renderer::DrawText(1, Renderer::GetFooterRow(), footer);
 }
 
 void HandleInput(uint32_t pressed)

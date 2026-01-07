@@ -10,6 +10,7 @@
 #include "panels/settings_panel.h"
 #include "panels/edit_panel.h"
 #include "panels/debug_panel.h"
+#include "panels/help_overlay.h"
 #include "../render/renderer.h"
 #include "../render/image_loader.h"
 #include "../render/measurements.h"
@@ -136,6 +137,35 @@ using namespace Internal;
 
 namespace {
 
+HelpOverlay::Context getCurrentHelpContext()
+{
+    switch (sCurrentMode) {
+        case Mode::BROWSE:
+            return HelpOverlay::Context::BROWSE;
+        case Mode::EDIT:
+            return HelpOverlay::Context::EDIT;
+        case Mode::SETTINGS:
+            switch (sSettingsSubMode) {
+                case SettingsSubMode::MAIN:
+                    return HelpOverlay::Context::SETTINGS_MAIN;
+                case SettingsSubMode::MANAGE_CATS:
+                    return HelpOverlay::Context::SETTINGS_MANAGE_CATS;
+                case SettingsSubMode::SYSTEM_APPS:
+                    return HelpOverlay::Context::SETTINGS_SYSTEM_APPS;
+                case SettingsSubMode::COLORS:
+                    return HelpOverlay::Context::SETTINGS_COLORS;
+                case SettingsSubMode::COLOR_INPUT:
+                    return HelpOverlay::Context::SETTINGS_COLOR_INPUT;
+                case SettingsSubMode::NAME_INPUT:
+                    return HelpOverlay::Context::SETTINGS_NAME_INPUT;
+            }
+            break;
+        case Mode::DEBUG_GRID:
+            return HelpOverlay::Context::DEBUG_GRID;
+    }
+    return HelpOverlay::Context::BROWSE;
+}
+
 FrameResult processFrameInternal()
 {
     FrameResult result = {true, 0};
@@ -162,6 +192,9 @@ FrameResult processFrameInternal()
             break;
     }
 
+    HelpOverlay::DrawHelpIndicator();
+    HelpOverlay::Render();
+
     static uint32_t frameCounter = 0;
     frameCounter++;
     if (ImageLoader::HasHighPriorityPending() || frameCounter % 10 == 0) {
@@ -178,19 +211,24 @@ FrameResult processFrameInternal()
         uint32_t pressed = vpadStatus.trigger;
         uint32_t held = vpadStatus.hold;
 
-        switch (sCurrentMode) {
-            case Mode::BROWSE:
-                result.titleToLaunch = BrowsePanel::HandleInput(pressed);
-                break;
-            case Mode::EDIT:
-                EditPanel::HandleInput(pressed);
-                break;
-            case Mode::SETTINGS:
-                SettingsPanel::HandleInput(pressed, held);
-                break;
-            case Mode::DEBUG_GRID:
-                DebugPanel::HandleInput(pressed);
-                break;
+        if (HelpOverlay::HandleInput(pressed)) {
+        } else if (Buttons::Actions::HELP.Pressed(pressed)) {
+            HelpOverlay::Toggle(getCurrentHelpContext());
+        } else {
+            switch (sCurrentMode) {
+                case Mode::BROWSE:
+                    result.titleToLaunch = BrowsePanel::HandleInput(pressed);
+                    break;
+                case Mode::EDIT:
+                    EditPanel::HandleInput(pressed);
+                    break;
+                case Mode::SETTINGS:
+                    SettingsPanel::HandleInput(pressed, held);
+                    break;
+                case Mode::DEBUG_GRID:
+                    DebugPanel::HandleInput(pressed);
+                    break;
+            }
         }
     }
 
@@ -329,6 +367,9 @@ void RenderFrame()
             DebugPanel::Render();
             break;
     }
+
+    HelpOverlay::DrawHelpIndicator();
+    HelpOverlay::Render();
 }
 
 FrameResult HandleInputFrame()
@@ -354,19 +395,24 @@ FrameResult HandleInputFrame()
         uint32_t pressed = vpadStatus.trigger;
         uint32_t held = vpadStatus.hold;
 
-        switch (sCurrentMode) {
-            case Mode::BROWSE:
-                result.titleToLaunch = BrowsePanel::HandleInput(pressed);
-                break;
-            case Mode::EDIT:
-                EditPanel::HandleInput(pressed);
-                break;
-            case Mode::SETTINGS:
-                SettingsPanel::HandleInput(pressed, held);
-                break;
-            case Mode::DEBUG_GRID:
-                DebugPanel::HandleInput(pressed);
-                break;
+        if (HelpOverlay::HandleInput(pressed)) {
+        } else if (Buttons::Actions::HELP.Pressed(pressed)) {
+            HelpOverlay::Toggle(getCurrentHelpContext());
+        } else {
+            switch (sCurrentMode) {
+                case Mode::BROWSE:
+                    result.titleToLaunch = BrowsePanel::HandleInput(pressed);
+                    break;
+                case Mode::EDIT:
+                    EditPanel::HandleInput(pressed);
+                    break;
+                case Mode::SETTINGS:
+                    SettingsPanel::HandleInput(pressed, held);
+                    break;
+                case Mode::DEBUG_GRID:
+                    DebugPanel::HandleInput(pressed);
+                    break;
+            }
         }
     }
 

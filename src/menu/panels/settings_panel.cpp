@@ -109,10 +109,7 @@ void renderSettingsMain()
                           getSettingActionHint(selected.type));
     }
 
-    Renderer::DrawTextF(0, Renderer::GetFooterRow(), "%s:Edit %s:Back  [%d/%d]",
-                      Buttons::Actions::CONFIRM.label,
-                      Buttons::Actions::CANCEL.label,
-                      selectedIdx + 1, SETTINGS_ITEM_COUNT);
+    Renderer::DrawTextF(1, Renderer::GetFooterRow(), "[%d/%d]", selectedIdx + 1, SETTINGS_ITEM_COUNT);
 }
 
 void renderManageCategories()
@@ -172,11 +169,7 @@ void renderManageCategories()
                           Buttons::Actions::NAV_PAGE_DOWN.label);
     }
 
-    Renderer::DrawTextF(0, Renderer::GetFooterRow(), "%s:Rename %s:Back %s:Hide %s:Add  [%d/%d]",
-                      Buttons::Actions::CONFIRM.label,
-                      Buttons::Actions::CANCEL.label,
-                      Buttons::Actions::FAVORITE.label,
-                      Buttons::Actions::SETTINGS.label,
+    Renderer::DrawTextF(1, Renderer::GetFooterRow(), "[%d/%d]",
                       catCount > 0 ? selectedIdx + 1 : 0, catCount);
 }
 
@@ -263,10 +256,7 @@ void renderColors()
                           "A: Edit color");
     }
 
-    Renderer::DrawTextF(0, Renderer::GetFooterRow(), "%s:Edit %s:Back  [%d/%d]",
-                      Buttons::Actions::CONFIRM.label,
-                      Buttons::Actions::CANCEL.label,
-                      selectedIdx + 1, COLOR_OPTION_COUNT);
+    Renderer::DrawTextF(1, Renderer::GetFooterRow(), "[%d/%d]", selectedIdx + 1, COLOR_OPTION_COUNT);
 }
 
 void renderSystemApps()
@@ -298,10 +288,7 @@ void renderSystemApps()
     Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_INFO_LINE2, "suspended while the");
     Renderer::DrawText(Renderer::GetDetailsPanelCol(), LIST_START_ROW + Measurements::ROW_OFFSET_INFO_LINE3, "system app is open.");
 
-    Renderer::DrawTextF(0, Renderer::GetFooterRow(), "%s:Launch %s:Back  [%d/%d]",
-                      Buttons::Actions::CONFIRM.label,
-                      Buttons::Actions::CANCEL.label,
-                      selectedIdx + 1, SYSTEM_APP_COUNT);
+    Renderer::DrawTextF(1, Renderer::GetFooterRow(), "[%d/%d]", selectedIdx + 1, SYSTEM_APP_COUNT);
 }
 
 void handleSettingsMainInput(uint32_t pressed)

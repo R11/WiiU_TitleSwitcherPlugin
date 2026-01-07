@@ -238,21 +238,8 @@ void drawFooter()
     int count = Categories::GetFilteredCount();
     int selectedIdx = UI::ListView::GetSelectedIndex(sTitleListState);
 
-    int pending, ready, failed, total;
-    ImageLoader::GetLoadingStats(&pending, &ready, &failed, &total);
-
-    char footer[120];
-    snprintf(footer, sizeof(footer),
-             "%s:Go %s:Close %s:Fav %s:Edit %s:Settings ZL/ZR:Cat [%d/%d] %d/%d",
-             Buttons::Actions::CONFIRM.label,
-             Buttons::Actions::CANCEL.label,
-             Buttons::Actions::FAVORITE.label,
-             Buttons::Actions::EDIT.label,
-             Buttons::Actions::SETTINGS.label,
-             selectedIdx + 1,
-             count,
-             ready,
-             total);
+    char footer[32];
+    snprintf(footer, sizeof(footer), "[%d/%d]", selectedIdx + 1, count);
 
     Renderer::DrawText(1, Renderer::GetFooterRow(), footer);
 }

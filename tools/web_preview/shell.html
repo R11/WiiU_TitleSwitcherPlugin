@@ -224,9 +224,6 @@
                 <span class="key">D</span>
                 <span class="action">or Arrow keys</span>
             </div>
-            <div class="key-row">
-                <span class="action">Move selection (D-pad)</span>
-            </div>
         </div>
 
         <div class="control-group">
@@ -239,45 +236,17 @@
                 <span class="key">K</span>
                 <span class="action">Back (B)</span>
             </div>
-            <div class="key-row">
-                <span class="key">U</span>
-                <span class="action">Edit (X)</span>
-            </div>
-            <div class="key-row">
-                <span class="key">I</span>
-                <span class="action">Favorite (Y)</span>
-            </div>
         </div>
 
         <div class="control-group">
-            <h3>Categories</h3>
-            <div class="key-row">
-                <span class="key">Q</span>
-                <span class="action">Prev Category (ZL)</span>
-            </div>
-            <div class="key-row">
-                <span class="key">E</span>
-                <span class="action">Next Category (ZR)</span>
-            </div>
-        </div>
-
-        <div class="control-group">
-            <h3>Shoulders / Menu</h3>
-            <div class="key-row">
-                <span class="key">O</span>
-                <span class="action">L Button</span>
-            </div>
-            <div class="key-row">
-                <span class="key">P</span>
-                <span class="action">R Button</span>
-            </div>
+            <h3>Quick Keys</h3>
             <div class="key-row">
                 <span class="key">N</span>
-                <span class="action">Minus</span>
+                <span class="action">Help (-)</span>
             </div>
             <div class="key-row">
                 <span class="key">M</span>
-                <span class="action">Settings (Plus)</span>
+                <span class="action">Settings (+)</span>
             </div>
         </div>
     </div>
@@ -385,7 +354,7 @@
                     statusEl.textContent = text;
                     statusEl.className = 'loading';
                 } else {
-                    statusEl.textContent = 'Ready - WASD to navigate, J=confirm, M=settings';
+                    statusEl.textContent = 'Ready - WASD to navigate, J=confirm, N=help';
                     statusEl.className = 'ready';
                 }
             },
