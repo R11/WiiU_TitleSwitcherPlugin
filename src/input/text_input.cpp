@@ -208,6 +208,32 @@ Result Field::HandleInput(uint32_t pressed, uint32_t held)
     return Result::ACTIVE;
 }
 
+bool Field::InsertChar(char c)
+{
+    if (!mInitialized) return false;
+
+    // Convert lowercase hex to uppercase
+    if (mLibrary == Library::HEX && c >= 'a' && c <= 'f') {
+        c = c - 'a' + 'A';
+    }
+
+    // Check if character is valid for current library
+    const char* charSet = getCharSet();
+    if (strchr(charSet, c) == nullptr) {
+        return false;
+    }
+
+    // Insert character at cursor position
+    mChars[mCursorPos] = c;
+
+    // Advance cursor if not at end
+    if (mCursorPos < mMaxLength - 1) {
+        mCursorPos++;
+    }
+
+    return true;
+}
+
 int Field::GetCursorPosition() const
 {
     return mCursorPos;

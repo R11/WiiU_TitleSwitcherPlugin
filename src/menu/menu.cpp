@@ -473,4 +473,19 @@ void OnForegroundReleased()
     }
 }
 
+bool IsTextInputActive()
+{
+    if (!sIsOpen) return false;
+    if (sCurrentMode != Mode::SETTINGS) return false;
+
+    return sSettingsSubMode == SettingsSubMode::COLOR_INPUT ||
+           sSettingsSubMode == SettingsSubMode::NAME_INPUT;
+}
+
+bool HandleTypedChar(char c)
+{
+    if (!IsTextInputActive()) return false;
+    return sInputField.InsertChar(c);
+}
+
 }

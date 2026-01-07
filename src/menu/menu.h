@@ -77,4 +77,19 @@ void OnApplicationEnd();
 void OnForegroundAcquired();
 void OnForegroundReleased();
 
+/**
+ * Check if text input mode is currently active.
+ * When active, keyboard characters should be passed to HandleTypedChar.
+ */
+bool IsTextInputActive();
+
+/**
+ * Handle a typed character from keyboard.
+ * Only has effect when IsTextInputActive() returns true.
+ *
+ * @param c The typed character
+ * @return true if the character was accepted
+ */
+bool HandleTypedChar(char c);
+
 }

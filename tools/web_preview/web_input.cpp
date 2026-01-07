@@ -12,9 +12,13 @@
  *   Escape -> Minus (help)
  *   PageUp/PageDown -> L/R (page navigation)
  *   Home/End -> ZL/ZR (category switch)
+ *
+ * When text input is active, letter/number keys are passed directly
+ * to the text input field for typing.
  */
 
 #include "vpad/input.h"
+#include "menu/menu.h"
 #include <cstring>
 
 #ifdef __EMSCRIPTEN__
@@ -64,18 +68,40 @@ uint32_t keyCodeToButton(int keyCode) {
  */
 extern "C" {
 
-void onKeyDown(int keyCode) {
+void handleKeyDown(int keyCode) {
     uint32_t button = keyCodeToButton(keyCode);
     if (button) {
         sHeldButtons |= button;
     }
 }
 
-void onKeyUp(int keyCode) {
+void handleKeyUp(int keyCode) {
     uint32_t button = keyCodeToButton(keyCode);
     if (button) {
         sHeldButtons &= ~button;
     }
+}
+
+/**
+ * Handle a typed character (for text input fields).
+ * Called from JavaScript with the character code.
+ * Returns 1 if character was consumed, 0 otherwise.
+ */
+int handleTypedChar(int charCode) {
+    if (!Menu::IsTextInputActive()) {
+        return 0;
+    }
+
+    char c = static_cast<char>(charCode);
+    return Menu::HandleTypedChar(c) ? 1 : 0;
+}
+
+/**
+ * Check if text input mode is active.
+ * JavaScript can use this to decide whether to send typed characters.
+ */
+int isTextInputActive() {
+    return Menu::IsTextInputActive() ? 1 : 0;
 }
 
 } // extern "C"

@@ -180,6 +180,16 @@ public:
     Result HandleInput(uint32_t pressed, uint32_t held = 0);
 
     /**
+     * Insert a typed character at cursor position.
+     * If the character is valid for the current library, inserts it
+     * and advances the cursor.
+     *
+     * @param c The character to insert
+     * @return true if the character was inserted, false if invalid
+     */
+    bool InsertChar(char c);
+
+    /**
      * Get the current cursor position.
      *
      * @return Cursor index (0 to maxLength-1)

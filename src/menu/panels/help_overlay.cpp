@@ -177,11 +177,12 @@ void renderColorInputHelp()
     Renderer::DrawText(OVERLAY_START_COL + 2, OVERLAY_TITLE_ROW, "EDIT COLOR VALUE", OVERLAY_TITLE_COLOR);
 
     static const HelpEntry entries[] = {
+        {"0-9, A-F", "Type hex digit"},
         {"Up/Down", "Change character"},
-        {"A/B", "Move cursor right/left"},
-        {"X", "Delete character"},
-        {"+", "Confirm"},
-        {"-", "Cancel"},
+        {"Left/Right", "Move cursor"},
+        {"Backspace", "Delete character"},
+        {"Enter", "Confirm"},
+        {"Esc", "Cancel / Help"},
     };
 
     drawHelpEntries(entries, sizeof(entries) / sizeof(entries[0]), OVERLAY_CONTENT_ROW);
@@ -192,11 +193,12 @@ void renderNameInputHelp()
     Renderer::DrawText(OVERLAY_START_COL + 2, OVERLAY_TITLE_ROW, "ENTER NAME", OVERLAY_TITLE_COLOR);
 
     static const HelpEntry entries[] = {
+        {"A-Z, 0-9", "Type character"},
         {"Up/Down", "Change character"},
-        {"A/B", "Move cursor right/left"},
-        {"X", "Delete character"},
-        {"+", "Confirm"},
-        {"-", "Cancel"},
+        {"Left/Right", "Move cursor"},
+        {"Backspace", "Delete character"},
+        {"Enter", "Confirm"},
+        {"Esc", "Cancel / Help"},
     };
 
     drawHelpEntries(entries, sizeof(entries) / sizeof(entries[0]), OVERLAY_CONTENT_ROW);

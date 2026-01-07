@@ -324,12 +324,25 @@
         // Ready flag - only handle input after Wasm is fully initialized
         var wasmReady = false;
 
-        // Key handler - calls C++ immediately for zero-latency input
+        // Key handler - routes to button input or text typing
         document.addEventListener('keydown', function(e) {
-            if (wasmReady) {
-                Module._handleKeyDown(e.keyCode);
-                e.preventDefault();
+            if (!wasmReady) return;
+
+            // Check if text input mode is active
+            if (Module._isTextInputActive()) {
+                // Try to pass printable characters to text input
+                if (e.key.length === 1) {
+                    var charCode = e.key.charCodeAt(0);
+                    if (Module._handleTypedChar(charCode)) {
+                        e.preventDefault();
+                        return;
+                    }
+                }
             }
+
+            // Handle as button press
+            Module._handleKeyDown(e.keyCode);
+            e.preventDefault();
         });
 
         document.addEventListener('keyup', function(e) {
