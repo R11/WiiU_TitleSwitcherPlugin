@@ -77,4 +77,10 @@ void OnApplicationEnd();
 void OnForegroundAcquired();
 void OnForegroundReleased();
 
+namespace Hooks {
+
+void ReportError(const char* message);
+
+}
+
 }

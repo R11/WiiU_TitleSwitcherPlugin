@@ -66,4 +66,20 @@ int GetTitleNameWidth(bool showLineNumbers);
 const Layout::PixelLayout& GetLayout();
 void SetLayoutPreferences(const Layout::LayoutPreferences& prefs);
 
+// Shell-provided hooks invoked by the OSScreen backend.
+// Plugin shell implements screen takeover (DC register save/restore,
+// home button menu toggle, captured framebuffer fallback).
+// App shell stubs all of these to no-ops.
+namespace Hooks {
+
+void* GetCapturedTVBuffer(uint32_t* outSize);
+void* GetCapturedDRCBuffer(uint32_t* outSize);
+
+void OnBeforeInit();
+void OnAfterInit();
+void OnInitFailed();
+void OnShutdown();
+
+}
+
 }

@@ -5,7 +5,7 @@ CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -g -DTEST_BUILD
 
 # Include paths (mocks first to override real implementations)
-INCLUDES = -Imocks -I../src
+INCLUDES = -Imocks -I../src -I../src/core
 
 # Check if bundled gtest is built, use it; otherwise use system gtest
 BUNDLED_GTEST_LIB := ../extern/googletest/build/lib/libgtest.a
@@ -21,11 +21,13 @@ endif
 # Source files to test (compiled with test mocks)
 TEST_SRCS = \
 	unit/buttons_test.cpp \
-	unit/settings_test.cpp
+	unit/settings_test.cpp \
+	unit/settings_json_test.cpp
 
 # Source files to compile (with test mocks)
 SRC_SRCS = \
-	../src/storage/settings.cpp
+	../src/core/storage/settings.cpp \
+	../src/core/storage/settings_json.cpp
 
 # Mock implementations
 MOCK_SRCS = \

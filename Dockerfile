@@ -14,4 +14,4 @@ RUN for i in 1 2 3 4 5; do \
 
 COPY --chown=developer:developer . /project
 WORKDIR /project
-RUN make -j$(nproc)
+RUN make plugin app -j$(nproc)

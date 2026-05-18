@@ -25,6 +25,10 @@ extern "C" {
     void onKeyUp(int keyCode);
 }
 
+namespace Menu { namespace Hooks {
+void ReportError(const char*) {}
+}}
+
 // Dirty flag - only render when state changes
 static bool sDirty = true;
 

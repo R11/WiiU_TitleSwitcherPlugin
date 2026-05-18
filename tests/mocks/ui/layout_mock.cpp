@@ -4,7 +4,7 @@
  * Provides stub implementations of Layout functions used by settings.cpp.
  */
 
-#include "../../src/ui/layout.h"
+#include "../../src/core/ui/layout.h"
 
 namespace Layout {
 

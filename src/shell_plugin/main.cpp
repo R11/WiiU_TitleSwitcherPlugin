@@ -48,6 +48,15 @@ DEINITIALIZE_PLUGIN()
     NotificationModule_DeInitLibrary();
 }
 
+namespace Menu { namespace Hooks {
+
+void ReportError(const char* message)
+{
+    NotificationModule_AddErrorNotification(message);
+}
+
+}}
+
 ON_APPLICATION_START()
 {
     Menu::OnApplicationStart();

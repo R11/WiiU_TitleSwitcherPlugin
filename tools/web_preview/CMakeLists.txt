@@ -30,20 +30,21 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/../preview/stubs
     ${CMAKE_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/../../src
+    ${CMAKE_SOURCE_DIR}/../../src/core
 )
 
 # Source files from main project
 # Using the actual menu.cpp gives us the full state machine
 set(MENU_SOURCES
-    ${CMAKE_SOURCE_DIR}/../../src/menu/menu.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/menu/categories.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/menu/panels/browse_panel.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/menu/panels/settings_panel.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/menu/panels/edit_panel.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/menu/panels/debug_panel.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/ui/list_view.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/input/text_input.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/render/measurements.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/core/menu/menu.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/core/menu/categories.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/core/menu/panels/browse_panel.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/core/menu/panels/settings_panel.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/core/menu/panels/edit_panel.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/core/menu/panels/debug_panel.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/core/ui/list_view.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/core/input/text_input.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/core/render/measurements.cpp
 )
 
 # Web preview specific sources

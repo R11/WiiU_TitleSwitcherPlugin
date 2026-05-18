@@ -34,14 +34,15 @@ for arg in "$@"; do
     esac
 done
 
-echo "Building TitleSwitcherPlugin..."
+echo "Building TitleSwitcher (plugin + app)..."
 docker build -t titleswitcherplugin .
 
-echo "Extracting TitleSwitcherPlugin.wps..."
-docker run --rm -v "$(pwd):/output" titleswitcherplugin cp /project/TitleSwitcherPlugin.wps /output/
+echo "Extracting build artifacts..."
+docker run --rm -v "$(pwd):/output" titleswitcherplugin \
+    sh -c "cp /project/TitleSwitcherPlugin.wps /output/ && cp /project/TitleSwitcher.wuhb /output/"
 
 echo "Build complete!"
-ls -la TitleSwitcherPlugin.wps
+ls -la TitleSwitcherPlugin.wps TitleSwitcher.wuhb
 
 # Run packaging if requested
 if [ "$DO_PACKAGE" = true ]; then
